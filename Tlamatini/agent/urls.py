@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from . import views, flow_file_views, model_brain_views, usage_views, terminal_views
+from . import canvas_file_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -28,6 +29,8 @@ def secure_post(view_func):
 
 
 urlpatterns = [
+    path('canvas/save/', secure_post(canvas_file_views.save), name='canvas_save'),
+    path('canvas/read/', secure_post(canvas_file_views.read), name='canvas_read'),
     path('usage/', secure_get(usage_views.usage_view), name='usage'),
     path('', views.login_view, name='home'),
     path('agent/', secure_get(views.agent_page), name='agent_page'),

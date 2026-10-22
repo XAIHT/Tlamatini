@@ -30,6 +30,8 @@ import shutil
 from build_runtime_assets import verify_package
 
 # Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
+from build_env import run_in_sealed_env
+from pyinstaller_guard import pyinstaller_command
 from versioning import (
     extract_cli_version,
     render_versioninfo_for,
@@ -394,7 +396,7 @@ def main():
     print(f"Created asInvoker manifest: {manifest_path}")
 
     command = [
-        sys.executable, "-m", "PyInstaller",
+        *pyinstaller_command(),
         "--onedir",
         "--windowed",
         "--noconfirm",
@@ -570,4 +572,5 @@ def _verified_move(src: Path, dst: Path):
 
 
 if __name__ == "__main__":
+    run_in_sealed_env(__file__)  # never this machine's everyday Python
     main()

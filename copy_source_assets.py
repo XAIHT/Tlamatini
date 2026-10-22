@@ -244,6 +244,9 @@ KEEP_PATH_GLOBS = (
 # one raises rather than producing a quietly-incomplete self-modify tree.
 # Add the canonical file of any new always-present capability here.
 REQUIRED_SNAPSHOT_FILES = (
+    "Tlamatini/agent/canvas_file_views.py",
+    "Tlamatini/agent/native_dialogs.py",
+    "Tlamatini/agent/test_canvas_file_views.py",
     # Preserve the source-quality commands for builds initiated from the snapshot.
     "scripts/check_python_quality.py",
     "scripts/check_js_parse.mjs",
@@ -437,6 +440,8 @@ REQUIRED_SNAPSHOT_FILES = (
     "uninstall.py",
     "regen_secrets.py",
     "versioning.py",
+    "pyinstaller_guard.py",
+    "build_env.py",
     "requirements.txt",
     "copy_source_assets.py",
     # Self-update capability (in-app checker + external file-swap script)
@@ -459,6 +464,15 @@ REQUIRED_SNAPSHOT_FILES = (
     "scripts/vendor_pdfjs.py",
     "scripts/vendor_frontend.py",
     "Tlamatini/agent/static/agent/js/agent_page_markdown.js",
+    "Tlamatini/agent/static/agent/js/agent_page_editing.js",
+    "Tlamatini/agent/static/agent/css/canvas_editor.css",
+    "Tlamatini/agent/static/agent/vendor/canvas-editor/editor.js",
+    "Tlamatini/agent/static/agent/vendor/canvas-editor/LICENSES.txt",
+    "Tlamatini/agent/static/agent/vendor/canvas-editor/manifest.json",
+    "scripts/canvas_editor_entry.mjs",
+    "scripts/build_canvas_editor.mjs",
+    "scripts/canvas_editing_visible.py",
+    "docs/canvas-editing.md",
     "Tlamatini/agent/static/agent/css/markdown_canvas.css",
     "Tlamatini/agent/static/agent/vendor/frontend/marked/lib/marked.umd.js",
     "Tlamatini/agent/static/agent/vendor/frontend/marked/LICENSE",

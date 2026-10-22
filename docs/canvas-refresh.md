@@ -28,7 +28,9 @@ Send's right edge. The portrait remains square with a 120 px minimum.
 
 Released in **v1.85.0**; implemented 2026-10-15. **Refresh** replaces **Reopen**. **Open** selects a
 document; Refresh reads that same document again without a file-selection dialog.
-Nothing is written to the original file.
+Refresh itself writes nothing to the original file. Since the 2026-10-21 source
+change, [canvas editing](canvas-editing.md) adds Save and native Save As; Refresh
+asks before discarding unsaved edits and follows a newly saved destination.
 
 | Situation | Button and feedback |
 | --- | --- |

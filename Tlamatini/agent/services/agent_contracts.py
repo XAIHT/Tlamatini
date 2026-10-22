@@ -186,7 +186,7 @@ _PARAMETRIZER_OUTPUT_FIELDS: dict[str, tuple[str, ...]] = {
     # stopped answering is `hung`); `user_part` / `user_line` carry what the USER typed
     # in a hand-over, and `typed` is exactly what Tlamatini typed.  Keep this tuple in
     # step with terminater.py::SECTION_FIELDS.
-    "terminater": ("action", "status", "success", "terminal_id", "kind", "title", "terminal_state", "command", "exit_code", "duration_seconds", "output_chars", "truncated", "hung", "aborted_by", "typed", "user_part", "user_line", "user_keys", "cursor", "watch_reason", "wait_reason", "layout", "area", "terminals", "hub", "message", "response_body"),
+    "terminater": ("action", "status", "success", "terminal_id", "kind", "title", "terminal_state", "command", "exit_code", "duration_seconds", "output_chars", "truncated", "hung", "aborted_by", "typed", "user_part", "user_line", "user_keys", "cursor", "watch_reason", "wait_reason", "layout", "area", "terminals", "hub", "message", "verified", "screen_line", "enter_pressed", "notes", "response_body"),
 }
 
 

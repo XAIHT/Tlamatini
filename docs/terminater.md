@@ -82,7 +82,8 @@ for Parametrizer (`agent_contracts._PARAMETRIZER_OUTPUT_FIELDS['terminater']`):
 `command`, `exit_code`, `duration_seconds`, `output_chars`, `truncated`, `hung`,
 `aborted_by`, `typed`, `user_part`, `user_line`, `user_keys`, `cursor`,
 `watch_reason`, `wait_reason`, `layout`, `area`, `terminals`, `hub`, `message`,
-`response_body`. `typed` is exactly what Tlamatini typed and `user_part` exactly what
+`verified`, `screen_line`, `enter_pressed`, `notes`, `response_body`. `typed` is exactly
+what Tlamatini typed and `user_part` exactly what
 the user typed, so a result can always say who did what.
 
 The status words join the closed vocabulary of `agent_verdict.py`:
@@ -92,6 +93,7 @@ The status words join the closed vocabulary of `agent_verdict.py`:
 | `completed`, `opened`, `typed`, `killed`, `focused`, `warned` | work completed | green |
 | `command_failed`, `hung` | work degraded: the terminal worked, the requested work did not | red |
 | `operator_required` | work degraded: parked until a person finishes a hand-over, so the work has not happened | red |
+| `typing_unverified` | work degraded: the keys were sent but the SCREEN does not show the line (or the shell echoed something else), so what waits or ran may not be what was meant | red |
 | `aborted` | work not done: typing or the command was stopped (Ctrl+C or the user took over) | red |
 
 A command that exits non-zero is therefore a **red** row even though the terminal did
@@ -189,13 +191,77 @@ without a click.
   while a person types or a hand-over waits for a human is normal for up to
   `wait_seconds + user_wait_seconds`.
 
+## The chat's door: typed arguments, read-back and honesty rails
+
+Born from Angela's Rust lesson (2026-10-21, the installed build, eleven turns): Tlamatini said a line
+was "typed and sitting on your prompt" in turns where she had called no tool, ran commands through
+invisible shells although the user had said "I will execute them, not you", and the link from the
+model to the terminal was a free-text sentence. The five rules above still hold; this section is about
+what the *model* can and cannot get wrong.
+
+**1. A schema, not a sentence.** `chat_agent_terminater` used to take one request that a regex tore
+into `key=value` pairs. A title swallowed the next parameter (`terminal='t2' (title Rust Lesson) using
+action='run` became the terminal's name, so the command ran in a NEW terminal nobody was watching)
+and `submit=false -- type the line but do NOT press Enter` was read as true. Now
+`agent/terminater_tool.py` gives the model one argument per setting: a pydantic schema with real
+booleans and numbers, `extra='forbid'`, `null` meaning "not given" and `terminal=2` meaning `t2`. The
+values reach the agent as a config (`tools._launch_wrapped_chat_agent(..., config_overrides=cfg)`), so
+no sentence parser, prose fallback or verbatim re-extraction sits in between. A wrong value, an unknown
+argument, a sentence in `terminal`, a `run` without text, or an Enter key in live-tutorial mode is a
+JSON refusal (`status: refused`, a `code`, what to change, `retryable`) and **nothing was typed**. In
+chat `create_if_missing` is false: a terminal name that is not there is a mistake, not a request.
+If the typed tool cannot be built, `tools.py` falls back to the sentence tool (the engine still
+refuses what it cannot trust) and the release gate refuses to package.
+
+**2. Strict arguments in the engine** (flows and the Prompt Flow Panel benefit too). `parse_flag`
+reads only clean yes/no tokens; anything else goes to the side that does *less* (`submit` is read as
+false, `secret` as true) and the reply carries a note. `terminal_ref_problem` rejects a reference with
+quotes, `=`, control characters, more than 60 characters or 8 words (`bad_terminal_ref`). `run`
+refuses an id that does not exist (`no_terminal`) and, with `create_if_missing` off, a name that does
+not exist.
+
+**3. Typed means: the screen shows it.** After typing, the engine reads the prompt line back from the
+virtual screen (`input_line`, `verify_line`) and, for a submitted command, compares the shell's echo
+(`echo_of`). New result fields: `verified`, `screen_line`, `enter_pressed`, `notes`,
+`already_present`. `prompt_not_empty` refuses to glue a new line onto one that is already waiting
+(`clear_line=true` replaces it); the same line again is not typed twice; `typing_unverified` (red)
+says the keys were sent but the screen does not show them. A secret is never read back and
+`check_line=false` switches the read-back off. The echo check applies only to a line that started a
+command: an answer typed into a running program is not echoed by the shell. `VTScreen` clears a stale
+continuation flag on a real line feed (it used to glue a command's output onto its echo after a long
+wrapped line was cleared).
+
+**4. Live-tutorial mode** (`agent/terminal_guard.py`; config switch `terminal_guard`, default on). When
+the user says *they* run the commands (*"you show me the commands and I will execute them, not you"*,
+*"yo los ejecuto"*; sticky for 12 hours per user; lifted by *"you run them"* or *"go ahead and run
+it"*), every general command runner (`COMMAND_RUNNER_TOOLS`: `execute_command`, `execute_file`,
+Executer, Pythonxer, SSHer, ...) is refused with an explanation before it can run, recorded red in
+the Exec Report and placed ahead of the dedup memory and the quota, so lifting the mode lets the same
+call through. Terminater is forced to `submit=false`, one line per call and no Enter key; the reply says
+so (`live_tutorial_mode`, `request_notes`).
+
+**5. The claim audit.** Every tool call of the request goes into a ledger of what it *reported*. Before
+the final answer is accepted, sentences such as *"I typed it"*, *"it is sitting on your prompt"* or
+*"I ran it"* are checked against that ledger. An unsupported claim gets one internal correction round;
+if it survives, the answer carries a visible warning. The audit runs only when the request is about a
+terminal (a Terminater call was made, the user runs the commands, or the user named a terminal), is
+deterministic (no model call) and fails open. `chat_agent_terminater` is exempt from the
+identical-call dedup, because reading the same screen twice is how a tutorial waits.
+
+Alongside: the Ask Execs dialog and the Exec Report row show the typed line and whether Enter was left
+to the user; Create Flow leaves a session terminal id (`t2`) out of a saved flow; `prompt.pmt` rule
+**18f** and the tool description teach the protocol (open, keep the `terminal_id`, `submit=false`,
+evidence only, the status words).
+
 ## Release carriage
 
 * **Migrations** `0215` (Agent row `Terminater`), `0216` (`Chat-Agent-Terminater` Tool row —
   required, or the wrapper is invisible while Compact mode is on), `0217` (prompts 127–129).
   The display name is pinned in `services/agent_paths.py::display_name_from_agent_type`.
-* **Frozen build** — `agent.terminal_hub`, `agent.terminal_consumer`, `agent.terminal_views`
-  and `agent.management.commands.check_terminater` are hidden imports and
+* **Frozen build** — `agent.terminal_hub`, `agent.terminal_consumer`, `agent.terminal_views`,
+  `agent.terminal_guard`, `agent.terminater_tool` (imported fail-open by `tools.py`, so the gate
+  proves the chat binds the typed tool) and `agent.management.commands.check_terminater`
+  are hidden imports and
   `_FROZEN_TERMINATER_MODULES` (so `verify_frozen_agent_modules()` proves they shipped). The
   agent folder ships **loose** beside the executable; the pool agent runs under the carried
   Python. `build.py` runs `check_terminater` inside the freshly frozen app, right after the
@@ -217,13 +283,15 @@ Run everything from a visible foreground console.
 
 ```bash
 python Tlamatini/manage.py check_terminater
-python Tlamatini/manage.py test agent.test_terminater_text agent.test_terminater_engine agent.test_terminater_hub_api agent.test_terminater_pfp agent.test_terminater_agent agent.test_terminater_integration agent.test_terminater_regressions
+python Tlamatini/manage.py test agent.test_terminater_text agent.test_terminater_engine agent.test_terminater_hub_api agent.test_terminater_pfp agent.test_terminater_agent agent.test_terminater_integration agent.test_terminater_regressions agent.test_terminater_reliability
 python scripts/terminater_visible_all.py
 ```
 
 The original six test modules include **real** `cmd.exe` and `powershell.exe` processes
 (with typing time scaled down by the test hook). The regression module adds controlled
-transport and ordering tests. The visible scripts drive headed Chrome and
+transport and ordering tests. `test_terminater_reliability` covers the chat's door (typed
+arguments, read-back in real `cmd.exe` and PowerShell, live-tutorial mode, the claim audit and the
+executor wiring). The visible scripts drive headed Chrome and
 photograph each step with Shoter: `terminater_visible_chat.py`, `_acp.py` (including the
 hand-over inside a running flow), `_pfp.py`, `_battery.py` and `_all.py`.
 

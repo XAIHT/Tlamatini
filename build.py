@@ -33,6 +33,8 @@ from build_runtime_assets import (
 )
 
 # Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
+from build_env import run_in_sealed_env
+from pyinstaller_guard import pyinstaller_command
 from versioning import (
     emit_build_artifacts,
     extract_cli_version,
@@ -391,6 +393,18 @@ _FROZEN_POOL_ONLY_MODULES = (
     "ctranslate2", "onnxruntime",
 )
 
+# Jupyter never runs in Tlamatini. `thinc.tests.test_examples` imports nbconvert,
+# nbconvert imports notebook, and the contributed hook-notebook.py then bundles
+# every folder jupyter_core.paths.jupyter_path() names - including the builder's
+# live %APPDATA%\jupyter: a RUNNING server's files (locked), its tokens and
+# jupyter_cookie_secret. A public build died on one of those locked files after
+# 20 minutes (2026-10-21). Excluding the family removes the hook itself;
+# pyinstaller_guard.py also isolates the profile and survives locked clutter.
+_FROZEN_JUPYTER_MODULES = (
+    "notebook", "notebook_shim", "nbclassic", "nbconvert",
+    "jupyter_server", "jupyter_server_terminals", "jupyterlab", "jupyterlab_server",
+)
+
 
 def verify_frozen_pool_libraries_absent(dist_root):
     """Prove that the frozen interpreter respects the pool runtime boundary."""
@@ -484,10 +498,13 @@ _FROZEN_TERMINATER_MODULES = (
     "agent.terminal_hub",
     "agent.terminal_consumer",
     "agent.terminal_views",
+    "agent.terminal_guard",        # live-tutorial mode, ledger and claim audit (mcp_agent imports it)
+    "agent.terminater_tool",       # the typed tool; tools.py imports it FAIL-OPEN, so name it
     "agent.management.commands.check_terminater",
 )
 
 _FROZEN_REQUIRED_AGENT_MODULES = (
+    "agent.canvas_file_views", "agent.native_dialogs",  # native canvas Save/Save As
     "agent.usage_tracking", "agent.usage_provider", "agent.usage_views",
     "agent.chat_voice_consumer",
     "agent.chat_voice_runtime",
@@ -903,7 +920,9 @@ def ensure_local_build_python():
 
     # 1) Seed it ONCE from the current interpreter's standalone install.
     if not local_exe.exists():
-        probe = _probe_carried_python(sys.executable)
+        # Seed from the REAL interpreter, also when build.py runs in the sealed venv.
+        seed_python = getattr(sys, "_base_executable", "") or sys.executable
+        probe = _probe_carried_python(seed_python)
         if probe is None:
             raise RuntimeError(
                 f"Cannot probe the build Python '{sys.executable}' to seed <repo>/python.")
@@ -1281,6 +1300,11 @@ def main():
     # The carried Python is handled above (its own writable prefix), so it is NOT in
     # this install loop.
     install_pythons = [build_python]
+    # Inside the sealed build Python (build_env.py) pip installs into that venv,
+    # which `--user` would refuse; it is also fresh, so the numpy purge and the
+    # unpinned Torch step only serve the old everyday-Python fallback.
+    in_sealed_env = sys.prefix != sys.base_prefix
+    pip_scope = [] if in_sealed_env else ["--user"]
 
     req_file = Path(__file__).with_name('requirements.txt')
 
@@ -1291,11 +1315,12 @@ def main():
         # Prevents stale dist-info/wheel fragments from tripping PyInstaller's
         # numpy hook (wrong version branch, empty collect_dynamic_libs, and the
         # downstream "cannot load module more than once per process" crash).
-        run_step(
-            f"Purging numpy residuals in {target_python}",
-            _purge_numpy_environment,
-            target_python,
-        )
+        if not in_sealed_env:
+            run_step(
+                f"Purging numpy residuals in {target_python}",
+                _purge_numpy_environment,
+                target_python,
+            )
 
         # 1a) Install torch CPU-only FIRST to avoid CUDA DLL issues (WinError 1114).
         # Use --user so this works even when the build Python lives in a READ-ONLY
@@ -1305,20 +1330,21 @@ def main():
         # The CARRIED Python (the one frozen pool agents run on) is populated SEPARATELY
         # and DIRECTLY inside dist/ — see bundle_carried_python — so its completeness
         # does NOT depend on this Python's prefix being writable or pre-populated.
-        print(f"  -> Installing torch (CPU-only) for {target_python} ...")
-        torch_cmd = [
-            target_python, "-m", "pip", "--disable-pip-version-check",
-            "install", "--user", "torch",
-            "--index-url", "https://download.pytorch.org/whl/cpu",
-        ]
-        torch_result = subprocess.run(torch_cmd)
-        if torch_result.returncode != 0:
-            print(f"WARNING: torch CPU install failed for {target_python}. Continuing anyway.")
+        if not in_sealed_env:
+            print(f"  -> Installing torch (CPU-only) for {target_python} ...")
+            torch_cmd = [
+                target_python, "-m", "pip", "--disable-pip-version-check",
+                "install", "--user", "torch",
+                "--index-url", "https://download.pytorch.org/whl/cpu",
+            ]
+            torch_result = subprocess.run(torch_cmd)
+            if torch_result.returncode != 0:
+                print(f"WARNING: torch CPU install failed for {target_python}. Continuing anyway.")
 
         # 1b) Install remaining dependencies from requirements.txt
         if req_file.exists():
             pip_cmd = [target_python, "-m", "pip", "--disable-pip-version-check",
-                       "install", "--user", "-r", str(req_file)]
+                       "install", *pip_scope, "-r", str(req_file)]
             pip_result = subprocess.run(pip_cmd)
             if pip_result.returncode != 0:
                 print(f"ERROR: pip install -r requirements.txt failed for {target_python}. Aborting build.")
@@ -1395,7 +1421,7 @@ def main():
         print("\n--- Installing PyInstaller ---")
         ensure_pyinstaller = subprocess.run(
             [sys.executable, "-m", "pip", "--disable-pip-version-check",
-             "install", "--user", "pyinstaller"])
+             "install", *pip_scope, "pyinstaller"])
         if ensure_pyinstaller.returncode != 0:
             print("ERROR: Failed to install PyInstaller. Aborting build.")
             sys.exit(1)
@@ -1465,7 +1491,7 @@ def main():
     )
 
     command = [
-        sys.executable, '-m', 'PyInstaller', '--name', 'manage', '--console', '--noconfirm',
+        *pyinstaller_command(), '--name', 'manage', '--console', '--noconfirm',
         f'--additional-hooks-dir={hooks_dir}',
         f'--version-file={version_file_path}',
         *icon_args,
@@ -1511,6 +1537,8 @@ def main():
         '--hidden-import=agent.usage_tracking',
         '--hidden-import=agent.usage_provider',
         '--hidden-import=agent.usage_views',
+        '--hidden-import=agent.canvas_file_views',
+        '--hidden-import=agent.native_dialogs',
         '--hidden-import=agent.context_governor',
         '--hidden-import=agent.context_baseline',
         # The Files-Search / System-Metrics chains reach the app through a
@@ -1605,6 +1633,7 @@ def main():
         '--exclude-module=snac',
         '--exclude-module=whisper',
         *(f'--exclude-module={module}' for module in _FROZEN_POOL_ONLY_MODULES),
+        *(f'--exclude-module={module}' for module in _FROZEN_JUPYTER_MODULES),
         '--collect-all', 'django_bootstrap5',
         '--collect-all', 'autobahn',
         '--collect-all', 'filesearch_pb2',
@@ -2325,6 +2354,9 @@ def _release_build_lock():
 
 
 if __name__ == "__main__":
+    # Freeze with the SEALED build Python, never this machine's everyday one
+    # (build_env.py): installing or removing a library here cannot change a release.
+    run_in_sealed_env(__file__)
     _acquire_build_lock()
     try:
         main()

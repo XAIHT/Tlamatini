@@ -21,6 +21,88 @@
 
 ---
 
+## 2026-10-21 — Editable chat canvas and native Save destinations (source implementation)
+
+`agent_page_editing.js` and the locally bundled CodeMirror 6 editor make the
+canvas source editable. The filename toolbar owns Save, Save as, Undo, Redo,
+Find/replace and Wrap. Markdown keeps sanitized Preview and editable Source;
+PDF stays a viewer whose Save exports original bytes. UTF-8/BOM and BOM-marked
+UTF-16 LE/BE retain their encoding and existing line endings. Malformed/binary
+input is rejected before replacing the current document. Guide and research:
+[canvas editing](../canvas-editing.md).
+
+Save uses a browser-granted writable handle or an authenticated, CSRF-protected,
+loopback-only native Windows picker, independent of the protected database
+pickers. Native destinations are session-bound expiring capabilities; the
+browser never supplies an arbitrary server path. Complete byte revisions stop
+an external edit from being overwritten. Save writes a snapshot: newer typing
+stays dirty. Beginning Save or editing invalidates pending reads; failed loads
+retain the previous document and access. Refresh adopts a new encoding and
+revision only when it commits, even if the visible text did not change.
+
+Unsaved-change guards cover Open, Refresh, Clear and page departure. Switching
+Markdown views retains undo history. Edited source remains the authority for
+Copy and Use as context; Save preserves pending context replacement state.
+Native Save is raised at `CDN_INITDONE`, after Windows finishes placing the
+dialog, rather than the earlier `WM_INITDIALOG` notification.
+
+## 2026-10-21 — Terminater: the chat's door to the terminal stopped guessing (typed arguments, read-back, live-tutorial mode, claim audit)
+
+Angela ran a Rust tutorial on the installed build (`C:\Tlamatini`, `glm-5.3-flash:cloud`) and said Terminater "worked 50% wrongly": Tlamatini assumed she had typed or executed something and she had not, and the link from Tlamatini to Terminater was "too flaky, no error correction, no verification". Eleven turns of transcripts showed four independent holes, closed in this order. Full contract: `docs/terminater.md` -> *The chat's door*.
+
+1. **One sentence, torn by a regex.** `chat_agent_terminater(request: str)` went through the generic key=value parser: `terminal='t2' (title Rust Lesson) using action='run` became the terminal reference (a NEW terminal was raised), and `submit=false -- type the line but do NOT press Enter` was read as TRUE by the lenient `_truthy`. -> `agent/terminater_tool.py`: a typed `StructuredTool` (pydantic, one field per setting, `extra='forbid'`, `null` = not given, int terminal -> `t<N>`, 0 seconds = not set). `tools._launch_wrapped_chat_agent(..., config_overrides=cfg)` skips the sentence parser, the prose fallbacks and the verbatim re-extraction; `_apply_typed_overrides_to_config` refuses a key the agent does not have. A bad value is a JSON refusal (`status: refused`, `code`, `error_kind: request`) and NOTHING was typed. `_build_wrapped_chat_agent_tool` falls back to the sentence tool only if building the typed one fails.
+2. **Strict arguments in the engine** (canvas flows and the Prompt Flow Panel too): `terminater_text.parse_flag` (clean yes/no tokens only; anything else goes to the side that does LESS - `submit` false, `secret` true - with a note), `terminal_ref_problem` (quotes, `=`, control characters, >60 chars or >8 words = `bad_terminal_ref`), `_a_run` refuses an id that does not exist (`no_terminal`) and a missing name unless `create_if_missing` (engine default true for flows; the chat tool sends false).
+3. **Read-back instead of trust.** `TerminalSession.input_line()/verify_line()/echo_of()/settle()/clear_input_line()`: typed text is compared with what the SCREEN shows. New result fields `verified`, `screen_line`, `enter_pressed`, `notes`, `already_present`; new refusal `prompt_not_empty` (no gluing onto a waiting line) and the new degraded status `typing_unverified` (red). `clear_line` replaces a waiting line, `check_line=false` switches the read-back off, a secret is never read back. WARNING: the echo check applies only to a line that STARTED a command (`starts_command`) - answering a program that asked a question is not echoed by the shell (caught by the old `test_answering_a_program_leaves_the_terminal_at_its_prompt`). `VTScreen._line_feed` now clears a stale continuation flag, which glued a command's output onto its echo after a long wrapped line was cleared.
+4. **Live-tutorial mode and the claim audit** (`agent/terminal_guard.py`, wired in `mcp_agent.py`; config switch `terminal_guard`, default on). When the user says THEY run the commands ("you show me the commands and I will execute them, not you", "yo los ejecuto"; sticky 12 h per user; lifted by "you run them" / "go ahead and run it") every general command runner (`COMMAND_RUNNER_TOOLS`) is refused with an explanation BEFORE the dedup memory and the quota, recorded red in the Exec Report; Terminater is forced to `submit=false`, one line per call, no Enter key. A ledger of what the tools REALLY reported audits the final answer: "I typed it / it is sitting on your prompt / I ran it" without proof gets ONE correction round, then a visible warning banner. The audit only runs when the request is about a terminal. `chat_agent_terminater` is exempt from the identical-call dedup.
+5. `prompt.pmt` rule **18f** and the rewritten tool description teach the protocol.
+
+Contracts (do NOT weaken): the typed tool never accepts a sentence; unclear flags go to the side that does less; in chat a missing terminal is refused, never created; `typing_unverified` stays red; the claim audit stays gated on terminal context and fail-open; the runner block comes before the dedup and the quota; Create Flow leaves session ids (`t2`) out of a saved flow. Carriage: `build.py::_FROZEN_TERMINATER_MODULES` names `agent.terminal_guard` and `agent.terminater_tool` (the latter is imported fail-open) and the `check_terminater` release gate now proves the chat binds the typed tool (`check_typed_door`). Coverage: `agent/test_terminater_reliability.py` (166 tests: argument helpers, typed door, real `cmd.exe` and PowerShell read-back, mode, ledger, audit, executor wiring, contracts).
+
+## 2026-10-21 — The release build no longer dies on the builder's own clutter
+
+A public build died after 20 minutes in PyInstaller's COLLECT step on
+`%APPDATA%\jupyter\runtime\jpserver-11572-open.html`, a file a running Jupyter
+server holds locked. The chain: `thinc.tests.test_examples` imports `nbconvert`,
+which imports `notebook`, and the contributed `hook-notebook.py` bundles every
+folder `jupyter_core.paths.jupyter_path()` names, including the builder's live
+Jupyter profile (server files, tokens, `jupyter_cookie_secret`, `notebook_secret`).
+Nothing in Tlamatini uses Jupyter. Three layers now, public and private alike:
+
+1. `build.py` excludes `_FROZEN_JUPYTER_MODULES` (notebook, nbconvert,
+   jupyter_server, jupyterlab, ...) from the frozen graph, so the hook never runs.
+2. `pyinstaller_guard.py` (repo root, stdlib-only) runs every release PyInstaller
+   build (`build.py`, `build_uninstaller.py`, `build_installer.py`) through
+   `pyinstaller_command()`. Before PyInstaller is imported it points the Jupyter /
+   IPython profile variables at an empty `build/pyinstaller-hermetic-profile`.
+3. The same runner wraps `shutil.copyfile`: a locked file is retried about 12 s;
+   if still locked and it lies outside the repo, every Python prefix, every
+   site-packages and the Windows folder, it is SKIPPED and named on screen (its
+   empty stand-in is removed after the build). A locked file that IS part of the
+   build still fails, with its path and what to close. Never widen the skip to
+   trusted roots, and never call `-m PyInstaller` directly in a release script.
+
+Pinned by `agent/test_pyinstaller_guard.py`; the self-modify snapshot carries the
+guard (`REQUIRED_SNAPSHOT_FILES`).
+
+**The root fix - the SEALED build Python (`build_env.py`).** Angela: *"everytime I
+uninstall/install a ... lib like tensorflow, or jupyter lab Tlamatini must not get
+[broken]"*. Releases used to be frozen by the machine's EVERYDAY Python (tensorflow
+sat in `C:\Program Files\Python312\Lib\site-packages`), and the build wrote back into
+it (`pip install --user`, a numpy purge). Now `build.py`, `build_uninstaller.py` and
+`build_installer.py` call `run_in_sealed_env(__file__)` FIRST in `__main__` and re-run
+themselves inside a venv at `%LOCALAPPDATA%\Tlamatini\build-env\py312-<fingerprint>`
+(`TLAMATINI_BUILD_ENV_DIR` overrides): no system and no user site-packages, only
+`requirements.txt` (PyInstaller 6.18.0 + hooks-contrib 2026.7 are pinned there).
+The folder name is a hash of requirements.txt + the base Python, so a requirements
+change makes a fresh env and an unchanged one is reused in seconds; it is published
+only after it installed and imported cleanly. Inside it `pip_scope` drops `--user`
+and the numpy purge / unpinned Torch step are skipped; `ensure_local_build_python`
+seeds `<repo>/python` from `sys._base_executable`. If it cannot be made, the build
+uses the previous healthy env, else the machine's Python with a capital-letter
+warning - it never stops for this. `TLAMATINI_BUILD_ENV=off` restores the old way.
+Verified 2026-10-21: made in about 5 minutes; tensorflow / notebook / jupyterlab are
+invisible inside it. Pinned by `agent/test_build_env.py`.
+
 ## 2026-10-20 — Terminater source audit: ownership, cancellation and capture
 
 Local audit work after v1.88.0; [evidence and open limits](../changes/2026-10-20-terminater-audit.md).

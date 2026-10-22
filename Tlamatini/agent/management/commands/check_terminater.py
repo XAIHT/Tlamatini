@@ -145,6 +145,9 @@ class Command(BaseCommand):
         finally:
             hub.shutdown()
 
+        # 4b) the chat's TYPED door and the live-tutorial guard load in this (possibly frozen) process
+        outcomes['typed_door'] = self.check_typed_door()
+
         # 5) the shipped POOL AGENT under the carried Python, with its own terminals
         outcomes['pool_agent'] = self.check_pool_agent(frozen, folder)
 
@@ -160,8 +163,37 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(json.dumps({
             'frozen': frozen, 'engine_loaded_from': str(folder), 'assets_resolved': len(STATIC_ASSETS),
             'pages_with_dock': len(PAGES), 'powershell': outcomes['powershell'], 'cmd': outcomes['cmd'],
-            'pool_agent': outcomes['pool_agent'], 'websocket_frames': frames,
+            'pool_agent': outcomes['pool_agent'], 'typed_door': outcomes['typed_door'],
+            'websocket_frames': frames,
         })))
+
+    def check_typed_door(self):
+        """The chat must bind the TYPED Terminater tool, and the live-tutorial guard must work in THIS process.
+
+        ``tools.py`` imports ``terminater_tool`` fail-open and falls back to the old sentence tool, which would
+        silently bring the 2026-10-21 failures back (a title swallowing the next parameter, ``submit=false``
+        read as true).  A fail-open import cannot report its own absence, so the gate does.
+        """
+        from agent import terminal_guard, terminater_tool, tools
+        from agent.chat_agent_registry import WRAPPED_CHAT_AGENT_BY_TOOL_NAME
+
+        tool = tools._build_wrapped_chat_agent_tool(WRAPPED_CHAT_AGENT_BY_TOOL_NAME['chat_agent_terminater'])
+        if 'action' not in getattr(tool, 'args', {}):
+            fail('the chat binds the old sentence tool, not the typed Terminater tool (terminater_tool did not load)')
+        garbage = "t2' (title Rust Lesson) using action='run"
+        refusal = json.loads(tool.invoke({'action': 'run', 'terminal': garbage, 'text': 'echo x'}))
+        if refusal.get('status') != 'refused' or refusal.get('code') != 'bad_terminal_ref':
+            fail('the typed tool did not refuse a garbage terminal reference: ' + json.dumps(refusal)[:300])
+        held = terminater_tool.prepare({'action': 'run', 'terminal': 't1', 'text': 'dir', 'submit': True}, user_runs=True)
+        if held.cfg.get('submit') is not False:
+            fail('live-tutorial mode did not hold Enter back')
+        mode = terminal_guard.observe('release-check', 'you show me the commands and I will execute them, not you')
+        try:
+            if not mode.user_runs or 'LIVE-TUTORIAL MODE' not in terminal_guard.runner_block('execute_command', mode):
+                fail('live-tutorial mode did not recognise the user or did not block a command runner')
+        finally:
+            terminal_guard.reset('release-check')
+        return 'typed'
 
     def check_pool_agent(self, frozen, folder):
         """Run the shipped agent exactly as a pool does: its own directory, the carried interpreter."""

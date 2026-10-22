@@ -1599,7 +1599,8 @@ _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
         "terminal_id", "kind", "title", "terminal_state", "command", "exit_code",
         "duration_seconds", "output_chars", "truncated", "hung", "aborted_by", "typed",
         "user_part", "user_line", "user_keys", "cursor", "watch_reason", "wait_reason",
-        "layout", "area", "terminals", "hub", "message", "status",
+        "layout", "area", "terminals", "hub", "message", "verified", "screen_line",
+        "enter_pressed", "notes", "status",
     ),
     "camcorder": ("output_path", "output_dir", "filename", "media_type", "resolution"),
     "video_analyzer": (
@@ -2159,6 +2160,25 @@ def _apply_requested_assignments_to_config(config, request_text):
         changed_paths.append(_format_config_path(update['path']))
 
     return config, None, ignored_params + changed_paths
+
+
+def _apply_typed_overrides_to_config(config, overrides):
+    """The typed twin of ``_apply_requested_assignments_to_config``.
+
+    ``overrides`` arrives as real typed values from a tool schema (never out of a sentence), so
+    each one is set exactly as given.  A key the agent's config does not have is a request
+    error, not something to guess at.  Returns the same ``(config, error, notes)`` triple.
+    """
+    if not isinstance(overrides, dict):
+        return None, "Error: the typed arguments are not a mapping.", []
+    unknown = sorted(str(key) for key in overrides if key not in config)
+    if unknown:
+        return None, "Error: the agent has no setting named " + ", ".join(unknown) + ".", []
+    changed = []
+    for key, value in overrides.items():
+        config[key] = value
+        changed.append(str(key))
+    return config, None, changed
 
 
 def _non_flow_missing_required_paths(config, config_path, script_path):
@@ -2940,7 +2960,13 @@ def _render_pre_launch_script_preview(spec, runtime_config, runtime_dir, log_pat
     return "\n".join(out)
 
 
-def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
+def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True, config_overrides=None):
+    """Launch one wrapped chat agent in an isolated runtime copy.
+
+    ``config_overrides`` is the TYPED door (Terminater): a dict of config keys -> values that
+    replaces the sentence parser entirely, so nothing is torn out of prose and a key the agent
+    does not have is refused instead of ignored.  ``request`` is then only the readable record.
+    """
     logger.info("=" * 80)
     logger.info("[tools._launch_wrapped_chat_agent] ===== LAUNCH START =====")
     logger.info("[tools._launch_wrapped_chat_agent] spec.key = %s, spec.template_dir = %s, spec.display_name = %s",
@@ -3019,10 +3045,16 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
     # BEFORE applying the LLM's assignments, so an explicit per-call value wins.
     runtime_config = _seed_global_agent_defaults(spec.template_dir, runtime_config)
 
-    runtime_config, assignment_error, assignment_notes = _apply_requested_assignments_to_config(
-        runtime_config,
-        str(request),
-    )
+    if config_overrides is not None:
+        runtime_config, assignment_error, assignment_notes = _apply_typed_overrides_to_config(
+            runtime_config,
+            config_overrides,
+        )
+    else:
+        runtime_config, assignment_error, assignment_notes = _apply_requested_assignments_to_config(
+            runtime_config,
+            str(request),
+        )
     if assignment_error:
         logger.error("[tools._launch_wrapped_chat_agent] Config assignment error: %s", assignment_error)
         return _tool_output({
@@ -3033,7 +3065,10 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
             "runtime_dir": runtime_dir,
         })
     logger.info("[tools._launch_wrapped_chat_agent] Config assignments applied OK, notes: %s", assignment_notes)
-    prose_notes = _apply_prose_fallbacks(spec, runtime_config, str(request), assignment_notes)
+    prose_notes = (
+        [] if config_overrides is not None
+        else _apply_prose_fallbacks(spec, runtime_config, str(request), assignment_notes)
+    )
     if prose_notes:
         assignment_notes = list(assignment_notes or []) + prose_notes
         logger.info("[tools._launch_wrapped_chat_agent] Prose fallbacks applied: %s", prose_notes)
@@ -3065,7 +3100,7 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True):
     # received a mangled document and could never produce a PDF. Each spec now
     # DECLARES its literal fields in ``verbatim_fields``; add a field there when
     # an agent takes literal source text rather than a shell/SQL payload.
-    for verbatim_field in getattr(spec, "verbatim_fields", ()) or ():
+    for verbatim_field in (() if config_overrides is not None else (getattr(spec, "verbatim_fields", ()) or ())):
         try:
             b64_value = runtime_config.get("%s_b64" % verbatim_field)
             if isinstance(b64_value, str) and b64_value.strip() != "":
@@ -3378,6 +3413,22 @@ def _build_wrapped_chat_agent_tool(spec):
     cached = _WRAPPED_CHAT_AGENT_TOOLS.get(spec.tool_name)
     if cached is not None:
         return cached
+
+    if spec.template_dir == "terminater":
+        # Terminater takes one typed argument per setting, never a sentence torn apart by a
+        # regex (terminater_tool.py).  If the typed tool cannot be built the sentence tool below
+        # still works - the engine refuses what it cannot trust either way.
+        try:
+            from . import terminater_tool
+            typed_tool = terminater_tool.build_tool(spec, _launch_wrapped_chat_agent, _tool_output)
+        except Exception as exc:
+            logger.warning(
+                "[tools._build_wrapped_chat_agent_tool] typed Terminater tool unavailable (%s); "
+                "falling back to the sentence tool", exc,
+            )
+        else:
+            _WRAPPED_CHAT_AGENT_TOOLS[spec.tool_name] = typed_tool
+            return typed_tool
 
     def _runner(request: str) -> str:
         result = _launch_wrapped_chat_agent(spec, request)

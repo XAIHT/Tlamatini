@@ -348,6 +348,81 @@ def pick_open_file(
 # --------------------------------------------------------------------------- #
 # Folder picker — shell32.SHBrowseForFolderW
 # --------------------------------------------------------------------------- #
+def pick_save_file(title: str, filename: str, initial_dir: str = "") -> str:
+    """Choose a save destination with native overwrite confirmation.
+
+    This independent Save As path shares the existing Win32 ABI and foreground
+    helper; the database's Open/Folder picker behavior is unchanged.
+    """
+    if os.name != "nt":
+        raise NativeDialogUnavailable("native save dialog requires Windows")
+
+    import ctypes
+    from ctypes import wintypes
+
+    comdlg32 = ctypes.windll.comdlg32
+    user32 = ctypes.windll.user32
+    OPENFILENAMEW = _openfilenamew_cls()
+    HookProc = ctypes.WINFUNCTYPE(
+        ctypes.c_size_t, wintypes.HWND, wintypes.UINT,
+        wintypes.WPARAM, wintypes.LPARAM,
+    )
+    user32.GetParent.argtypes = [wintypes.HWND]
+    user32.GetParent.restype = wintypes.HWND
+    user32.GetForegroundWindow.restype = wintypes.HWND
+    owner = user32.GetForegroundWindow()
+
+    class NMHDR(ctypes.Structure):
+        _fields_ = [("hwndFrom", wintypes.HWND), ("idFrom", ctypes.c_size_t),
+                    ("code", wintypes.UINT)]
+
+    def on_init(hwnd, message, _wparam, _lparam):
+        # WM_INITDIALOG precedes the Explorer dialog's final placement. Raise
+        # only at CDN_INITDONE, after Windows has finished arranging controls.
+        if message == 0x004E and _lparam:  # WM_NOTIFY
+            notification = ctypes.cast(_lparam, ctypes.POINTER(NMHDR)).contents
+            if notification.code == 0xFFFFFDA7:  # CDN_INITDONE (-601)
+                _force_window_foreground(user32.GetParent(hwnd) or hwnd)
+        return 0
+
+    hook = HookProc(on_init)
+    file_buf = ctypes.create_unicode_buffer(32768)
+    file_buf.value = filename
+    extension = os.path.splitext(filename)[1].lstrip(".")
+    if extension and extension.isalnum():
+        filters = f"{extension.upper()} files (*.{extension})\0*.{extension}\0All files (*.*)\0*.*\0\0"
+    else:
+        filters = "All files (*.*)\0*.*\0\0"
+    filter_buf = ctypes.create_unicode_buffer(filters)
+    ofn = OPENFILENAMEW()
+    ofn.lStructSize = ctypes.sizeof(OPENFILENAMEW)
+    # Keep Save As above the initiating foreground window for its whole
+    # lifetime, including when the browser completes the button's click task.
+    ofn.hwndOwner = owner
+    ofn.lpstrFilter = ctypes.cast(filter_buf, wintypes.LPCWSTR)
+    ofn.nFilterIndex = 1
+    ofn.lpstrFile = ctypes.cast(file_buf, wintypes.LPWSTR)
+    ofn.nMaxFile = len(file_buf)
+    ofn.lpstrTitle = title
+    ofn.lpstrInitialDir = initial_dir or None
+    ofn.lpstrDefExt = extension or None
+    ofn.lpfnHook = ctypes.cast(hook, wintypes.LPVOID)
+    # OVERWRITEPROMPT | HIDEREADONLY | NOCHANGEDIR | ENABLEHOOK |
+    # PATHMUSTEXIST | EXPLORER. Selecting a name does not create/truncate it.
+    ofn.Flags = 0x00000002 | 0x00000004 | 0x00000008 | 0x00000020 | 0x00000800 | 0x00080000
+    comdlg32.GetSaveFileNameW.argtypes = [ctypes.POINTER(OPENFILENAMEW)]
+    comdlg32.GetSaveFileNameW.restype = wintypes.BOOL
+    owned = _co_initialize()
+    try:
+        accepted = comdlg32.GetSaveFileNameW(ctypes.byref(ofn))
+        error = int(comdlg32.CommDlgExtendedError()) if not accepted else 0
+    finally:
+        _co_uninitialize(owned)
+    if error:
+        raise RuntimeError(f"Save As could not open (Windows dialog error 0x{error:04X}).")
+    return file_buf.value if accepted else ""
+
+
 def pick_folder(title: str) -> str:
     """Show the native folder-browser dialog.
 

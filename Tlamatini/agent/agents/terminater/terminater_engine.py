@@ -43,6 +43,12 @@ THE RULES THIS ENGINE ENFORCES (do NOT weaken -- each one is a user requirement)
 5. Everything the user types is observable in real time (``watch_user``) so
    Tlamatini can help, and ``advise_line`` warns about dangerous or mistyped
    commands without waiting for a model round trip.
+6. NOTHING IS REPORTED AS TYPED UNLESS THE SCREEN SHOWS IT.  A line left on the prompt
+   (``submit=false``) is read back from the virtual screen and reported as ``typed``
+   only when it is there (``typing_unverified`` otherwise); the echo of a submitted
+   command is compared with what was typed; a line already waiting on the prompt is
+   never typed over or duplicated.  A flag that is not a clean yes/no never presses
+   Enter for the caller, and a terminal that is not there is refused, not invented.
 """
 
 from __future__ import annotations
@@ -507,6 +513,74 @@ class TerminalSession:
     def pty_alive(self) -> bool:
         return bool(self.pty and self.pty.is_alive())
 
+    # ---------------------------------------------- reading the prompt back
+    def input_line(self) -> str:
+        """What is sitting on the prompt line RIGHT NOW, read back from the screen.
+
+        This is the ground truth for "was the line really typed?": it is what the shell
+        echoed, not what Tlamatini wrote to the pipe.  Empty when nothing follows the
+        prompt, and also when the screen cannot be read -- a read-back must never break
+        typing.
+        """
+        with self.cv:
+            try:
+                if self.state in (ST_PROMPT, ST_TYPING) and hasattr(self, "_prompt_row"):
+                    return self.screen.text_from(self._prompt_row, self._prompt_col).rstrip()
+                return self.screen.cursor_line_text(0).rstrip()
+            except Exception:  # noqa: BLE001
+                return ""
+
+    def echo_of(self, rec: "CommandRecord") -> str:
+        """The command line the shell echoed for ``rec`` (what really ran), or ''."""
+        with self.cv:
+            try:
+                if rec.start_row < self.screen.dropped:
+                    return ""
+                return self.screen.text_from(rec.start_row, rec.start_col).rstrip()
+            except Exception:  # noqa: BLE001
+                return ""
+
+    def settle(self, quiet: float = 0.25, timeout: float = 3.0) -> bool:
+        """Wait until the terminal has stopped printing, so an echo can be read back."""
+        deadline = time.time() + max(0.05, float(timeout))
+        with self.cv:
+            while True:
+                now = time.time()
+                if now - self.last_output_at >= quiet:
+                    return True
+                if now >= deadline or self.state in (ST_EXITED, ST_CLOSED):
+                    return False
+                self.cv.wait(min(0.05, max(0.01, deadline - now)))
+
+    def verify_line(self, expected: str, timeout: float = 3.0) -> Dict[str, Any]:
+        """Read the prompt line back and compare it with ``expected``.
+
+        Polls for up to ``timeout`` seconds, because a shell echoes a little after the
+        keys arrive.  ``verified`` is True only when the screen really shows the text.
+        """
+        deadline = time.time() + max(0.2, float(timeout))
+        seen, ok, how = "", False, "empty"
+        while True:
+            self.settle(0.2, max(0.05, min(1.0, deadline - time.time())))
+            seen = self.input_line()
+            ok, how = _tx.line_matches(seen, expected)
+            if ok or time.time() >= deadline:
+                break
+            time.sleep(0.1)
+        return {"verified": ok, "screen_line": seen[:400], "match": how}
+
+    def clear_input_line(self) -> bool:
+        """Empty the prompt line with Esc (PSReadLine's RevertLine; the console's own editor)."""
+        if self.state != ST_PROMPT:
+            return False
+        self._write(chr(27))
+        end = time.time() + 2.5
+        while time.time() < end:
+            self.settle(0.15, 0.6)
+            if not self.input_line().strip():
+                return True
+        return False
+
     # ----------------------------------------------------------------- queries
     def info(self) -> Dict[str, Any]:
         cur = self.current
@@ -691,7 +765,7 @@ class TerminalSession:
             raise TerminaterError("Tlamatini is already typing in that terminal.", "busy")
         typed: List[str] = []
         user_part = ""
-        result: Dict[str, Any] = {"typed": "", "aborted": False}
+        result: Dict[str, Any] = {"typed": "", "aborted": False, "enter_pressed": False}
         try:
             if cancel_event is not None and cancel_event.is_set():
                 raise TerminaterError("The terminal operation was cancelled.", "cancelled")
@@ -747,6 +821,7 @@ class TerminalSession:
                     if not self._write(key.key):
                         result["aborted"] = True
                         break
+                    result["enter_pressed"] = True
         finally:
             self._typing_by = ""
             self.secret_input = False
@@ -1088,6 +1163,12 @@ class TerminalHub:
     def _get(self, sp: UserSpace, ref: Any, required: bool = True) -> Optional[TerminalSession]:
         with sp.lock:
             ref = (str(ref).strip() if ref not in (None, "") else "")
+            problem = _tx.terminal_ref_problem(ref)
+            if problem:
+                raise TerminaterError(
+                    f"{ref[:70]!r} cannot be a terminal id or title: {problem}. Pass the exact "
+                    "terminal_id returned by action='open' or action='list' (like 't2'), "
+                    "as its own parameter.", "bad_terminal_ref")
             if not ref or ref in ("active", "last", "current"):
                 ref = sp.active or (sp.order[-1] if sp.order else "")
             if ref in sp.sessions:
@@ -1273,6 +1354,29 @@ class TerminalHub:
                 raise TerminaterError(f"text_b64 is not valid base64/UTF-8: {exc}", "bad_text")
         return str(p.get("text") or "")
 
+    @staticmethod
+    def _flag(p: Dict[str, Any], key: str, default: bool, safe: Optional[bool] = None) -> Tuple[bool, str]:
+        """A yes/no parameter read STRICTLY: ``(value, note)``.
+
+        A clean yes/no is taken as given; blank means ``default``; anything else falls to
+        the SAFE side (``safe``) and the note names it, so the reply can say what really
+        happened.  (A sentence glued to ``submit`` used to read as TRUE and pressed Enter.)
+        """
+        value, note = _tx.parse_flag(p.get(key), default, safe)
+        return value, (f"{key}: {note}" if note else "")
+
+    def _open_kwargs(self, p: Dict[str, Any]) -> Dict[str, Any]:
+        """The keyword arguments ``open()`` takes, read from an action's parameters."""
+        return {
+            "kind": p.get("kind") or "powershell",
+            "title": str(p.get("title") or ""),
+            "cwd": str(p.get("cwd") or ""),
+            "load_profile": self._flag(p, "load_profile", True)[0],
+            "hang_seconds": self._num(p, "hang_seconds", self.hang_seconds, 3, 86400),
+            "show": self._flag(p, "show", True)[0],
+            "advisor": self._flag(p, "advisor", True)[0],
+        }
+
     def _result_for(self, session: TerminalSession, rec: Optional[CommandRecord], extra: Dict[str, Any],
                     read_chars: int) -> Dict[str, Any]:
         data: Dict[str, Any] = {"terminal_id": session.id, "kind": session.kind, "title": session.title,
@@ -1295,11 +1399,7 @@ class TerminalHub:
         return out
 
     def _a_open(self, p: Dict[str, Any]) -> Dict[str, Any]:
-        out = self.open(
-            p.get("user"), kind=p.get("kind") or "powershell", title=str(p.get("title") or ""),
-            cwd=str(p.get("cwd") or ""), load_profile=bool(p.get("load_profile", True)),
-            hang_seconds=self._num(p, "hang_seconds", self.hang_seconds, 3, 86400),
-            show=bool(p.get("show", True)), advisor=bool(p.get("advisor", True)))
+        out = self.open(p.get("user"), **self._open_kwargs(p))
         out["status"] = "opened"
         out["terminal_id"] = out["terminal"]["id"]
         return out
@@ -1347,9 +1447,17 @@ class TerminalHub:
         text = self._text(p)
         if not text.strip():
             raise TerminaterError("Nothing to type: pass text (or text_b64).", "empty_text")
-        submit = _truthy(p.get("submit", True))
-        wait = _truthy(p.get("wait", True))
-        secret = _truthy(p.get("secret", False))
+        # Every yes/no is read STRICTLY.  One that is not a clean yes/no falls to the side that
+        # does LESS (do not press Enter, hide a secret) and is named in `notes`.
+        notes: List[str] = []
+        flags: Dict[str, bool] = {}
+        for key, default, safe in (("submit", True, False), ("wait", True, None),
+                                   ("secret", False, True), ("check_line", True, None),
+                                   ("clear_line", False, False)):
+            flags[key], note = self._flag(p, key, default, safe)
+            notes.append(note)
+        submit, wait, secret = flags["submit"], flags["wait"], flags["secret"]
+        check_line, clear_line = flags["check_line"], flags["clear_line"]
         wpm = _tx.clamp_wpm(p.get("typing_wpm", _tx.DEFAULT_WPM))
         timeout = self._num(p, "wait_seconds", 120, 1, 86400)
         read_chars = int(self._num(p, "read_chars", 20000, 0, 2_000_000))
@@ -1367,31 +1475,103 @@ class TerminalHub:
                 "use action='abort', or open another terminal.", "busy")
         # Typing into a program that asked a question is allowed (answering it).
         starts_command = session.state == ST_PROMPT
+
+        # What does the caller expect to SEE on the prompt?  The last non-empty line of the
+        # text (earlier lines of a multi-line text are each submitted by their own Enter).
+        body_lines = [ln for ln in text.replace(chr(13) + chr(10), chr(10)).replace(chr(13), chr(10)).split(chr(10))
+                      if ln.strip()]
+        has_marker = "<<USER" in text
+        single_line = len(body_lines) == 1 and not has_marker
+        expected = body_lines[-1] if (body_lines and not has_marker) else ""
+
+        # What is ALREADY on the prompt line?  Typing now would glue the new text onto it
+        # (the user may be typing there, or an earlier line was left unsubmitted).
+        to_type, already_present = text, False
+        if starts_command and not secret and check_line:
+            existing = session.input_line()
+            if existing.strip():
+                if single_line and _tx.norm_line(existing) == _tx.norm_line(expected):
+                    # The very same line is already waiting: typing it again would DUPLICATE it.
+                    to_type, already_present = "", True
+                    notes.append("the same line was already on the prompt, so it was not typed a second time")
+                elif clear_line:
+                    if not session.clear_input_line():
+                        raise TerminaterError(
+                            f"The prompt line is not empty and could not be cleared: it shows {existing[:200]!r}. "
+                            "Look with action='read' (which='screen') or ask the user to clear it.",
+                            "prompt_not_empty")
+                    notes.append(f"the prompt line was cleared first (it held {existing[:120]!r})")
+                else:
+                    raise TerminaterError(
+                        f"The prompt line is not empty: it already shows {existing[:200]!r}. Typing now would glue "
+                        "the new text onto it. The user may be typing there (action='watch_user'), or an earlier "
+                        "line was left unsubmitted: ask the user, or pass clear_line=true to replace it.",
+                        "prompt_not_empty")
+
         cancellation = p.get("_cancel_event")
         options = {"cancel_event": cancellation} if isinstance(cancellation, threading.Event) else {}
-        typed = session.type_text(text, wpm=wpm, submit=submit, secret=secret, **options)
-        extra: Dict[str, Any] = {"typed": typed.get("typed", ""), "user_part": typed.get("user_part", ""),
-                                 "aborted_typing": typed.get("aborted", False)}
+        if already_present and not submit:
+            typed: Dict[str, Any] = {"typed": "", "user_part": "", "aborted": False, "enter_pressed": False}
+        else:
+            typed = session.type_text(to_type, wpm=wpm, submit=submit, secret=secret, **options)
+        extra: Dict[str, Any] = {"typed": text if (already_present and not secret) else typed.get("typed", ""),
+                                 "user_part": typed.get("user_part", ""),
+                                 "aborted_typing": typed.get("aborted", False),
+                                 "enter_pressed": bool(typed.get("enter_pressed")),
+                                 "already_present": already_present}
         if typed.get("handover"):
             extra["handover"] = typed["handover"]
         if typed.get("aborted"):
             reason = typed.get("handover") or "user_took_over"
+            extra["notes"] = "; ".join(n for n in notes if n)
             return self._result_for(session, None, {
                 **extra, "status": "operator_required" if reason == "timeout" else "aborted",
                 "success": False, "reason": reason,
                 "message": ("The user did not finish their part in time." if reason == "timeout"
                             else "The user took over the keyboard; typing stopped.")}, read_chars)
+
+        # READ IT BACK.  "I sent the keys" is not "the line is on the prompt": ask the screen.
+        verify: Dict[str, Any] = {}
+        if not submit and not secret and check_line and expected and not typed.get("handover"):
+            verify = session.verify_line(expected)
+        if verify:
+            extra["verified"] = bool(verify["verified"])
+            extra["screen_line"] = verify["screen_line"]
+        extra["notes"] = "; ".join(n for n in notes if n)
         if not submit and not typed.get("user_submitted"):
+            if verify and not verify["verified"]:
+                return self._result_for(session, None, {
+                    **extra, "status": "typing_unverified", "success": False,
+                    "message": ("The keys were sent, but the screen does NOT show the line: the prompt shows "
+                                f"{verify['screen_line']!r}. Do not tell the user the line is on their prompt. "
+                                "Look with action='read' (which='screen'), then retry or tell the user plainly "
+                                "what happened.")}, read_chars)
             return self._result_for(session, None, {
                 **extra, "status": "typed", "success": True,
-                "message": "Typed without pressing Enter; the line is waiting for the user."}, read_chars)
+                "message": "Typed without pressing Enter; the line is waiting for the user."
+                           + (" The screen shows it." if verify else "")}, read_chars)
         rec = session.current or session.last_command()
         if not wait:
             return self._result_for(session, rec, {**extra, "status": "started", "success": True,
                                                    "message": "Command started; not waiting."}, read_chars)
         w = session.wait(timeout=timeout, until="prompt")
         rec = rec if rec is not None else session.last_command()
-        return self._finish_wait(session, rec, w, extra, read_chars, starts_command)
+        out = self._finish_wait(session, rec, w, extra, read_chars, starts_command)
+        if starts_command and submit and single_line and not secret and check_line and expected and rec is not None:
+            # The echo of the submitted command is what the shell REALLY received.  (Only for a line
+            # that STARTED a command: an answer typed into a running program is not echoed there.)
+            echo = session.echo_of(rec)
+            if echo:
+                matched, _how = _tx.line_matches(echo, expected)
+                out["verified"], out["screen_line"] = matched, echo[:400]
+                if not matched:
+                    mismatch = f"the shell echoed {echo[:200]!r} instead of the typed {expected[:200]!r}"
+                    out["notes"] = "; ".join(n for n in (out.get("notes"), mismatch) if n)
+                    if out.get("status") in ("completed", "command_failed"):
+                        out["status"], out["success"] = "typing_unverified", False
+                        out["message"] = (f"The command ran, but {mismatch}. What ran may not be what was meant: "
+                                          "read the output and say so plainly.")
+        return out
 
     def _finish_wait(self, session: TerminalSession, rec: Optional[CommandRecord], w: Dict[str, Any],
                      extra: Dict[str, Any], read_chars: int, starts_command: bool = True) -> Dict[str, Any]:
@@ -1438,16 +1618,29 @@ class TerminalHub:
     def _a_run(self, p: Dict[str, Any]) -> Dict[str, Any]:
         """Open-or-reuse a terminal, type a command like a person, wait, read."""
         sp = self.space(p.get("user"))
-        ref = p.get("terminal") or ""
+        ref = str(p.get("terminal") or "").strip()
         session = self._get(sp, ref, required=False) if ref else None
         if session is None or session.state in (ST_EXITED, ST_CLOSED):
-            opened = self.open(
-                p.get("user"), kind=p.get("kind") or "powershell", title=str(p.get("title") or ref or ""),
-                cwd=str(p.get("cwd") or ""), load_profile=bool(p.get("load_profile", True)),
-                hang_seconds=self._num(p, "hang_seconds", self.hang_seconds, 3, 86400),
-                show=bool(p.get("show", True)), advisor=bool(p.get("advisor", True)))
+            if ref and session is None:
+                # Naming a terminal that is NOT there is a MISTAKE unless the caller said a missing
+                # one may be created -- otherwise a typo, or a fragment of a sentence, quietly raises
+                # a NEW terminal and the command runs where nobody is looking.  An id ('t3') is
+                # never a name to create.
+                create, _note = self._flag(p, "create_if_missing", True, safe=False)
+                if _tx.looks_like_terminal_id(ref):
+                    raise TerminaterError(
+                        f"There is no terminal {ref!r} (it may have been closed). Use action='list' to see the "
+                        "open terminals, or action='open' to raise a new one.", "no_terminal")
+                if not create:
+                    raise TerminaterError(
+                        f"There is no terminal named {ref!r}, and create_if_missing is off. Use action='list' "
+                        "to see the open terminals, action='open' to raise a new one, or pass "
+                        "create_if_missing=true.", "no_terminal")
+            kwargs = self._open_kwargs(p)
+            kwargs["title"] = kwargs["title"] or (session.title if session is not None else ref)
+            opened = self.open(p.get("user"), **kwargs)
             p = {**p, "terminal": opened["terminal"]["id"]}
-        close_after = _truthy(p.get("close_after", False))
+        close_after = self._flag(p, "close_after", False, safe=False)[0]
         out = self._a_type(p)
         if close_after and out.get("status") in ("completed", "command_failed"):
             try:
@@ -1461,7 +1654,9 @@ class TerminalHub:
         sp, session = self._sess(p)
         spec = str(p.get("keys") or p.get("key") or p.get("text") or "")
         res = session.send_keys(spec)
-        return {"status": "typed", "success": True, "terminal_id": session.id, **res}
+        pressed_enter = any(key == chr(13) for key in _tx.parse_key_sequence(spec)[0])
+        return {"status": "typed", "success": True, "terminal_id": session.id,
+                "enter_pressed": pressed_enter, **res}
 
     def _a_wait(self, p: Dict[str, Any]) -> Dict[str, Any]:
         sp, session = self._sess(p)
@@ -1604,11 +1799,7 @@ class TerminalHub:
         # a refusal (that is a mistake, not a first step).
         sp = self.space(p.get("user"))
         if not p.get("terminal") and not any(s.state not in (ST_EXITED, ST_CLOSED) for s in sp.sessions.values()):
-            opened = self.open(
-                p.get("user"), kind=p.get("kind") or "powershell", title=str(p.get("title") or ""),
-                cwd=str(p.get("cwd") or ""), load_profile=bool(p.get("load_profile", True)),
-                hang_seconds=self._num(p, "hang_seconds", self.hang_seconds, 3, 86400),
-                show=bool(p.get("show", True)), advisor=bool(p.get("advisor", True)))
+            opened = self.open(p.get("user"), **self._open_kwargs(p))
             p = {**p, "terminal": opened["terminal"]["id"]}
         return self._a_type({**p, "text": text})
 

@@ -187,6 +187,9 @@ WORK_DEGRADED_STATUSES = frozenset({
     # Terminater: the command RAN but exited non-zero (the terminal worked, the
     # requested work did not), or it stopped producing output and never came back.
     "command_failed", "hung",
+    # Terminater: keys were sent but the SCREEN does not show the line (or the shell echoed a
+    # different command).  "typed" would be a claim nobody verified, so it is not green.
+    "typing_unverified",
     # Legacy visual results are incomplete, never successful model recovery.
     "partial_interpreter_1_only", "partial_interpreter_2_only", "merge_fallback_concat",
 })

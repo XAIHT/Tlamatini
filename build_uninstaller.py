@@ -27,6 +27,8 @@ from pathlib import Path
 import shutil
 
 # Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
+from build_env import run_in_sealed_env
+from pyinstaller_guard import pyinstaller_command
 from versioning import (
     extract_cli_version,
     render_versioninfo_for,
@@ -287,7 +289,7 @@ def main():
 
     # ── 6) Run PyInstaller (--onefile for a single portable exe) ──────
     command = [
-        sys.executable, "-m", "PyInstaller",
+        *pyinstaller_command(),
         "--onefile",
         "--windowed",
         "--noconfirm",
@@ -365,4 +367,5 @@ def main():
 
 
 if __name__ == "__main__":
+    run_in_sealed_env(__file__)  # never this machine's everyday Python
     main()

@@ -63,6 +63,13 @@ Markdown files now have a themed, sanitized Preview/Source canvas with local
 resource support. See [Markdown canvas](../markdown-canvas.md) for supported
 syntax, source-preserving actions, packaging and visible verification.
 
+The 2026-10-21 source change makes canvas text editable with locally bundled
+CodeMirror 6. `agent_page_editing.js` owns the saved snapshot, encoding, dirty
+guards and native Save As flow; `agent_page_canvas.js` retains file/context
+lifecycle. Markdown previews use the edited source, while PDF saving exports
+original bytes. See [canvas editing](../canvas-editing.md) for the complete
+contract, authenticated save capabilities, research and visible test harness.
+
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 
 > **Developer/product boundary (Angela, 2026-09-27):** these visibility requirements govern development and verification. They must not create extra windows, steal focus or expose internal diagnostics in the shipped UX. Direct chat dictation keeps status in chat and uses only Tlamatini's main console/log.

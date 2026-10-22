@@ -1,0 +1,125 @@
+/* Tlamatini Author Banner — Angela López Mendoza */
+#filename-div #filename-div-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 8px !important;
+    flex-basis: 180px;
+}
+
+#filename-div #filename {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#canvas-edit-status {
+    color: #aebacb;
+    font-size: .8rem;
+    font-weight: normal;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+#canvas-edit-status[data-state="dirty"] { color: #f1cd87; }
+#canvas-edit-status[data-state="saving"] { color: #76d5c3; }
+
+#filename-div #filename-div-right {
+    flex: 1 1 420px;
+    padding: 5px 7px;
+    align-content: center;
+    gap: 4px;
+}
+
+#filename-div button[id^="canvas-"] {
+    background: #303c49;
+    border: 1px solid #586777;
+    border-radius: 5px;
+    color: #e5edf7;
+    padding: 3px 8px;
+    font: inherit;
+    font-size: .82rem;
+    cursor: pointer;
+}
+
+#filename-div #canvas-save-button {
+    background: #23796c;
+    border-color: #69beae;
+    font-weight: 700;
+}
+
+#filename-div button[id^="canvas-"]:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+#filename-div button[id^="canvas-"]:focus-visible {
+    outline: 2px solid #76d5c3;
+    outline-offset: 2px;
+}
+
+#filename-div #canvas-wrap-button[aria-pressed="true"] { background: #266457; }
+#editor-container.canvas-editable {
+    overflow: hidden;
+}
+
+#editor-container.canvas-editable #line-numbers,
+#editor-container.canvas-editable #text-editor > pre {
+    display: none;
+}
+
+#editor-container.canvas-editable #text-editor {
+    display: flex;
+    overflow: hidden;
+    min-width: 0;
+    min-height: 0;
+}
+
+.tlm-source-editor {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.tlm-source-editor .cm-editor {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+}
+
+.tlm-source-editor .cm-panels {
+    max-height: 45%;
+    overflow: auto;
+}
+
+.tlm-source-editor .cm-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 28px 8px 8px;
+}
+
+.tlm-source-editor .cm-search input,
+.tlm-source-editor .cm-search button {
+    max-width: 100%;
+    font: inherit;
+}
+
+.tlm-source-editor .cm-search input[type="text"] {
+    min-width: 6em;
+    width: 12em;
+}
+
+.tlm-source-editor .cm-content {
+    tab-size: 4;
+}
+
+.tlm-source-editor :focus-visible {
+    outline: 2px solid #76d5c3;
+    outline-offset: 2px;
+}

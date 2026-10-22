@@ -55,7 +55,7 @@ if os.name == 'nt' and not getattr(subprocess, '_conhost_guard_applied', False):
     subprocess.Popen.__init__ = _chg_guarded_init
     subprocess._conhost_guard_applied = True
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 # Temp/Templates policy: transient files live under <app>/Temp, never %TEMP%.
 if (os.environ.get('TLAMATINI_TEMP') or '').strip():
@@ -73,6 +73,9 @@ except Exception as e:
 # Flat sibling modules travel with the pool copy of this template.
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
+
+# Strict yes/no parsing lives in the stdlib-only text sibling, shared with the engine.
+import terminater_text as _tx  # noqa: E402
 
 # Use directory name for log file
 CURRENT_DIR_NAME = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
@@ -358,14 +361,27 @@ PARAM_KEYS = (
     "wait", "wait_seconds", "hang_seconds", "user_wait_seconds", "until", "pattern", "idle_seconds",
     "which", "read_chars", "offset", "keys", "cursor", "message", "severity", "suggestion", "hint",
     "layout", "area", "show", "close_after", "load_profile", "advisor", "user",
+    "create_if_missing", "clear_line", "check_line",
 )
+
+#: Yes/no parameters.  They are read STRICTLY (terminater_text.parse_flag): a value that is not
+#: a clean yes/no falls to the SAFE side below -- never press Enter for the caller, hide a
+#: secret, never close a terminal, never invent a terminal -- and the reply names it in `notes`.
+FLAG_KEYS = (
+    "submit", "wait", "secret", "close_after", "load_profile", "advisor", "show",
+    "create_if_missing", "clear_line", "check_line",
+)
+FLAG_SAFE_SIDE = {
+    "submit": False, "secret": True, "close_after": False,
+    "create_if_missing": False, "clear_line": False,
+}
 
 #: Header fields of INI_SECTION_TERMINATER (kept in step with agent_contracts.py).
 SECTION_FIELDS = (
     "action", "status", "success", "terminal_id", "kind", "title", "terminal_state", "command",
     "exit_code", "duration_seconds", "output_chars", "truncated", "hung", "aborted_by", "typed",
     "user_part", "user_line", "user_keys", "cursor", "watch_reason", "wait_reason", "layout",
-    "area", "terminals", "hub", "message",
+    "area", "terminals", "hub", "message", "verified", "screen_line", "enter_pressed", "notes",
 )
 
 
@@ -498,14 +514,19 @@ def _truthy(value: Any, default: bool = True) -> bool:
     return bool(value)
 
 
-def build_params(config: Dict[str, Any]) -> Dict[str, Any]:
+def build_params(config: Dict[str, Any], notes: Optional[List[str]] = None) -> Dict[str, Any]:
+    """The parameters handed to the hub.  Yes/no settings are read STRICTLY: one that is not a
+    clean yes/no falls to its safe side (see ``FLAG_SAFE_SIDE``) and is named in ``notes``."""
     params: Dict[str, Any] = {}
     for key in PARAM_KEYS:
         if key in config and config[key] not in (None, ""):
             params[key] = config[key]
-    for key in ("submit", "wait", "secret", "close_after", "load_profile", "advisor"):
+    for key in FLAG_KEYS:
         if key in config and config[key] not in (None, ""):
-            params[key] = _truthy(config[key])
+            value, note = _tx.parse_flag(config[key], True, FLAG_SAFE_SIDE.get(key))
+            params[key] = value
+            if note and notes is not None:
+                notes.append(f"{key}: {note}")
     return params
 
 
@@ -528,7 +549,7 @@ def emit_section(action: str, res: Dict[str, Any], backend: str, hub_listing: Op
     if success is None:
         success = bool(res.get("ok", True)) and status not in (
             "refused", "unavailable", "error", "timeout", "hung", "command_failed", "aborted",
-            "operator_required")
+            "operator_required", "typing_unverified")
     ui = res.get("ui") or {}
     terminals = ""
     if isinstance(res.get("terminals"), list):
@@ -560,6 +581,10 @@ def emit_section(action: str, res: Dict[str, Any], backend: str, hub_listing: Op
         "terminals": terminals,
         "hub": backend,
         "message": res.get("message", ""),
+        "verified": "" if res.get("verified") is None else res.get("verified"),
+        "screen_line": res.get("screen_line", ""),
+        "enter_pressed": "" if res.get("enter_pressed") is None else res.get("enter_pressed"),
+        "notes": res.get("notes", ""),
     }
     body_parts = []
     if res.get("output"):
@@ -603,7 +628,8 @@ def main():
         target_agents = config.get('target_agents', []) or []
         action = str(config.get('action') or 'run').strip().lower().replace('-', '_') or 'run'
         mode = str(config.get('mode') or 'auto').strip().lower()
-        params = build_params(config)
+        param_notes: List[str] = []
+        params = build_params(config, param_notes)
 
         logging.info("🖥️ TERMINATER AGENT STARTED")
         logging.info(f"⚙️ action={action} terminal={params.get('terminal', '(active)')} "
@@ -648,10 +674,12 @@ def main():
 
         if client is not None and not res_done:
             res = client.call(action, params, _deadline(action, params))
+            if param_notes:
+                res["notes"] = "; ".join(n for n in [res.get("notes"), *param_notes] if n)
             if action in ("run", "open") and res.get("ok") and backend == "hub":
                 logging.info("👀 The terminal is visible in Tlamatini's Terminals area.")
             emit_section(action, res, backend, None)
-            if res.get("ok") and res.get("status") not in ("error",):
+            if res.get("ok") and res.get("status") not in ("error", "typing_unverified"):
                 logging.info(f"✅ Terminater {action}: {res.get('status')}")
             else:
                 logging.error(f"❌ Terminater {action}: {res.get('status')} - {res.get('message', '')}")

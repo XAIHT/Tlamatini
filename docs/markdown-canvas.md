@@ -32,7 +32,11 @@ parent-relative paths. External web links open separately. Relative URLs never
 navigate to application endpoints. Remote images load with no referrer.
 
 Copy and Use as context take the Markdown source, not flattened preview text.
-Save preserves the original local file bytes, including UTF-8 BOM and CRLF.
+Since the 2026-10-21 source change, Source is editable with undo/redo and search;
+Preview reflects the edits through the existing sanitizer. Save writes the edited
+source with the original encoding/BOM and line endings, while unedited files keep
+their exact bytes. Native Save As can choose a folder outside Downloads. See
+[canvas editing](canvas-editing.md).
 Generated Markdown saves as UTF-8. Loading another file or clearing the canvas
 releases image object URLs. Plain text, source code, PDF and flow routing retain
 their dedicated behavior.

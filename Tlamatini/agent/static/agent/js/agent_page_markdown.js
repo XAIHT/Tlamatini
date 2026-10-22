@@ -1,7 +1,6 @@
 /* Tlamatini Author Banner — Angela López Mendoza */
 /* global loadSelectedCanvasFile */
-/* Read-only Markdown presentation. The source code element remains authoritative
- * for context/copy; the original File remains authoritative for Save. */
+/* Sanitized Markdown presentation; edits always belong to the source editor. */
 (() => {
     'use strict';
     const host = document.getElementById('markdown-canvas-host');
@@ -35,10 +34,12 @@
 
     function selectView(preview) {
         if (!current) return;
+        if (preview && current.needsRender) { render(); current.needsRender = false; }
         host.hidden = !preview;
         editor.hidden = preview;
         previewButton.setAttribute('aria-pressed', String(preview));
         sourceButton.setAttribute('aria-pressed', String(!preview));
+        if (!preview) { window.TlamatiniTextEditor?.requestMeasure(); window.TlamatiniTextEditor?.focus(); }
     }
 
     function localPath(value) {
@@ -240,7 +241,13 @@
         folderInput.click();
     });
     window.TlamatiniMarkdownCanvas = {
-        open, close,
+        open, close, selectView,
+        updateSource: source => {
+            if (!current) return;
+            current.source = source;
+            current.needsRender = true;
+            if (!host.hidden) { render(); current.needsRender = false; }
+        },
         // Refresh preserves the selected view, reading position and explicitly
         // selected local resources while rerendering the complete new source.
         snapshot: () => current ? { files: current.files, base: current.base,
@@ -254,7 +261,7 @@
             host.scrollTop = state.top;
             host.scrollLeft = state.left;
         },
-        updateFile: file => { if (current) current.file = file; },
+        updateFile: file => { if (current) { current.file = file; current.name = file.name; } },
         get active() { return current !== null; },
         get file() { return current?.file || null; },
         get name() { return current?.name || ''; },

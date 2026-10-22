@@ -29,6 +29,7 @@
   {# dialog_theme.css MUST stay LAST: it supersedes the legacy .ui-dialog chrome on cascade ORDER. #}
   <link rel="stylesheet" href="{% static 'agent/css/ui_shell.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/markdown_canvas.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/canvas_editor.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/ui_splitters.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/vendor/frontend/xterm/css/xterm.css' %}?v={{ STATIC_VERSION }}">
   <link rel="stylesheet" href="{% static 'agent/css/terminater_dock.css' %}?v={{ STATIC_VERSION }}_term1">
@@ -334,9 +335,16 @@
       <div id="filename-div" class="row">
         <div class="col-6" id="filename-div-left">
           <span id="filename">&lt;&lt;...&gt;&gt;</span>
+          <span id="canvas-edit-status" role="status" aria-live="polite" aria-atomic="true">Open a file to edit.</span>
         </div>
 
         <div class="col-6" id="filename-div-right">
+          <button id="canvas-save-button" type="button" disabled title="Save this file (Ctrl+S)">Save</button>
+          <button id="canvas-save-as-button" type="button" disabled title="Choose a folder and filename (Ctrl+Shift+S)">Save as…</button>
+          <button id="canvas-undo-button" type="button" disabled title="Undo (Ctrl+Z)">Undo</button>
+          <button id="canvas-redo-button" type="button" disabled title="Redo (Ctrl+Y)">Redo</button>
+          <button id="canvas-find-button" type="button" disabled title="Find and replace (Ctrl+F in the editor)">Find</button>
+          <button id="canvas-wrap-button" type="button" disabled aria-pressed="false" title="Wrap long lines">Wrap</button>
           <button id="copy-canvas-button">Copy</button>
           <button id="reopen-canvas-button" type="button" disabled aria-describedby="canvas-refresh-status" title="Open a file to refresh its content.">Refresh</button>
           <button id="clean-canvas-button">Clear canvas</button>
@@ -359,7 +367,7 @@
         <article id="markdown-canvas-document"></article>
       </div>
       <div id="editor-container">
-        <textarea id="line-numbers" placeholder="...."></textarea>
+        <textarea id="line-numbers" placeholder="...." readonly tabindex="-1" aria-hidden="true"></textarea>
         <div id="text-editor">
           <pre><code></code></pre>
         </div>
@@ -798,6 +806,8 @@
   <script src="{% static 'agent/vendor/frontend/dompurify/dist/purify.min.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_markdown.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_canvas.js' %}?v={{ STATIC_VERSION }}_views1"></script>
+  <script src="{% static 'agent/vendor/canvas-editor/editor.js' %}?v={{ STATIC_VERSION }}"></script>
+  <script src="{% static 'agent/js/agent_page_editing.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_dialogs.js' %}?v={{ STATIC_VERSION }}_dialogfix"></script>
   <script src="{% static 'agent/js/agent_page_context.js' %}?v={{ STATIC_VERSION }}"></script>
   <script src="{% static 'agent/js/agent_page_chat.js' %}?v={{ STATIC_VERSION }}_b64fix"></script>

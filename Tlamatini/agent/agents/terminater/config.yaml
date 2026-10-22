@@ -63,6 +63,13 @@ show: ""
 close_after: false      # run: close the terminal when the command completed
 load_profile: true      # PowerShell: load the user's profile
 advisor: true           # warn the user about dangerous / mistyped commands
+# run: may a NAMED terminal that does not exist yet be created?  Canvas flows rely on it (first use
+# creates it).  The CHAT tool turns it off: a name that is not there is a mistake, not a request.
+create_if_missing: true
+# type/run: replace text already waiting on the prompt line instead of refusing to type over it.
+clear_line: false
+# Read the prompt line back before typing and the screen after it, and report what is REALLY there.
+check_line: true
 
 # Where the hub is.  Empty = discover it (environment, then <app>/Temp/.terminater_hub.json).
 hub_url: ""

@@ -414,6 +414,11 @@ class VTScreen:
             self._scroll_up(1)
         elif self.cy < self.rows - 1:
             self.cy += 1
+        # A real line feed starts a NEW logical line.  The row it lands on may still carry the
+        # "continuation" flag of text that was there before an erase (a long, wrapped command
+        # that was cleared), and that stale flag glued the next output line onto the echo.
+        # ``_wrap_line`` sets the flag again right after calling this, when it IS a wrap.
+        self.wrap[self.cy] = False
 
     def _reverse_index(self) -> None:
         self.pending = False
@@ -566,6 +571,8 @@ class VTScreen:
         row = self.grid[r]
         for c in range(max(0, start), min(self.cols, stop)):
             row[c] = " "
+        if start <= 0 and stop >= self.cols:
+            self.wrap[r] = False        # the whole row is empty: it continues nothing
 
     # -------------------------------------------------------------------- OSC
     def _finish_osc(self, events: List[OscEvent]) -> None:
@@ -664,6 +671,24 @@ class VTScreen:
                 break
             end += 1
         lines, _ = self.logical_lines(start, end, start_col=from_col)
+        return "".join(lines) if lines else ""
+
+    def text_from(self, abs_row: int, col: int = 0) -> str:
+        """The logical line that BEGINS at ``(abs_row, col)``, wrapped rows rejoined.
+
+        This is how the engine reads back what is sitting on the prompt line: the
+        prompt marker gives the row and column where the user's input starts, and
+        everything after it (including rows the shell wrapped) is the input.
+        """
+        if abs_row < self.dropped:
+            return ""
+        end = abs_row
+        while True:
+            nxt = self._row_text(end + 1)
+            if nxt is None or not nxt[1]:
+                break
+            end += 1
+        lines, _ = self.logical_lines(abs_row, end, start_col=max(0, int(col)))
         return "".join(lines) if lines else ""
 
     def last_nonempty_line(self) -> str:
@@ -930,3 +955,109 @@ def advise_line(line: str, kind: str = "cmd") -> List[Advice]:
 def sanitize_title(value: str, default: str = "terminal", limit: int = 40) -> str:
     cleaned = re.sub(r"[\x00-\x1f\x7f]+", " ", str(value or "")).strip()
     return cleaned[:limit] or default
+
+
+# --------------------------------------------------------------------------- #
+# Strict arguments: yes/no flags, terminal references, line comparison          #
+# --------------------------------------------------------------------------- #
+# These exist because of one live failure (a Rust tutorial, 2026-10-21): a model wrote
+# ``submit=false -- type the line but do NOT press Enter`` inside a sentence, the
+# sentence was read with a lenient truthiness rule, and Enter WAS pressed on a line the
+# user had asked to run themselves.  A flag the caller did not state cleanly now falls
+# to the side that does LESS, and the reply says so.
+
+_FLAG_TRUE = frozenset({"true", "yes", "y", "on", "1"})
+_FLAG_FALSE = frozenset({"false", "no", "n", "off", "0", "none", "null"})
+
+
+def parse_flag(value, default: bool = True, safe: Optional[bool] = None) -> Tuple[bool, str]:
+    """``(flag, note)`` for a yes/no setting -- strict, with a fail-safe side.
+
+    * a real ``bool`` / ``0`` / ``1``, or a clean token (true false yes no on off 1 0)
+      -> that value, no note;
+    * ``None`` or blank -> ``default`` (the caller said nothing), no note;
+    * anything else -> ``safe`` (``default`` when ``safe`` is None) plus a NOTE that
+      names what was received.  Never raises.
+    """
+    fallback = default if safe is None else bool(safe)
+    if isinstance(value, bool):
+        return value, ""
+    if value is None:
+        return default, ""
+    if isinstance(value, (int, float)):
+        if value in (0, 1):
+            return bool(value), ""
+        return fallback, f"{value!r} is not a yes/no, so it was read as {str(fallback).lower()}"
+    text = str(value).strip().lower()
+    if not text:
+        return default, ""
+    if text in _FLAG_TRUE:
+        return True, ""
+    if text in _FLAG_FALSE:
+        return False, ""
+    shown = str(value).strip().replace(chr(13), " ").replace(chr(10), " ")[:60]
+    return fallback, f"{shown!r} is not a clear yes/no, so it was read as {str(fallback).lower()}"
+
+
+_TERMINAL_ID_RE = re.compile(r"^t\d{1,4}$", re.IGNORECASE)
+_REF_FORBIDDEN_CHARS = frozenset("'=<>|;`" + chr(34))
+REF_MAX_CHARS = 60
+REF_MAX_WORDS = 8
+
+
+def looks_like_terminal_id(ref) -> bool:
+    """True for ids the hub hands out ('t1', 't2' ...): those are never created by name."""
+    return bool(_TERMINAL_ID_RE.match(str(ref or "").strip()))
+
+
+def terminal_ref_problem(ref) -> str:
+    """Why ``ref`` cannot be a terminal id or title ('' when it can).
+
+    A reference is an id ('t2') or a short title ('Rust Lesson').  A string with quotes,
+    ``=`` or a dozen words is a piece of a sentence that leaked out of a badly parsed
+    request -- using it as a title would raise a NEW terminal named after the garbage.
+    """
+    text = str(ref or "").strip()
+    if not text:
+        return ""
+    if len(text) > REF_MAX_CHARS or len(text.split()) > REF_MAX_WORDS:
+        return (f"it is {len(text)} characters / {len(text.split())} words long -- "
+                "a terminal id looks like 't2' and a title is a few words")
+    for ch in text:
+        if ch in _REF_FORBIDDEN_CHARS or ord(ch) < 32 or ord(ch) == 127:
+            shown = ch if ch.isprintable() else repr(ch)
+            return (f"it contains {shown} -- that looks like a piece of a sentence or of "
+                    "another parameter, not a terminal id or title")
+    return ""
+
+
+def norm_line(value) -> str:
+    """Whitespace-normalised text, for comparing what was typed with what the screen shows."""
+    return re.sub(r"\s+", " ", str(value or "").replace(chr(0xA0), " ")).strip()
+
+
+def last_line(text) -> str:
+    """The last non-empty line of ``text``: the one that is left on the prompt."""
+    unified = str(text or "").replace(chr(13) + chr(10), chr(10)).replace(chr(13), chr(10))
+    for part in reversed(unified.split(chr(10))):
+        if part.strip():
+            return part
+    return ""
+
+
+def line_matches(seen, expected) -> Tuple[bool, str]:
+    """Does the line read back from the screen show what was typed?
+
+    ``(True, 'exact')`` the same text; ``(True, 'contains')`` the typed text is there with
+    other text around it; ``(False, 'empty' | 'mismatch')`` it is not.
+    """
+    got, want = norm_line(seen), norm_line(expected)
+    if not want:
+        return (not got), ("exact" if not got else "mismatch")
+    if not got:
+        return False, "empty"
+    if got == want:
+        return True, "exact"
+    if want in got:
+        return True, "contains"
+    return False, "mismatch"

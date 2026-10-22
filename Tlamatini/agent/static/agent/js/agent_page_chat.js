@@ -1780,11 +1780,16 @@ function _mapToolArgsToAgentConfig(canonicalName, rawArgs, _toolName) {
             }
         });
     } else if (lower === 'terminater') {
+        // The chat tool takes TYPED arguments (one per setting), so every key arrives as its own
+        // direct arg. A terminal ID ("t2") belongs to ONE live session: in a saved flow it would
+        // name a terminal that does not exist yet, so it is left out (empty = the active one).
         ['action', 'terminal', 'kind', 'title', 'cwd', 'text', 'text_b64', 'until', 'pattern', 'which', 'keys',
          'message', 'severity', 'suggestion', 'hint', 'layout', 'area', 'show', 'hub_url', 'mode', 'user'].forEach(function (k) {
+            if (k === 'terminal' && /^t\d+$/i.test(String(pairs[k] || '').trim())) return;
             set(k, pairs[k]);
         });
-        ['submit', 'secret', 'wait', 'close_after', 'load_profile', 'advisor'].forEach(function (k) {
+        ['submit', 'secret', 'wait', 'close_after', 'load_profile', 'advisor',
+         'create_if_missing', 'clear_line', 'check_line'].forEach(function (k) {
             if (pairs[k] !== undefined && pairs[k] !== '') {
                 config[k] = (String(pairs[k]).toLowerCase() === 'true');
             }

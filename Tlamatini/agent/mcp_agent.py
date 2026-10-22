@@ -26,6 +26,7 @@ from typing import Dict, Any, Optional, Tuple
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 
 from . import agent_verdict
+from . import terminal_guard
 from .acpx import ACPX_TOOL_NAMES, filter_acpx_tools
 from .capability_registry import (
     _normalize_text,
@@ -587,14 +588,13 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
         host = tool_input.get("host") if isinstance(tool_input, dict) else None
         return f"Remote SSH shell{(' @ ' + str(host)) if host else ''}"
     if name == "chat_agent_terminater":
-        request = ""
-        if isinstance(tool_input, dict):
-            request = str(tool_input.get("request") or tool_input.get("__arg1") or "")
-        elif isinstance(tool_input, str):
-            request = tool_input
-        found = re.search(r"kind\s*=\s*['\"]?(cmd|powershell|pwsh)", request, re.IGNORECASE)
-        kind = (found.group(1).lower() if found else "powershell")
-        label = {"cmd": "cmd.exe", "powershell": "Windows PowerShell", "pwsh": "PowerShell 7"}[kind]
+        try:
+            from .terminater_tool import shell_kind
+            kind = shell_kind(tool_input)
+        except Exception:  # noqa: BLE001 - informational only
+            kind = "powershell"
+        label = {"cmd": "cmd.exe", "powershell": "Windows PowerShell", "pwsh": "PowerShell 7"}.get(
+            kind, "Windows PowerShell")
         return f"{label} in a visible Terminater terminal (typed key by key)"
     if name == "chat_agent_dockerer":
         return f"Docker CLI via {os_shell}"
@@ -896,6 +896,12 @@ class MultiTurnToolAgentExecutor:
         # request. Bounded so a stubborn model cannot loop forever.
         self._hallucinated_tool_nudges: int = 0
         self._last_hallucinated_name: str = ""
+        # Live-terminal honesty rails (terminal_guard.py); reset for every request in invoke().
+        self._terminal_ledger: list = []
+        self._claim_nudged: bool = False
+        self._claim_problems: list = []
+        self._tutorial_mode: Any = None
+        self._request_input_text: str = ""
 
     def _sanitize_user_facing_answer(self, answer: Any) -> Any:
         """Never let INTERNAL plumbing text reach the user. NEVER raises.
@@ -929,6 +935,63 @@ class MultiTurnToolAgentExecutor:
             )
         except Exception:  # pragma: no cover - totality guard
             return answer
+
+    def _user_runs_now(self) -> bool:
+        """True while the user has said THEY run the commands (a live tutorial). NEVER raises."""
+        try:
+            mode = getattr(self, "_tutorial_mode", None)
+            return bool(mode is not None and mode.user_runs and terminal_guard.enabled())
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _record_refused_call(self, tool_call: Dict[str, Any], note: str) -> None:
+        """A call refused BEFORE it ran still shows up, red, in the Create-Flow log and the Exec report."""
+        tool_name = tool_call.get("name", "")
+        args = tool_call.get("args", {}) or {}
+        display_name = _tool_name_to_agent_display(tool_name)
+        if display_name is not None:
+            self._tool_calls_log.append({
+                "tool_name": tool_name,
+                "args": dict(args) if isinstance(args, dict) else {},
+                "success": False,
+                "agent_display_name": display_name,
+            })
+        exec_report_spec = _resolve_exec_report_spec(tool_name)
+        if exec_report_spec is not None:
+            agent_key, agent_display = exec_report_spec
+            self._exec_report_entries.append({
+                "tool_name": tool_name,
+                "agent_key": agent_key,
+                "agent_display": agent_display,
+                "command": self._extract_exec_report_command(args, tool_name) + "  ->  " + note,
+                "success": False,
+            })
+
+    def _terminal_claim_nudge(self, response: Any, messages: list) -> bool:
+        """Check the draft FINAL answer against this request's record of what the tools really did.
+
+        "I typed it", "it is sitting on your prompt", "I ran it" are claims, and the user acts on
+        them. True = ONE correction round was appended to ``messages`` (the loop continues). When
+        a claim survives its correction it is flagged on the answer itself (_build_result_dict).
+        NEVER raises: a broken guard must not break the chat path.
+        """
+        try:
+            problems = terminal_guard.audit_answer(
+                getattr(response, "content", "") or "", self._terminal_ledger,
+                getattr(self, "_tutorial_mode", None), self._bound_tool_names(),
+                user_text=getattr(self, "_request_input_text", ""))
+        except Exception:  # noqa: BLE001
+            return False
+        if not problems:
+            return False
+        for problem in problems:
+            print(f"--- [TERMINAL-GUARD] unsupported claim ({problem.code}): {problem.claim[:160]!r} -> {problem.detail}")
+        if self._claim_nudged:
+            self._claim_problems = list(problems)
+            return False
+        self._claim_nudged = True
+        messages.append(HumanMessage(content=terminal_guard.nudge_text(problems)))
+        return True
 
     def _bound_tool_names(self) -> set:
         """Names of the tools bound for this request. NEVER raises.
@@ -1005,6 +1068,10 @@ class MultiTurnToolAgentExecutor:
                 else json.dumps(args_json, ensure_ascii=False, sort_keys=True)
             )
             return f"{skill_name}({args_repr})" if skill_name else args_repr
+        if tool_name == terminal_guard.TERMINATER_TOOL:
+            # Typed arguments: show the action, the terminal and the line - and say plainly
+            # when Enter was left to the user (terminal_guard.describe_call).
+            return terminal_guard.describe_call(tool_input)
 
         for key in ("command", "path_filename", "request", "__arg1"):
             value = tool_input.get(key)
@@ -1175,6 +1242,9 @@ class MultiTurnToolAgentExecutor:
             logger.info("[MultiTurnExecutor._invoke_tool] Invoking WRAPPED CHAT AGENT tool: %s with args: %.500s",
                         tool_name, str(tool_input))
 
+        # LIVE-TUTORIAL MODE reaches the tool through the call context (terminal_guard.py):
+        # Terminater then types the line and leaves Enter to the user.
+        _runs_token = terminal_guard.enter_mode(self._user_runs_now())
         try:
             result = tool.invoke(tool_input)
         except Exception as exc:
@@ -1213,6 +1283,8 @@ class MultiTurnToolAgentExecutor:
                 "message": f"Tool '{tool_name}' raised an exception: {exc}",
                 "retryable": False,
             })
+        finally:
+            terminal_guard.leave_mode(_runs_token)
 
         if is_chat_agent_tool:
             logger.info("[MultiTurnExecutor._invoke_tool] WRAPPED CHAT AGENT tool '%s' returned: %.1000s", tool_name, str(result))
@@ -1224,6 +1296,10 @@ class MultiTurnToolAgentExecutor:
         # Roblox MCP's "false | Unable to cast double to Vector3"). (2026-07-17)
         failed, _fail_err = self._result_is_failure(result_str)
         call_success = not failed
+        # The record the final answer is audited against (terminal_guard.py).
+        _evidence = terminal_guard.evidence_from(tool_name, tool_input, result_str, call_success)
+        if _evidence is not None:
+            self._terminal_ledger.append(_evidence)
 
         display_name = _tool_name_to_agent_display(tool_name)
         if display_name is not None:
@@ -1247,7 +1323,11 @@ class MultiTurnToolAgentExecutor:
                 "tool_name": tool_name,
                 "agent_key": agent_key,
                 "agent_display": agent_display,
-                "command": self._extract_exec_report_command(tool_input, tool_name),
+                "command": (
+                    terminal_guard.exec_report_command(tool_input, result_str)
+                    if tool_name == terminal_guard.TERMINATER_TOOL
+                    else self._extract_exec_report_command(tool_input, tool_name)
+                ),
                 "success": call_success,
             })
 
@@ -1907,6 +1987,22 @@ class MultiTurnToolAgentExecutor:
         self._run_user_id = payload.get("ask_execs_user_id")
         self._run_epoch = payload.get("cancel_run_epoch")
 
+        # -- Live-terminal honesty rails (terminal_guard.py, 2026-10-21) --
+        # Reset per request (executors are cached). The mode is read from the user's own words:
+        # "show me the commands, I will execute them" blocks every command runner and makes
+        # Terminater type without pressing Enter, until the user says Tlamatini may run them.
+        self._terminal_ledger = []
+        self._claim_nudged = False
+        self._claim_problems = []
+        self._request_input_text = str(payload.get("input", "") or "")
+        self._tutorial_mode = terminal_guard.observe(
+            self._run_user_id, self._request_input_text, payload.get("chat_history"))
+        if self._tutorial_mode.user_runs and terminal_guard.enabled():
+            print(
+                f"--- [TERMINAL-GUARD] live-tutorial mode ON ({self._tutorial_mode.phrase!r}): command "
+                "runners are blocked and Terminater only types - the user presses Enter"
+            )
+
         # ── Context governor (measurement only) per-request state ──
         # Resolved ONCE per request: executor instances are cached and reused,
         # so these must be reset here like every other per-run field above.
@@ -2142,6 +2238,13 @@ class MultiTurnToolAgentExecutor:
                     )))
                     continue
 
+                # -- Terminal claim guard (terminal_guard.py) --
+                # "I typed it / it is sitting on your prompt / I ran it" is checked against what
+                # the tools REALLY reported in this request: one correction round, then a visible
+                # warning on the answer if the claim still stands.
+                if self._terminal_claim_nudge(response, messages):
+                    continue
+
                 answer = getattr(response, "content", "") or ""
                 if not str(answer).strip():
                     # The model finished tool-calling but returned empty content.
@@ -2294,8 +2397,23 @@ class MultiTurnToolAgentExecutor:
                 # notification so the notification-debt guard above stays quiet.
                 if tool_name in _NOTIFICATION_TOOLS:
                     self._notification_tools_called.add(tool_name)
-                # Dedup: skip duplicate wrapped chat-agent calls with identical args
-                if tool_name.startswith("chat_agent_") and tool_name not in _MANAGEMENT_TOOLS:
+                # LIVE-TUTORIAL MODE (terminal_guard.py): the user said THEY run the commands, so
+                # no general command runner may run. Refused BEFORE the dedup memory and the
+                # quota, so lifting the mode later lets the very same call through.
+                _runner_refusal = terminal_guard.runner_block(tool_name, self._tutorial_mode)
+                if _runner_refusal:
+                    print(f"--- [TERMINAL-GUARD] '{tool_name}' NOT run: live-tutorial mode")
+                    messages.append(ToolMessage(
+                        tool_call_id=tool_call.get("id", ""),
+                        name=tool_name,
+                        content=_runner_refusal,
+                    ))
+                    self._record_refused_call(tool_call, "NOT run - live-tutorial mode")
+                    continue
+                # Dedup: skip duplicate wrapped chat-agent calls with identical args.
+                # Terminater is exempt: reading the same screen twice is how a tutorial waits.
+                if (tool_name.startswith("chat_agent_") and tool_name not in _MANAGEMENT_TOOLS
+                        and tool_name != terminal_guard.TERMINATER_TOOL):
                     dedup_sig = f"{tool_name}:{json.dumps(tool_call.get('args', {}), sort_keys=True, ensure_ascii=False)}"
                     if dedup_sig in self._wrapped_agent_signatures:
                         logger.info(
@@ -2518,6 +2636,10 @@ class MultiTurnToolAgentExecutor:
         # Every terminal exit path funnels through here, so this cannot be
         # bypassed by a new return added later.
         answer = self._sanitize_user_facing_answer(answer)
+        # An unsupported "I typed it / I ran it" claim that survived its correction round is
+        # flagged on the answer itself, so the user checks the terminal before acting on it.
+        if getattr(self, "_claim_problems", None):
+            answer = str(answer) + terminal_guard.banner_text(self._claim_problems)
         # Drop into global_state so the WebSocket consumer can surface
         # surviving orphan PIDs as a follow-up chat message after it
         # broadcasts the main answer. The list is small (usually empty)
