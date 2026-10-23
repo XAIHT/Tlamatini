@@ -459,10 +459,12 @@ def release_facts(published: dict, head_short: str) -> dict:
 
 def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[str]], list[tuple[str, str]]]:
     statements = [
-        f"**{rel['latest_published']} is the latest released version.** The application, user guides "
+        f"**{rel['latest_published']} is the current tagged source version.** The application, user guides "
         f"and both dossiers use the same version, **{version}**.",
         f"This audit inspected commit `{rel['head_short']}`. The existing annotated tag `{rel['tag']}` "
         f"was created on {rel['tag_date']} and resolves to `{rel['tag_commit']}`. Git history is preserved.",
+        "A source tag identifies the implementation. GitHub publication and installed-package acceptance "
+        "require separate evidence; documentation generation does not build or install an executable.",
     ]
     points = [("Current release", rel['latest_published']),
               ("Audit commit", rel['head_short']),

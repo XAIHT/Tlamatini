@@ -3,7 +3,7 @@ Tlamatini Author Banner — do not remove -->
 
 # Direct voice prompts
 
-> Current release: **[v1.90.0](changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 ## Use the microphone button
@@ -430,3 +430,13 @@ Evidence: `Temp/voice-development/141-mic-preferences-regression-tests.log`,
 `156-final-visible-mic-browser-check.log`,
 `Temp/chat-microphone-checks/results.json` and its wide/advanced/narrow screenshots.
 Historical measurements above remain dated evidence; no installer was rebuilt.
+
+## Shared speech with interaction narration — v1.91.0
+
+`voice_runtime.js` now owns the browser speech queue used by the chat avatar and
+Live Editor/Terminater narration. Existing Config → Voice voice/rate/pitch/volume
+preferences remain authoritative. Global mute and microphone listening take
+precedence; cancellation clears queued interaction speech without duplicating it.
+This is browser playback, separate from Whisperer's host microphone capture and
+Talker's model-based speech generation. No new recording service window is added.
+See [interaction settings](interaction-settings.md) for narration timing and receipts.

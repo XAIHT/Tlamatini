@@ -4,7 +4,7 @@
 
 # Prompt Flow Panel
 
-> Current release: **[v1.90.0](changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 Open **Panels → Prompt Flow Panel** from chat, or **File → Prompt Flow Panel** from the Agentic Control Panel. The authenticated page is `/agent/prompt_flow_panel/`.
@@ -108,3 +108,14 @@ Self-modify snapshots explicitly require the backend, page, JavaScript, CSS, exe
 Run both `.claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py` and `.claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py --keep` in the verified visible foreground console. Inspect every finding and advisory, then verify this feature's files against the retained snapshot and release receipt. Source-carriage checks do not prove that a fresh executable or installer was built.
 
 `python Tlamatini/manage.py check_prompt_flow_panel` checks the source page and its local assets, validates the kickoff example (its seven prompting operations and the commentary note), validates a Terminater step separately, exercises the real WebSocket consumer through a User Input/history-clear flow with static commentary, and checks a UTF-8 context-file round trip under the application Temp directory. Run it in the same verified visible console. The build runs `manage.exe check_prompt_flow_panel` inside the freshly frozen application after collecting static files and aborts packaging on failure. The command is explicitly bundled and checked in the frozen archive. It does not call a live model or embedding provider; those integrations require separate live playback verification. Adapter regression tests also exercise the actual Temp resolver under source and frozen layouts, including installation paths with spaces and Unicode.
+
+## Terminater account defaults — v1.91.0
+
+New Terminater nodes enable **Use my defaults**. At execution the one TerminalHub
+uses the signed-in account's shell, speed, advisor and wait preferences from
+**Config → Live Editor & Terminater**. The form disables overridden fields while
+inheritance is selected. Older saved files normalize `use_my_defaults` to false
+and keep explicit values; toggling inheritance does not rewrite unrelated nodes.
+Manual Enter and narration are account choices in either mode. `explanation` may
+supply the spoken description; private handoff values are excluded from narration.
+The same Settings dialog is reachable from the panel's terminal dock.

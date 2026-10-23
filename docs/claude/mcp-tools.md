@@ -8,11 +8,40 @@
 -->
 # Tlamatini — Creating a New MCP or Tool
 
-> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
-## v1.90.0 — editable canvas and Interactor
+## v1.91.0 — Live Editor and Terminater configuration
 
-The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; its GitHub release was published on 2026-10-22 and is marked Latest. `main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 (`939acf6b`) makes the catalog's account wizard request local Notifier pop-ups at its checkpoints (`docs/user-creation-wizard.md`). Dated source and frozen runs remain separate.
+**v1.91.0** is the current source version (2026-10-23). Its existing annotated tag
+resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
+agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
+**29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
+files** in the counted `static/agent/js` and `static/agent/css` directories.
+
+**Config → Live Editor & Terminater** opens one dialog with Live Editor,
+Terminater and Voice tabs, also available from the canvas and terminal Settings
+buttons on the chat and control-panel surfaces. Saved account preferences control
+real action pacing, teaching suggestions, shell defaults, manual Enter, waits and
+narration; editor/terminal appearance stays local to the account and browser.
+Presets and previews are drafts until Save; Stop, mute and tab access are immediate.
+
+Migration **0220** stores account preferences and revisions. One TerminalHub applies
+them across chat, ACP and Prompt Flow; legacy explicit flow values remain compatible.
+Speech uses the shared browser queue, selects one focused tab and can wait for a
+real completion receipt before typing. User interruption wins and private input is
+not narrated. The offline editor bundle and runtime/source carriers include the new
+UI and backend modules.
+
+Source evidence on October 23: **17/17 visible browser checks passed; 929 of 931
+regression tests passed**, with two existing README documentation assertions failing
+before this documentation sweep. These are dated source results, not a new installed
+package acceptance. No GitHub release for v1.91.0 was found during this sweep.
+See the [release record](../changes/2026-10-23-v1.91.0.md) and
+[settings guide](../interaction-settings.md).
+
+## Carried from v1.90.0 — editable canvas and Interactor
+
+The v1.90.0 source line had **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations** after migration 0219. Interactor added a module/tool, not an Agent. The annotated tag resolves to `ebc5c3b4` and its GitHub release was published on 2026-10-22. Later commits in that line carried the account wizard’s local Notifier checkpoints. This section preserves v1.90.0 history; current configuration and counts are described above. Dated source and frozen runs remain separate.
 
 - **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
 - **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.

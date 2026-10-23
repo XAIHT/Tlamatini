@@ -6,7 +6,7 @@ type: feedback
 
 # Headless tests are forbidden — Angela, reaffirmed 2026-09-23
 
-> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Run every test and

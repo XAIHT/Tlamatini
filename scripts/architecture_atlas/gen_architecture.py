@@ -2135,7 +2135,7 @@ def sheet_dsm():
 
 
 def sheet_live_editor():
-    sh = new_sheet("Live canvas editor and Interactor - v1.90.0",
+    sh = new_sheet("Live canvas editor and Interactor - v1.91.0",
                    "Editable source, native persistence and tutoring share one document authority. Interactor is a module/tool, not a workflow agent.",
                    "presentation")
     o = sh.body
@@ -2170,10 +2170,52 @@ def sheet_live_editor():
             "Migration 0218 registers the Tool and catalog example, not an Agent. tool_gate_table drives binding, Compact and costs.",
             "Ask Execs gates new/save. New unnamed-path work uses a unique Temp/interactor directory; manual files need user-granted write access.",
             "Password input is not command ownership; an email field or DONE reply does not authorize outbound notification.",
-            "Tag ebc5c3b4; inspected follow-up d274f89c. Source checks do not certify a newly built installed package."]),
+            "Current tag and source a771d27c (v1.91.0). Source checks do not certify a newly built installed package."]),
     ]
     stack(o, 12, TOP, 193, left, size=12.0)
     stack(o, 215, TOP, 193, right, size=12.0)
+    return sh
+
+
+def sheet_interaction_settings():
+    sh = new_sheet("Live Editor and Terminater configuration - v1.91.0",
+                   "One account schema controls real actions; local appearance and a shared speech queue complete the user experience.",
+                   "presentation")
+    o = sh.body
+    left = [
+        ("is1", "Lpresentation", "Dialog and draft", [
+            "Config / canvas Settings / terminal Settings open [[interaction_settings.html]] on chat, ACP and PFP.",
+            "[[interaction_settings.js]] builds Live Editor, Terminater and Voice fields from the server schema.",
+            "Presets, reset and preview edit a draft; Save applies, Cancel/Escape discard. Stop, mute and tab access are immediate.",
+            "[[interaction_settings.css]] keeps tabs, scrolling and footer controls inside the viewport."]),
+        ("is2", "Lpersistence", "Account settings and revisions", [
+            "[[interaction_settings.py]] validates ranges/types and serves authenticated CSRF-protected /agent/interaction-settings/.",
+            "Migration 0220 adds InteractionSettings: one user, JSON preferences, optimistic revision.",
+            "Each action reads a committed snapshot. Conflicting saves ask the user to reload; appearance stays account/browser-local."]),
+        ("is3", "Lpresentation", "Real editor behavior", [
+            "[[interactor/tool.py]] returns teaching-detail guidance and sends saved pacing, pause and narration with the action.",
+            "[[interactor/bridge.js]] keeps document/revision checks and user-first cancellation; guide applies suggestions/ghost choices.",
+            "[[agent_page_editing.js]] and the offline CodeMirror bundle apply font, wrap and line numbers; manual scrolling suspends following."]),
+    ]
+    right = [
+        ("is4", "Ltransport", "One terminal dispatch policy", [
+            "[[terminal_hub.py]] attaches account preference, presentation and result callbacks to the stdlib TerminalHub engine.",
+            "Chat, ACP, PFP and browser actions share it. New flows can use_my_defaults; old explicit flow values remain.",
+            "User-only Enter rejects automatic submission and control characters, including aliases/base64. User keys still work.",
+            "Shell/advisor defaults affect new terminals. Command wait, no-output and handoff windows stay distinct; timeout does not kill."]),
+        ("is5", "Ltransport", "Narration receipts and cancellation", [
+            "[[interaction_narration.py]] selects one focused visible account tab; receipts are bound to its exact connection.",
+            "Before-typing wait is bounded to 120 seconds. Missing listener, Stop or disconnect cancels; reconnect never replays.",
+            "[[voice_runtime.js]] shares one queue with avatar speech; [[interaction_speech.js]] offers explicit skip/stop when voice is unavailable.",
+            "Mute and microphone listening win. Secret-marked text and handoff values are not narrated; results speak status only."]),
+        ("is6", "Lbuild", "Delivery and dated evidence", [
+            "[[build_runtime_assets.py]], [[copy_source_assets.py]], frozen imports, templates and rebuilt editor manifest travel together.",
+            "October 23: 17 visible browser checks passed; real OS speech completed before the first terminal key.",
+            "Implementation regressions: 929/931 passed; two baseline README assertions were corrected by the documentation sweep.",
+            "Existing tag a771d27c. No new executable build or installed acceptance is claimed."]),
+    ]
+    stack(o, 12, TOP, 193, left, size=11.5)
+    stack(o, 215, TOP, 193, right, size=11.5)
     return sh
 
 
@@ -2362,6 +2404,7 @@ def autofit(fn, target, lo=0.85, hi=1.45):
 autofit(sheet_topology, BOTTOM + 1.5)
 sheet_lifecycle()
 sheet_live_editor()
+sheet_interaction_settings()
 autofit(sheet_intelligence, BOTTOM + 1.5)
 sheet_agents()
 autofit(sheet_integration, BOTTOM + 4.5)

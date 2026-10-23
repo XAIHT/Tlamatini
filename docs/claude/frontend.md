@@ -8,11 +8,40 @@
 -->
 # Tlamatini — Frontend Architecture
 
-> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
-## v1.90.0 — editable canvas and Interactor
+## v1.91.0 — Live Editor and Terminater configuration
 
-The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; its GitHub release was published on 2026-10-22 and is marked Latest. `main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 (`939acf6b`) makes the catalog's account wizard request local Notifier pop-ups at its checkpoints (`docs/user-creation-wizard.md`). Dated source and frozen runs remain separate.
+**v1.91.0** is the current source version (2026-10-23). Its existing annotated tag
+resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
+agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
+**29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
+files** in the counted `static/agent/js` and `static/agent/css` directories.
+
+**Config → Live Editor & Terminater** opens one dialog with Live Editor,
+Terminater and Voice tabs, also available from the canvas and terminal Settings
+buttons on the chat and control-panel surfaces. Saved account preferences control
+real action pacing, teaching suggestions, shell defaults, manual Enter, waits and
+narration; editor/terminal appearance stays local to the account and browser.
+Presets and previews are drafts until Save; Stop, mute and tab access are immediate.
+
+Migration **0220** stores account preferences and revisions. One TerminalHub applies
+them across chat, ACP and Prompt Flow; legacy explicit flow values remain compatible.
+Speech uses the shared browser queue, selects one focused tab and can wait for a
+real completion receipt before typing. User interruption wins and private input is
+not narrated. The offline editor bundle and runtime/source carriers include the new
+UI and backend modules.
+
+Source evidence on October 23: **17/17 visible browser checks passed; 929 of 931
+regression tests passed**, with two existing README documentation assertions failing
+before this documentation sweep. These are dated source results, not a new installed
+package acceptance. No GitHub release for v1.91.0 was found during this sweep.
+See the [release record](../changes/2026-10-23-v1.91.0.md) and
+[settings guide](../interaction-settings.md).
+
+## Carried from v1.90.0 — editable canvas and Interactor
+
+The v1.90.0 source line had **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 220 migrations** after migration 0219. Interactor added a module/tool, not an Agent. The annotated tag resolves to `ebc5c3b4` and its GitHub release was published on 2026-10-22. Later commits in that line carried the account wizard’s local Notifier checkpoints. This section preserves v1.90.0 history; current configuration and counts are described above. Dated source and frozen runs remain separate.
 
 - **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
 - **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.
@@ -302,7 +331,7 @@ See [all ranges and persistence rules](../chat-microphone-design.md#config--mic)
 | Menu | Entries |
 |---|---|
 | **Panels** (`#panels-menu-button`) | **Agentic Control Panel** (`#agentic-control-panel`) · **Prompt Flow Panel** (`#prompt-flow-panel`) · **Admin Panel** (`#open-admin`, staff users only) — each opens in a new tab |
-| **Config** (`#config-menu-button`) | **Configure MCPs** (`#enable-mcps`) · **Configure Agents** (`#enable-agents`) · Models · URLs · Contacts · Access Keys Wizard · Voice · **Mic** (`#config-mic`, last) |
+| **Config** (`#config-menu-button`) | **Configure MCPs** (`#enable-mcps`) · **Configure Agents** (`#enable-agents`) · Models · URLs · Contacts · Access Keys Wizard · Voice · **Mic** (`#config-mic`) · **Live Editor & Terminater** (`#config-interaction`) |
 
 **What moved.** The standalone **MCPs** menu (`#mcps-menu-button`) and **Agents** menu (`#agents-menu-button`) no longer exist: **Configure MCPs** and **Configure Agents** now live in **Config**, and **Agentic Control Panel** moved into the new **Panels** menu. The staff-only **Admin** menu (`#admin-menu-button`, "Open Admin page") is gone too — it is now **Panels ▸ Admin Panel**. The dialog ids, the `OpenMcpsDialog` / `OpenAgentsDialog` handlers and the `set-mcps` / `set-agents` WebSocket protocol did NOT change. ⚠️ Harnesses and tests must wait on `#config-menu-button`, never on the removed ids — `scripts/menu_browser_checks.py` asserts that `#mcps-menu-button, #agents-menu-button` match nothing.
 
@@ -429,7 +458,7 @@ Full behaviour in [docs/terminater.md](../terminater.md); what a maintainer must
 - `prompt-flow-panel-model.js` - The `.fpmt` document contract, frozen as `window.PromptFlowPanelModel` (`FORMAT = 'tlamatini-prompting-flow'`, `EXTENSION = '.fpmt'`, `isFlowFilename`, `flowFilename`, the eight `operations` entries (seven executable operations and static User Commentary) with their SVG outlines and executable port positions, `blank`, `node`, `validate(flow, playable)`, `example`). Pure data: no DOM, no network. Its validator mirrors `agent/services/prompt_flow_panel.py::validate_flow` rule for rule, and the backend re-validates every document anyway
 - `prompt-flow-panel.js` - The editor/controller for `prompt_flow_panel.html`: eight-operation palette (the seven prompting operations plus Terminater) plus static User Commentary, drag/click-to-add, ACP-style press-drag-release connections (white side triangles, horizontal curves, Decision has right-side Y/N outputs; one destination per output), marquee and Ctrl-click selection, undo/redo, zoom 25 %–200 % (Ctrl+wheel) and Fit, the per-operation configure dialogs (shared `dialog_policy.js` / `dialog_theme.css`), file Open/Save/drop, the per-user browser draft (`localStorage` key `tlamatini.prompting-flow.draft.v1.<user id>`), and playback over the connection-scoped **`/ws/prompt-flow-panel/`** WebSocket (8 s `ping` heartbeat, explicit **Reconnect**; a connection never starts or resumes a run by itself). Full contract: *Prompt Flow Panel* below and [the user guide](../prompting-flow-designer.md)
 
-**Total: 61 JS modules** (26 chat + 15 ACP + 1 ACP entry-point + 15 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel + 1 Terminals dock). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
+**Total: 64 JS modules** (26 chat + 15 ACP + 1 ACP entry-point + 18 shared/chat-runtime auxiliary + 1 welcome + 2 Prompt Flow Panel + 1 Terminals dock). Count them with a file listing (`agent/static/agent/js/*.js`), never by hand.
 
 ### Uniform dialog and long-operation contract (v1.48.13)
 
@@ -504,3 +533,18 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
 Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+
+## Live Editor & Terminater dialog — v1.91.0
+
+`interaction_settings.html`, `interaction_settings.js` and `interaction_settings.css`
+provide three accessible tabs, presets, draft validation, preview, Save, Cancel and
+Reset this tab. `#config-interaction` and `[data-interaction-settings]` triggers open
+it. The shared theme stays last. Main chat, ACP and PFP carry the same dialog and
+voice scripts. Invalid values reveal the owning tab before browser validation.
+
+`voice_runtime.js` is the shared speech owner extracted from avatar.js;
+`interaction_speech.js` coordinates preview and live narration. `terminater_dock.js`
+announces focus/visibility, handles narration receipts and applies terminal appearance.
+`agent_page_editing.js` applies editor preferences; the offline CodeMirror entry uses
+an appearance compartment and retains preferences on remount. Do not read the hidden
+compatibility textarea instead of the real editor. See [the contract](../interaction-settings.md).

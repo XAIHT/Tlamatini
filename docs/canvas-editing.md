@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Editing and saving canvas files
 
-Introduced in v1.89.0 (2026-10-21), carried by v1.90.0. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
+Introduced in v1.89.0 (2026-10-21), carried by v1.91.0 with configurable editor behavior. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
 
 Open a text or source file in the chat canvas and edit it directly. The filename
 bar provides **Save**, **Save as…**, **Undo**, **Redo**, **Find** (including replace),
@@ -140,3 +140,13 @@ replacement recovery. Full JavaScript lint and parsing (99 files), targeted
 Python Ruff checks and `git diff --check` passed. Collected static assets were
 refreshed before the regression run. Evidence is retained in
 `Temp/canvas-editing-visible/final-validation-transcript.txt`.
+
+## Editor appearance and tutoring settings (v1.91.0)
+
+**Config → Live Editor & Terminater** and the canvas Settings button control the
+real editor font (12–24 px, default 13), line numbers and wrapping. These appearance
+choices persist per account in this browser and apply when a document is mounted.
+They do not alter the file's contents or dirty baseline. The Live Editor tab also
+configures Interactor pacing, segment pauses, suggestions and cursor following;
+the Voice tab controls segment narration. Account behavior and local appearance
+have separate storage. See [Interaction settings](interaction-settings.md).

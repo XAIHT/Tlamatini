@@ -2,7 +2,7 @@
 # Terminater — visible, user-supervised terminals
 
 > **Status: released in [v1.88.0](changes/2026-10-20-v1.88.0.md)** (tagged 2026-10-20),
-> carried in [v1.90.0](changes/2026-10-22-v1.90.0.md). See [the change record](changes/2026-10-19-terminater.md).
+> carried in [v1.91.0](changes/2026-10-23-v1.91.0.md). See [the change record](changes/2026-10-19-terminater.md).
 > Dated evidence below keeps its original date.
 
 Terminater is the 86th workflow agent and the first one whose result you can
@@ -315,3 +315,30 @@ machine.
   output. A command that asks a question nobody answers ends as `operator_required`.
 * The advisor is a deterministic safety net, not a sandbox: it warns, it does not block.
 * Terminals belong to the Tlamatini process. They end when it exits.
+
+## Account configuration in v1.91.0
+
+Use **Config → Live Editor & Terminater → Terminater**, or the dock's Settings
+button. Speed defaults to 50 WPM (20–160), shell to PowerShell, advisor to enabled,
+command wait to 120 s, no-output threshold to 45 s, and handoff wait to 300 s.
+Linked editor/terminal speeds use the shared 40–160 WPM range. Shell and advisor
+defaults affect new terminals; typing actions receive a snapshot of the current waits.
+A wait timeout does not terminate the process.
+
+**I always press Enter** is enforced by the server for chat, ACP, Prompt Flow and
+browser actions. Commands must be single lines without control characters;
+automated Enter/aliases/base64 cannot bypass it. The user may still press Enter.
+New agent configurations and Prompt Flow nodes can use `use_my_defaults`; older
+flow files normalize it to false and retain their explicit values. Typed chat
+preserves an explicitly requested shell and otherwise uses the account default.
+
+The Voice tab can narrate every command before, during or after typing, optionally
+waiting for real completion before the first key. One focused account tab speaks;
+missing listeners or cancellation stop a required narration step. A reconnect never
+replays it. Mark `secret` and use `<<USER:...>>` for private handoff values. An optional
+`explanation` supplies meaningful narration; without it the explanation is generic.
+Result notices describe command-action status without speaking captured output.
+
+Terminal font, cursor and preferred layout apply to existing views and persist in
+that account/browser. Prompt read-back uses the real screen after a resize. The
+[complete reference](interaction-settings.md) covers defaults, validation and receipts.

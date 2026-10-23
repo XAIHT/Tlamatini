@@ -1,7 +1,7 @@
-# OOB_shift_reaper and NAMU - v1.90.0 source review
+# OOB_shift_reaper and NAMU - v1.91.0 source review
 
 Created by Angela López Mendoza · @angelahack1.
-Reviewed against source d274f89c, 2026-10-22; tag v1.90.0 resolves to ebc5c3b4.
+Reviewed against source a771d27c, 2026-10-23; tag v1.91.0 resolves to the same commit.
 
 ## 1. Two lifecycle boundaries
 
@@ -63,7 +63,9 @@ remote cancellation test or frozen-package acceptance.
 
 Terminater owns real terminal sessions through TerminalHub. Reapers consult
 terminal_hub.live_pids(); closing a browser page does not itself kill the shells.
-Terminal lifetime and its own hung-command/user-takeover controls are separate from
+Config → Live Editor & Terminater supplies account pacing, manual Enter and bounded narration.
+A command wait timeout does not kill the process. Terminal lifetime and its own
+hung-command/user-takeover controls are separate from
 the reconnaissance OOB grace window.
 
 Interactor is a module, not an agent process or terminal. It operates the live editor
@@ -77,5 +79,5 @@ using revision checks and account/session-bound capabilities. These editor mecha
 do not change NAMU or database backup/restore.
 
 Related contracts: docs/terminater.md, docs/interactor.md, docs/canvas-editing.md and
-docs/changes/2026-10-22-v1.90.0.md. The complete architecture and summary dossiers
+docs/changes/2026-10-23-v1.91.0.md. The complete architecture and summary dossiers
 describe the broader application and distinguish source evidence from installed tests.

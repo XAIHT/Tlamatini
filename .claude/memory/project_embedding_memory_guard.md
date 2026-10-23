@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-12: Added `Tlamatini/agent/embedding_memory_guard.py` — emits a chat-bubble warning when the configured Ollama embedding model is predicted to occupy more than 80% of total GPU VRAM. Wired into `agent/consumers.py::setup_contextual_rag_chain` after the `MSG_AGENT_LOADING_CONTEXT` broadcast and before the `asyncio.to_thread(setup_llm_with_context, ...)` call.

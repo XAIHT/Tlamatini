@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
-> Current release: **[v1.90.0](docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 A dated, append-only log of surgical changes with the verbatim request and the
@@ -528,3 +528,13 @@ build, install or live self-update is implied.
 Request: sweep the repository, update every Markdown file and the PDF/PPTX, and treat v1.85.0 as released.
 
 Changed all tracked Markdown release references; reconciled Refresh, Views/Reset, centered avatar and required carriers; updated package/API examples and the shared dossier content. Historical evidence keeps its dates. The original bytes are backed up under the task-local `tlamatini-docs-185/before` directory; a final documentation patch records this refresh only. No Git history or protected database mechanism is changed. See the release record for the implementation matrix and verification.
+
+## 2026-10-23 — v1.91.0 documentation and configuration release
+
+Updated the current-version Markdown surfaces, package manifest, user/manual and
+self-knowledge guidance for Live Editor & Terminater settings. Regenerated the full
+PDF, editable PPTX, architecture atlas and supporting PDFs from shared/current source.
+Existing tag `v1.91.0` at `a771d27c` is preserved. Source counts are 86 agents, 67
+wrapped agents, 110 tools, 29 skills, 220 migrations, 64 JS modules and 29 stylesheets.
+Historical implementation tests retain their original dates and limits; documentation
+verification is separate. [Release and sweep record](docs/changes/2026-10-23-v1.91.0.md).

@@ -4351,7 +4351,7 @@
       "aliases": [
         "terminater"
       ],
-      "purpose": "Raises REAL `cmd.exe` / PowerShell terminals — visible terminals inside Tlamatini's Terminals area (Views ▸ Terminals, or Ctrl+`) — where the USER watches the work, can interrupt it, answer a question the command asks, or finish a line Tlamatini only started. The visible sibling of Executer: Executer runs a command and returns text; Terminater TYPES every key like a person (default 50 words per minute, never pasted, never instant) and then reads the output back in full. Runs ONE `action` per run (`run` is the default: open-or-reuse a terminal, type, wait, read) — `open`, `type`, `send_key`, `wait`, `read`, `commands`, `abort` (Ctrl+C, then the command's processes), `kill`, `force_kill`, `kill_all`, `list`, `focus`, `rename`, `layout` (`tabs`, `tile`, `tile-h`, `tile-v`, `grid`), `watch_user`, `warn_user` and `handover` — and terminals persist between runs, so a flow can open one in one step and close it in another. `<<USER:hint>>` inside the text hands the keyboard to the user at that point (`ping <<USER:host>> -n 2`). A command that hangs (no output for `hang_seconds`) is detected and can be aborted; a deterministic advisor warns about dangerous or mistyped commands. Emits an `INI_SECTION_TERMINATER` block (`status`, `exit_code`, `typed`, `user_part`, `terminal_id`, …) and ALWAYS starts its `target_agents`, so a downstream Forker can branch on `{status}` (`completed`, `command_failed`, `hung`, `operator_required`, `aborted`). Windows 10 1809+ (ConPTY).",
+      "purpose": "Raises REAL `cmd.exe` / PowerShell terminals — visible terminals inside Tlamatini's Terminals area (Views ▸ Terminals, or Ctrl+`) — where the USER watches the work, can interrupt it, answer a question the command asks, or finish a line Tlamatini only started. The visible sibling of Executer: Executer runs a command and returns text; Terminater TYPES every key like a person (default 50 words per minute, never pasted, never instant) and then reads the output back in full. Config → Live Editor & Terminater controls saved pace, shell, manual Enter, waits, narration and appearance; new flows can use account defaults while older explicit flows remain compatible. Runs ONE `action` per run (`run` is the default: open-or-reuse a terminal, type, wait, read) — `open`, `type`, `send_key`, `wait`, `read`, `commands`, `abort` (Ctrl+C, then the command's processes), `kill`, `force_kill`, `kill_all`, `list`, `focus`, `rename`, `layout` (`tabs`, `tile`, `tile-h`, `tile-v`, `grid`), `watch_user`, `warn_user` and `handover` — and terminals persist between runs, so a flow can open one in one step and close it in another. `<<USER:hint>>` inside the text hands the keyboard to the user at that point (`ping <<USER:host>> -n 2`). A command that hangs (no output for `hang_seconds`) is detected and can be aborted; a deterministic advisor warns about dangerous or mistyped commands. Emits an `INI_SECTION_TERMINATER` block (`status`, `exit_code`, `typed`, `user_part`, `terminal_id`, …) and ALWAYS starts its `target_agents`, so a downstream Forker can branch on `{status}` (`completed`, `command_failed`, `hung`, `operator_required`, `aborted`). Windows 10 1809+ (ConPTY).",
       "config_schema": {
         "action": "str",
         "terminal": "str",
@@ -4363,6 +4363,8 @@
         "submit": "bool",
         "secret": "bool",
         "typing_wpm": "int",
+        "use_my_defaults": "bool",
+        "explanation": "str",
         "wait": "bool",
         "wait_seconds": "int",
         "hang_seconds": "int",
@@ -4385,6 +4387,9 @@
         "close_after": "bool",
         "load_profile": "bool",
         "advisor": "bool",
+        "create_if_missing": "bool",
+        "clear_line": "bool",
+        "check_line": "bool",
         "hub_url": "str",
         "mode": "str",
         "user": "str",
@@ -4418,6 +4423,10 @@
         "terminals",
         "hub",
         "message",
+        "verified",
+        "screen_line",
+        "enter_pressed",
+        "notes",
         "response_body"
       ],
       "output_slots": {

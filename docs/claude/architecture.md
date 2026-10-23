@@ -8,11 +8,40 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
-## v1.90.0 — editable canvas and Interactor
+## v1.91.0 — Live Editor and Terminater configuration
 
-The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; its GitHub release was published on 2026-10-22 and is marked Latest. `main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 (`939acf6b`) makes the catalog's account wizard request local Notifier pop-ups at its checkpoints (`docs/user-creation-wizard.md`). Dated source and frozen runs remain separate.
+**v1.91.0** is the current source version (2026-10-23). Its existing annotated tag
+resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
+agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
+**29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
+files** in the counted `static/agent/js` and `static/agent/css` directories.
+
+**Config → Live Editor & Terminater** opens one dialog with Live Editor,
+Terminater and Voice tabs, also available from the canvas and terminal Settings
+buttons on the chat and control-panel surfaces. Saved account preferences control
+real action pacing, teaching suggestions, shell defaults, manual Enter, waits and
+narration; editor/terminal appearance stays local to the account and browser.
+Presets and previews are drafts until Save; Stop, mute and tab access are immediate.
+
+Migration **0220** stores account preferences and revisions. One TerminalHub applies
+them across chat, ACP and Prompt Flow; legacy explicit flow values remain compatible.
+Speech uses the shared browser queue, selects one focused tab and can wait for a
+real completion receipt before typing. User interruption wins and private input is
+not narrated. The offline editor bundle and runtime/source carriers include the new
+UI and backend modules.
+
+Source evidence on October 23: **17/17 visible browser checks passed; 929 of 931
+regression tests passed**, with two existing README documentation assertions failing
+before this documentation sweep. These are dated source results, not a new installed
+package acceptance. No GitHub release for v1.91.0 was found during this sweep.
+See the [release record](../changes/2026-10-23-v1.91.0.md) and
+[settings guide](../interaction-settings.md).
+
+## Carried from v1.90.0 — editable canvas and Interactor
+
+The v1.90.0 source line had **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations** after migration 0219. Interactor added a module/tool, not an Agent. The annotated tag resolves to `ebc5c3b4` and its GitHub release was published on 2026-10-22. Later commits in that line carried the account wizard’s local Notifier checkpoints. This section preserves v1.90.0 history; current configuration and counts are described above. Dated source and frozen runs remain separate.
 
 - **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
 - **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.
@@ -857,3 +886,26 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 
 Both `.flw` agent flows and `.fpmt` prompting flows now have Windows registration, repair, removal, status and Default Apps handling. Explorer/source command-line opening validates a bounded snapshot, reuses a matching running server before database startup, and returns through login to the correct editor without execution. Main-chat Open/drop routes both formats into separate editor tabs while preserving the chat document. The historical `.flw` installer wrappers cover both types for old installer/uninstaller binaries; independent management uses `flow_file_associations.ps1 -Extensions`. Never erase UserChoice or another application’s Open With entries. Update Repair respects explicit unregistration and installation ownership. See [Windows flow files](../windows-flow-files.md). Cache suffix at that change: `-flow-file-opening-2`. Committed to `main` on 2026-10-04. The October 4 local release-validation campaign also rebuilds isolated frozen artifacts; its dated evidence distinguishes build completion from runtime acceptance.
+
+## Interaction preferences and narration — v1.91.0
+
+`interaction_settings.py` owns the shared field schema, validation, defaults and
+authenticated CSRF-protected settings API. Migration 0220 adds the per-user JSON
+preferences and revision. Compare-and-update detects conflicting saves; actions
+read current committed settings and carry a private snapshot. UI appearance is
+stored per account/browser, separately from server behavior and flow files.
+
+`terminal_hub.py` attaches preference, presentation and outcome callbacks to the
+single stdlib TerminalHub engine. All doors resolve through that hub. Typed chat
+resolves explicit versus omitted shell at the authenticated launcher. Legacy flows
+keep explicit values; new flows can inherit. Manual Enter remains an account policy.
+Interactor carries settings through its existing tool/bridge receipt path; CodeMirror
+owns actual text and appearance. No second editor or terminal authority is introduced.
+
+`interaction_narration.py` chooses one recently focused visible account connection,
+binds receipts to it and bounds before-typing waits to 120 s. Disconnect, Stop and
+deadline cancel pending work without reconnect replay. `voice_runtime.js` provides
+one browser speech queue shared by avatar, editor and terminal; `interaction_speech.js`
+handles cancellation, unavailable-voice choices and completion receipts. Private
+handoff values are excluded and result notices never read command output aloud.
+See [the settings contract](../interaction-settings.md).

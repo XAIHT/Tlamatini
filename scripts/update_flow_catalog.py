@@ -50,6 +50,10 @@ def render_inventory(catalog):
         "and [dated source/frozen verification](model-configuration-verification.md) for runtime evidence. "
         "The offline `check_agent_runtimes` gate prepares every template, executes model loaders, refreshes "
         "helpers/catalogs and runs File-Creator; it does not exercise every provider or hardware action.", "",
+        "Config → Live Editor & Terminater (v1.91.0) adds account interaction preferences, not an agent type. "
+        "New Terminater configurations can inherit shell, pacing, advisor and wait defaults with `use_my_defaults`; "
+        "older explicit flows remain compatible. Manual Enter and narration remain account choices. "
+        "See [the complete settings reference](interaction-settings.md).", "",
         "| Agent | Config keys | Structured fields | Output slots | Lifecycle |",
         "|---|---:|---:|---|---|",
     ]

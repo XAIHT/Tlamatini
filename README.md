@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/latest"><img src="https://img.shields.io/badge/DOWNLOAD-v1.90.0-38BDF8?style=for-the-badge&labelColor=101827" alt="Download Tlamatini v1.90.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/tree/v1.91.0"><img src="https://img.shields.io/badge/SOURCE-v1.91.0-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.91.0" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/OPEN%20SOURCE-MIT-E9C46A?style=for-the-badge&labelColor=101827" alt="MIT open source" /></a>
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-818CF8?style=for-the-badge&labelColor=101827&logo=discord&logoColor=white" alt="Join the community on Discord" /></a>
@@ -31,7 +31,7 @@
   <a href="https://xaiht.org">Website</a> ·
   <a href="BookOfTlamatini.md">Full guide</a> ·
   <a href="Tlamatini-Architecture.pdf">Architecture atlas</a> ·
-  <a href="docs/changes/2026-10-22-v1.90.0.md">What's new</a>
+  <a href="docs/changes/2026-10-23-v1.91.0.md">What's new</a>
 </p>
 
 > [!IMPORTANT]
@@ -39,7 +39,7 @@
 
 <p align="center">
   <b>86 workflow agents</b> &nbsp;·&nbsp; <b>67 agents callable from chat</b> &nbsp;·&nbsp; <b>110 built-in tools</b><br />
-  <sub>Current v1.90.0 source inventory. The 67 chat wrappers are included in the 110 tools; enabled external MCP servers add their own tools.</sub>
+  <sub>Current v1.91.0 source inventory. The 67 chat wrappers are included in the 110 tools; enabled external MCP servers add their own tools.</sub>
 </p>
 
 <p align="center">
@@ -96,6 +96,19 @@ Turn on **Multi-Turn**, enable **Interactor** in **Config ▸ Configure MCPs/Too
 Open **Views ▸ Terminals** to work with real **CMD and PowerShell** sessions. Tlamatini types commands key by key, waits for the result and reads it back. You can use tabs, split views or a grid, and press **Esc** to take over the keyboard.
 
 Terminater works from **Multi-Turn chat**, the **Agentic Control Panel** and the **Prompt Flow Panel**. Start with **Catalog of Prompts ▸ Run & Execute** for a first look, a handover and a guided tour. [Explore Terminater →](docs/terminater.md)
+
+### Choose how she types, teaches and speaks
+
+Open **Config → Live Editor & Terminater** to set the pace of a lesson or command.
+Choose typing speed, pauses, suggestions and appearance; select a default shell
+and whether **you always press Enter**. Turn on narration for every command or
+teaching segment, choose what she says and when, and let speech finish before
+typing. **Standard** and **Guided learning** presets give you a starting point;
+Preview lets you try the draft before saving. [Explore the settings →](docs/interaction-settings.md)
+
+**New in [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
+dialog controls the real editor and terminal behavior across chat and both control
+panels. This source tag is available; the Downloads link refers to published packages.
 
 **Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The release record distinguishes tagged source, later `main` changes and dated installed-build evidence.
 
@@ -272,8 +285,9 @@ Pick a doorway and go as deep as your project needs.
 | :--- | :--- |
 | [Book of Tlamatini](BookOfTlamatini.md) | The full guide, architecture, workflows and development history. |
 | [Every agent](agents_descriptions.md) | The specialist catalog and each agent's role. |
-| [v1.90.0 release record](docs/changes/2026-10-22-v1.90.0.md) | Recent developments, source inventory and dated verification evidence. |
+| [v1.91.0 release record](docs/changes/2026-10-23-v1.91.0.md) | Recent developments, source inventory and dated verification evidence. |
 | [Canvas editing](docs/canvas-editing.md) · [Interactor](docs/interactor.md) · [Terminater](docs/terminater.md) | Edit, learn and run with direct control. |
+| [Live Editor & Terminater settings](docs/interaction-settings.md) | Typing, teaching, narration, terminal behavior, presets and appearance. |
 | [Model configuration](docs/model_configuration.md) · [Voice](docs/chat-microphone-design.md) · [Usage](docs/usage-dashboard.md) | Models, speech, cloud usage and configuration. |
 | [Prompt Flow Panel](docs/prompting-flow-designer.md) · [Desktop and flow contracts](docs/desktop-input-and-flow-contracts.md) | Visual processes and the rules behind their execution. |
 | [PDF canvas](docs/pdf-canvas.md) · [Canvas Refresh](docs/canvas-refresh.md) | Document context and keeping open files current. |
@@ -306,6 +320,14 @@ When you enable, configure, modify, chain, or execute an agent, **that agent and
 The optional Blue-hat toolkit can change persistent Windows policy and, in explicitly armed modes, block IPs or terminate processes. Read [its complete guide](security/README.md), begin with report-only observation, and use security tooling only on systems you own or are explicitly authorized to assess.
 
 </details>
+
+### Enable Tlamatini as a Blue-hat agent
+
+Use the [Blue-hat toolkit guide](security/README.md) to configure optional Windows
+defense and report-only observation. During an in-app update, security code is
+replaced while existing local evidence is carried through `_security_logs_carryover`
+and restored into the new installation. Evidence preservation does not certify the
+security state of a machine; the guide explains the scripts and their scope.
 
 ## Build with us
 

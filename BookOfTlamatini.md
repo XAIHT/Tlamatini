@@ -8,7 +8,7 @@
 -->
 # Tlamatini
 
-> Current release: **[v1.90.0](docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 ![Project Logo](Tlamatini.jpg)
@@ -998,7 +998,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-This book documents **v1.90.0**, including editable canvas files, native Save As and Interactor. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
+This book documents **v1.91.0**, including Live Editor & Terminater configuration, editable canvas files, native Save As and Interactor. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2852,14 +2852,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.90.0 is taken)
+git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.91.0 is taken)
 git push origin vMAJOR.MINOR.PATCH
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.90.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.90.0`, so the bare runtime version resolves to `1.90.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.91.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.91.0`, so the bare runtime version resolves to `1.91.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -4086,7 +4086,7 @@ The other firmware agents make Tlamatini an *embedded engineer*. ESPHomer makes 
 
 **Historical source update — static User Commentary and separate User Input (2026-10-03):** The existing question/reply/cancel operation is now User Input with the supplied notched figure. User Commentary is an independent speech-bubble review note: inline writing, palette/font/size choices, resizing, Undo/Redo and complete content containment without internal scrollbars. Notes save with the diagram and never enter playback or model history. New `.fpmt` saves are version 2; version 1 executable commentary migrates to User Input without losing settings or connections. Verified by 61 backend/packaging tests and nine visible Chrome checkpoints. At that verification point the change was uncommitted source work; no executable/installer was rebuilt. The older release entries below retain their historical names/format versions. [Implementation and verification](docs/changes/2026-10-03-prompt-commentary-input.md).
 
-**v1.90.0 (tagged and published 2026-10-22)** brings Interactor: a live tutor inside the editable chat canvas. It reads the exact unsaved buffer, types a small teaching segment, hands the next field to the learner and offers optional local completions. It carries v1.89.0’s CodeMirror editor and native Save As, plus tab-visibility recovery, narrow-canvas layout and account-wizard intent fixes. The source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 + 67 + 12 + 10), and 219 migrations**. Interactor is a module/tool, not an additional workflow agent. The tag resolves to `ebc5c3b4`; its GitHub release ("Tlamatini v1.90.0 Win11x64") was published on 2026-10-22 and is marked Latest. `main`/`origin/main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 makes the catalog's account wizard ask for local Notifier pop-ups at its checkpoints. Source tests and an existing frozen-package check are dated separately; this documentation does not certify a newly built executable. See the [v1.90.0 release record](docs/changes/2026-10-22-v1.90.0.md).
+**v1.90.0 (tagged and published 2026-10-22)** brings Interactor: a live tutor inside the editable chat canvas. It reads the exact unsaved buffer, types a small teaching segment, hands the next field to the learner and offers optional local completions. It carries v1.89.0’s CodeMirror editor and native Save As, plus tab-visibility recovery, narrow-canvas layout and account-wizard intent fixes. That source line had **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 + 67 + 12 + 10), and 219 migrations**. Interactor is a module/tool, not an additional workflow agent. The tag resolves to `ebc5c3b4`; its GitHub release ("Tlamatini v1.90.0 Win11x64") was published on 2026-10-22 and was marked Latest at that time. `main`/`origin/main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and reported 1.90.0 at that time; migration 0219 makes the catalog's account wizard ask for local Notifier pop-ups at its checkpoints. Source tests and an existing frozen-package check are dated separately; this documentation does not certify a newly built executable. See the [v1.90.0 release record](docs/changes/2026-10-22-v1.90.0.md).
 
 **In `v1.83.0` (tagged 2026-10-14):** a page-wide **file-drop router** (`file_drop_router.js`): one capture-phase listener in the `<head>` of every page — the chat, the Agentic Control Panel, the Prompt Flow Panel, the welcome and login pages, the Django admin and the PDF viewer frame — that claims only file drags, recognises each file by its bytes (extension, MIME type, magic numbers, a byte-order-mark-aware text test and a real JSON parse that finds an MCP config in every shape, UTF-16 from PowerShell included) and sends each kind to its own mechanism: an MCP `.json` to a confirmation and then the External ▸ MCPs catalog, a `.flw` to the Agentic Control Panel or a new tab, a `.fpmt` to the Prompt Flow Panel or a new tab, a picture to the chat message, a PDF, Markdown file, source code or plain JSON to the chat canvas, and a folder, archive or other binary to a note in plain words. Pages register what they can do with `TlamatiniFileDrop.register(kinds, fn, {label})`, and the label also drives the overlay shown while dragging. It replaced four per-page handlers — the chat column's image listeners and overlay, the canvas's blind open-as-text drop, the External ▸ MCPs dialog's private import and the Prompt Flow Panel's viewport drop — which is why an MCP `.json` used to report an error on the chat, open as text on the canvas and navigate the browser away on the other pages. Checked by 138 router cases, 22 Python tests (319 Django tests in the touched suites), ESLint with no errors, and a headed Chrome run of 58 of 58 checks with 24 Shoter photos. With it come two changes credited to Tlamatini's-AutoBot: the **docked avatar follows both composer dividers** (`63a62cc1`, 2026-10-13) — the vertical divider now shrinks the docked portrait as well as the message box, from 282 px to 120 px at 1440 CSS px, verified by 19 docked-avatar and 18 existing composer checkpoints ([record](docs/changes/2026-10-13-docked-avatar-divider.md)); and a request Image-Interpreter or Video-Analyzer refuses for a wrong or missing setting (`91ff8453`, 2026-10-12) no longer raises the red fatal-analysis dialog — the launcher returns `error_kind: "request"` and the model just corrects the call — while Video-Analyzer's description says it has no `transcription.engine` setting. The frontend now counts 59 JS modules and 26 stylesheets, the cache suffix is `-file-drop-router-1`, and there is no new migration (the count stays 213).
 
@@ -4634,3 +4634,31 @@ See [configuration, routing, Parametrizer mappings and limitations](Tlamatini/ag
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](docs/visual-analysis-errors.md).
+
+## Live Editor & Terminater configuration — v1.91.0
+
+Open **Config → Live Editor & Terminater**, or the Settings button above the
+canvas/in the terminal dock. Start with Standard or Guided learning, adjust the
+three tabs, then Preview and Save. Cancel/Escape discard the draft; live editor
+access, Stop and mute are explicitly immediate. Opening settings stops an active
+editor teaching action so its controls remain yours.
+
+| Tab | Practical choices |
+|---|---|
+| Live Editor | 40–160 WPM; optional linked terminal speed; 0–3 s pause; brief/balanced/detailed teaching; suggestions on/off and choices without ghost text; follow typing; font, line numbers and wrapping |
+| Terminater | 20–160 WPM; available default shell; task-controlled or user-only Enter; advisor for new terminals; command, no-output and user-handoff waits; font, cursor and layout |
+| Voice | Narrate each command or editor segment; explanation, literal text or both; before/during/after; wait for completion before typing; errors/all/off result notices |
+
+Account behavior follows you across chat and the control panels. Appearance stays
+with the account in this browser. Existing Config → Voice choices control voice,
+rate, pitch and volume; global mute and microphone listening take precedence.
+Ctrl+Shift+M toggles mute, and Escape stops speech. A missing voice offers Continue
+without voice or Stop; required narration cannot silently turn into unannounced typing.
+
+Choose **I always press Enter** for demonstrations where you submit each command.
+It applies even when a flow carries explicit settings. New flow nodes can inherit
+your defaults; older files keep their explicit values. A wait timeout does not kill
+a running command. Teaching detail guides the model, rather than guaranteeing exact
+prose. The [full settings reference](docs/interaction-settings.md) lists defaults,
+ranges, storage scope and compatibility; the [1.91.0 record](docs/changes/2026-10-23-v1.91.0.md)
+separates source verification from installed-package acceptance.

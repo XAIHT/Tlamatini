@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Current release: **[v1.90.0](../changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 > **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
@@ -5635,3 +5635,15 @@ Mouser/Keyboarder/Shoter received the coordinate, target-binding and receipt cha
 ## 2026-10-04 — Windows .flw / .fpmt lifecycle (source changes)
 
 Both flow types now support owned per-user registration/removal, update repair, Default Apps, early command-line opening, running-instance reuse and login handoff. Chat routes each to its editor. Invalid .flw files preserve the canvas; saved agent IDs remain stable and failed credential redaction blocks unsafe downloads. See [verification and changes](../changes/2026-10-04-windows-flow-files.md) and [Windows flow files](../windows-flow-files.md). No executable rebuild or commit.
+
+## 2026-10-23 — v1.91.0 interaction configuration
+
+The shared Live Editor & Terminater dialog now controls real action pacing,
+suggestions, shell/manual-Enter policy, timeouts, appearance and voice. Migration
+0220 stores account preferences with optimistic revisions; existing flows retain
+explicit values. Shared speech uses cancellable per-connection receipts, and a
+required narration can finish before the first terminal key. Browser verification
+also fixed preset event order, hidden CodeMirror gutters and real prompt read-back
+after terminal resize. The source campaign passed 17 visible browser checks and
+929/931 regressions; the two baseline README documentation failures are addressed
+by the subsequent documentation sweep. See [the dated release record](../changes/2026-10-23-v1.91.0.md).

@@ -1,143 +1,143 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
-> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
 - [Prompt Flow: static Commentary and runtime User Input](project_prompt_flow_commentary_input.md) — version 2 saves, version 1 migration, inline rich notes with a floating selection toolbar, mixed fonts/styles, all-border resizing and full-text containment; **no configuration dialog**; **no internal scrollbars**. Runtime reply/cancel stays unchanged. Run output has a 5–95% divider, independent scrolling and separate per-user layout storage.
 - [Developer workflow is not product UX](feedback_developer_product_boundary.md) — Angela is the developer; visible verification must not become extra product windows or focus stealing. Direct dictation uses the main console/log and in-chat recording status.
 - [User profile](user_profile.md) — **Angela**, primary Tlamatini dev (<REDACTED>). Always "Angela".
-- [ALWAYS ENGLISH to Angela (MANDATORY)](feedback_always_english_to_angela.md) — talk to her ONLY in English; Spanish only for her users' content.
-- [Fixed messages VERBATIM](feedback_speak_fixed_messages_verbatim.md) — never paraphrase a pre-established message; speak/show it exactly (strip only markup/timestamp).
-- [Plain, short answers](feedback_plain_short_answers.md) — one bolded fact, few points, everyday words, end with ONE question.
+- ALWAYS ENGLISH to Angela (MANDATORY) — `feedback_always_english_to_angela.md` (historical entry; file absent from this checkout) — talk to her ONLY in English; Spanish only for her users' content.
+- Fixed messages VERBATIM — `feedback_speak_fixed_messages_verbatim.md` (historical entry; file absent from this checkout) — never paraphrase a pre-established message; speak/show it exactly (strip only markup/timestamp).
+- Plain, short answers — `feedback_plain_short_answers.md` (historical entry; file absent from this checkout) — one bolded fact, few points, everyday words, end with ONE question.
 - [State constraints up front](feedback_state_constraints_upfront.md) — constraints+options FIRST; API "succeeds" but nothing shows → STOP.
-- [Step-by-step interactive](feedback_step_by_step_interactive.md) — ONE step + exact reply-string, WAIT, repeat.
-- [NEVER SLEEP / keep checking](feedback_never_sleep_keep_checking.md) — monitor in a tight active loop; never defer/go quiet.
-- [Minimize response time (priority)](feedback_minimize_response_time.md) — per-request chat latency is the north star, NOT startup.
+- Step-by-step interactive — `feedback_step_by_step_interactive.md` (historical entry; file absent from this checkout) — ONE step + exact reply-string, WAIT, repeat.
+- NEVER SLEEP / keep checking — `feedback_never_sleep_keep_checking.md` (historical entry; file absent from this checkout) — monitor in a tight active loop; never defer/go quiet.
+- Minimize response time (priority) — `feedback_minimize_response_time.md` (historical entry; file absent from this checkout) — per-request chat latency is the north star, NOT startup.
 - [FORBIDDEN headless tests — ALL VISIBLE (HARD)](feedback_forbidden_headless_visible_tests.md) — headed Playwright on real desktop, full-screen clock photos; never pass a stale/transient/timeout.
 - [Foreground visible windows (MANDATORY)](feedback_foreground_visible_windows.md) — every command/test/agent in a VISIBLE foreground forked window.
 - [Run agents visibly](feedback_run_tlamatini_agents_visible.md) — foreground + dangerouslyDisableSandbox (sandbox hides GUIs).
-- [Use AND fix Tlamatini's tools (MANDATORY)](feedback_use_and_fix_tlamatini_tools.md) — work via mcp__tlamatini__*; FIX broken tools; push needs explicit OK.
-- [Images ONLY via Tlamatini (HARD)](feedback_images_exclusively_tlamatini.md) — view/analyze images ONLY with Image-Interpreter, never Claude's Read; avatar art = Angela's Tlamatini renders ONLY (no RPM/stock).
-- [Load all tools at start](feedback_load_all_tlamatini_tools_at_start.md) — load the COMPLETE mcp__tlamatini__* set up front; new agents need a restart.
-- [Test toggle state](feedback_test_toggle_state.md) — set+VERIFY toggles (Multi-Turn ON, Exec Report ON, Ask Execs OFF) + clear history.
-- [Chat-test login](project_tlamatini_chat_test_login.md) — harness logs in as **angela** via TLAMATINI_USER/PASS env. SECRET.
+- Use AND fix Tlamatini's tools (MANDATORY) — `feedback_use_and_fix_tlamatini_tools.md` (historical entry; file absent from this checkout) — work via mcp__tlamatini__*; FIX broken tools; push needs explicit OK.
+- Images ONLY via Tlamatini (HARD) — `feedback_images_exclusively_tlamatini.md` (historical entry; file absent from this checkout) — view/analyze images ONLY with Image-Interpreter, never Claude's Read; avatar art = Angela's Tlamatini renders ONLY (no RPM/stock).
+- Load all tools at start — `feedback_load_all_tlamatini_tools_at_start.md` (historical entry; file absent from this checkout) — load the COMPLETE mcp__tlamatini__* set up front; new agents need a restart.
+- Test toggle state — `feedback_test_toggle_state.md` (historical entry; file absent from this checkout) — set+VERIFY toggles (Multi-Turn ON, Exec Report ON, Ask Execs OFF) + clear history.
+- Chat-test login — `project_tlamatini_chat_test_login.md` (historical entry; file absent from this checkout) — harness logs in as **angela** via TLAMATINI_USER/PASS env. SECRET.
 - [Hard real-scenario tests](feedback_hard_real_scenario_tests.md) — no mocking the thing under test; reproduce incidents byte-faithfully.
 - [Pivot file](feedback_track_changes_pivot_file.md) — record verbatim request + before/after for exact rollback.
 - [Don't overbuild exec-safety](feedback_dont_overbuild_exec_safety.md) — user discarded; prove LIVE; user defines "works".
 - [Main branch only](feedback_main_branch_only.md) — NEVER branches/worktrees/PRs; commit+push origin/main.
 - [User owns git writes](feedback_user_owns_git.md) — read-only git OK; mutations need explicit current-turn request.
-- [Never rewrite git history](feedback_never_rewrite_git_history.md) — ABSOLUTE: no rebase/amend/reset/filter/force-push; secrets removed via NEW forward commits.
-- [New API key = FULL process (MANDATORY)](feedback_new_api_key_complete_process.md) — every secret: ALL 10 surfaces one pass + verify; skill tlamatini-new-access-key.
+- Never rewrite git history — `feedback_never_rewrite_git_history.md` (historical entry; file absent from this checkout) — ABSOLUTE: no rebase/amend/reset/filter/force-push; secrets removed via NEW forward commits.
+- New API key = FULL process (MANDATORY) — `feedback_new_api_key_complete_process.md` (historical entry; file absent from this checkout) — every secret: ALL 10 surfaces one pass + verify; skill tlamatini-new-access-key.
 - [Agent table WIPED every boot](project_agent_table_wiped_on_boot.md) — apps.ready() deletes+rebuilds Agent rows with .title(); real cause of "Pdfer" + 6 dead canvas connections. Fixed via agent_paths; test_agent_display_names.py.
 - [Agent naming (CRITICAL)](feedback_agent_naming_conventions.md) — display exact case (STM32er); dirs/pool/CSS lowercase; INI_SECTION ALL-CAPS.
 - [Update agent docs](feedback_update_agent_docs.md) — agent changes also update create_new_agent.md/agentic_skill.md/README.
 - [package.json version bump](feedback_package_json_version_bump.md) — bump on each pushed release.
-- [PYZ verification](feedback_pyinstaller_pyz_verification.md) — check frozen modules inside the PYZ, not loose .py.
-- [LIVE app = FROZEN install](project_live_app_is_frozen_install.md) — :8000 is C:\Tlamatini\Tlamatini.exe; MCP tools are SOURCE. Repo-only frontend fix is INVISIBLE: copy into _internal/staticfiles + _internal/agent/static + TlamatiniSourceCode → relaunch → prove over HTTP → Ctrl+F5.
-- [.claude assets tracked](project_claude_assets_tracked.md) — .claude/ pushed PUBLIC; memories mirrored STATIC (re-copy first); settings.local/data.keys ignored.
-- [Cloud-default, NOT fully local](project_cloud_default_not_fully_local.md) — LLMs are CLOUD; never say "fully local". GitHub About limit = UTF-8 bytes.
-- [GLM-5.3 default](project_glm52_default_model.md) — glm-5.3:cloud (1M) everywhere; fallback glm-5.1; unified.py "transient network" notice untruthfulness FIXED → [[project_oversized_context_400_fix]].
-- [Oversized-context 400 fix](project_oversized_context_400_fix.md) — big multi-step job → "request body too large (400)" → false "transient network error" + tool-less refusal. Fixed 3 ways: cap tool output + recover-by-trimming + truthful fallback. 15/15 + 12/12 + 10/10 verified. DEV-only; needs rebuild.
+- PYZ verification — `feedback_pyinstaller_pyz_verification.md` (historical entry; file absent from this checkout) — check frozen modules inside the PYZ, not loose .py.
+- LIVE app = FROZEN install — `project_live_app_is_frozen_install.md` (historical entry; file absent from this checkout) — :8000 is C:\Tlamatini\Tlamatini.exe; MCP tools are SOURCE. Repo-only frontend fix is INVISIBLE: copy into _internal/staticfiles + _internal/agent/static + TlamatiniSourceCode → relaunch → prove over HTTP → Ctrl+F5.
+- .claude assets tracked — `project_claude_assets_tracked.md` (historical entry; file absent from this checkout) — .claude/ pushed PUBLIC; memories mirrored STATIC (re-copy first); settings.local/data.keys ignored.
+- Cloud-default, NOT fully local — `project_cloud_default_not_fully_local.md` (historical entry; file absent from this checkout) — LLMs are CLOUD; never say "fully local". GitHub About limit = UTF-8 bytes.
+- GLM-5.3 default — `project_glm52_default_model.md` (historical entry; file absent from this checkout) — glm-5.3:cloud (1M) everywhere; fallback glm-5.1; unified.py "transient network" notice untruthfulness FIXED → [[project_oversized_context_400_fix]].
+- Oversized-context 400 fix — `project_oversized_context_400_fix.md` (historical entry; file absent from this checkout) — big multi-step job → "request body too large (400)" → false "transient network error" + tool-less refusal. Fixed 3 ways: cap tool output + recover-by-trimming + truthful fallback. 15/15 + 12/12 + 10/10 verified. DEV-only; needs rebuild.
 - [Ghost dist-info / dep audit](project_ghost_distinfo_dependency_audit.md) — ~30 DUPLICATE dist-infos made pip's conflicts phantom (torch/starlette/packaging); pyhackrf benign (Linux-only, numpy-2-safe) NEVER uninstall; numpy floor >=2.0 added; audit_dependencies.py. Sweep bug: never leave a package with 0 metadata.
-- [Build carried-python guard](project_build_carried_python_guard.md) — build with SYSTEM python, not carried .\python.
+- Build carried-python guard — `project_build_carried_python_guard.md` (historical entry; file absent from this checkout) — build with SYSTEM python, not carried .\python.
 - [Build concurrency guard](project_build_concurrency_guard.md) — NEVER concurrent/background build.py (~18min); .build.lock.
-- [Release zip < 2 GiB](project_release_zip_under_2gb.md) — 2026-07-15: v1.42.0 zip was 2.05 GiB (>GitHub 2 GiB). Cause: STALE Chromium rev in ms-playwright cache (active≠newest; read browsers.json) + jre jmods/src.zip. Repacked to 1.67 GiB (repack_release.py) + durable build.py fix. Emoji in print crashes cp1252 console.
+- Release zip < 2 GiB — `project_release_zip_under_2gb.md` (historical entry; file absent from this checkout) — 2026-07-15: v1.42.0 zip was 2.05 GiB (>GitHub 2 GiB). Cause: STALE Chromium rev in ms-playwright cache (active≠newest; read browsers.json) + jre jmods/src.zip. Repacked to 1.67 GiB (repack_release.py) + durable build.py fix. Emoji in print crashes cp1252 console.
 - [Carried Python for agents](project_carried_python_for_agents.md) — installer ships Python 3.12.10; pool agents use it. Needs build+reinstall.
-- [Carried-Python verify](project_carried_python_user_site_verify.md) — build.py isolated -I verify; esphome-lib→%LOCALAPPDATA%.
+- Carried-Python verify — `project_carried_python_user_site_verify.md` (historical entry; file absent from this checkout) — build.py isolated -I verify; esphome-lib→%LOCALAPPDATA%.
 - [numpy duplicate .pyd](project_numpy_pyinstaller.md) — frozen crash; hook-numpy.py + build.py purge.
 - [Ollama source-build breaks embeddings](project_ollama_source_build_breaks_embeddings.md) — "llama-server not found" = source Ollama racing official on 11434; stop it.
-- [Ollama timing logs](project_llm_ollama_timing_logs.md) — llm_timing.py proves stalls are Ollama-side.
+- Ollama timing logs — `project_llm_ollama_timing_logs.md` (historical entry; file absent from this checkout) — llm_timing.py proves stalls are Ollama-side.
 - [Embedding-memory guard](project_embedding_memory_guard.md) — warns when embed model >80% GPU VRAM.
-- [RELEASE-mode speed](project_release_mode_speed_batch.md) — frozen DEBUG=False + buffered tee (2.38×); verified.
+- RELEASE-mode speed — `project_release_mode_speed_batch.md` (historical entry; file absent from this checkout) — frozen DEBUG=False + buffered tee (2.38×); verified.
 - [Versioning](project_versioning_2026_05_15.md) — SemVer git-tag; contract in VERSIONING.md.
-- [Auto-update](project_auto_update_feature.md) — About▸Check for updates (apply_update.ps1 swap + preserve set).
-- [Updater self-kill fix](project_self_update_updater_self_kill.md) — apply_update.ps1 spares its own PID.
-- [copy_source_assets snapshot](project_copy_source_assets.md) — --self-modify GENERATES TlamatiniSourceCode (secrets redacted, restore manifest). **NEW `KEEP_PATH_GLOBS`**: extension denylist was silently dropping SHIPPED .jpg UI assets (avatar frames + guide_assets); add new shipped binary assets there.
-- [Self-sync sweeps 2026-07-25](project_self_sync_sweeps_2026_07_25.md) — both inclusion sweeps CLEAN; 2 real findings fixed. The sweeps check DIRS and LISTS, never file contents — always do the manual Step-2 pass.
-- [Tlamatini.md self-ref](project_tlamatini_md_self_reference.md) — keep her self-modify map byte-accurate.
-- [cp1252 subprocess crash](project_cp1252_subprocess_crash.md) — text-mode subprocess reads need `encoding="utf-8", errors="replace"`; older pool-agent sweep pending.
-- [AutoBot const-poison](project_autobot_const_poison_incident.md) — cross-file JS globals in agent_page_state.js/acp-globals.js MUST stay `let`.
-- [Reaper O(N²) freeze fix](project_orphan_reaper_on2_freeze.md) — O(N²)→O(N) (290×); fixed multi-minute chat freeze.
+- Auto-update — `project_auto_update_feature.md` (historical entry; file absent from this checkout) — About▸Check for updates (apply_update.ps1 swap + preserve set).
+- Updater self-kill fix — `project_self_update_updater_self_kill.md` (historical entry; file absent from this checkout) — apply_update.ps1 spares its own PID.
+- copy_source_assets snapshot — `project_copy_source_assets.md` (historical entry; file absent from this checkout) — --self-modify GENERATES TlamatiniSourceCode (secrets redacted, restore manifest). **NEW `KEEP_PATH_GLOBS`**: extension denylist was silently dropping SHIPPED .jpg UI assets (avatar frames + guide_assets); add new shipped binary assets there.
+- Self-sync sweeps 2026-07-25 — `project_self_sync_sweeps_2026_07_25.md` (historical entry; file absent from this checkout) — both inclusion sweeps CLEAN; 2 real findings fixed. The sweeps check DIRS and LISTS, never file contents — always do the manual Step-2 pass.
+- Tlamatini.md self-ref — `project_tlamatini_md_self_reference.md` (historical entry; file absent from this checkout) — keep her self-modify map byte-accurate.
+- cp1252 subprocess crash — `project_cp1252_subprocess_crash.md` (historical entry; file absent from this checkout) — text-mode subprocess reads need `encoding="utf-8", errors="replace"`; older pool-agent sweep pending.
+- AutoBot const-poison — `project_autobot_const_poison_incident.md` (historical entry; file absent from this checkout) — cross-file JS globals in agent_page_state.js/acp-globals.js MUST stay `let`.
+- Reaper O(N²) freeze fix — `project_orphan_reaper_on2_freeze.md` (historical entry; file absent from this checkout) — O(N²)→O(N) (290×); fixed multi-minute chat freeze.
 - [Reaper console fix](project_reaper_console_window_fix.md) — reaper protects our own conhost + ancestors.
-- [Command watchdog](project_command_watchdog.md) — daemon kills idle/hung shell children.
+- Command watchdog — `project_command_watchdog.md` (historical entry; file absent from this checkout) — daemon kills idle/hung shell children.
 - [execute_command bounded](project_execute_command_bounded_fix.md) — DEVNULL stdin + timeout + tree-kill.
 - [execute_file foreground fix](project_execute_file_foreground_fix.md) — CREATE_NEW_CONSOLE + SW_SHOWNORMAL + EnumWindows verify.
 - [Pythonxer Ruff gate](project_pythonxer_strict_ruff_gate.md) — compile() + BLOCKING Ruff + retry.
-- [Pythonxer \n auto-repair](project_pythonxer_escaped_newline_autorepair.md) — decodes literal-\n scripts (stops retry storms).
-- [Empty-code-block SHREDDER fix](project_empty_codeblock_shredder_fix.md) — `str.replace('', link)` spliced a canvas link between EVERY character + saved 1 file 101×; guards+tests in response_parser.py. Frozen needs REBUILD.
-- [Parser multiline upgrade](project_parser_multiline_upgrade_fix.md) — file_creator truncation fixed in tools.py parser.
-- [FileCreator verbatim bytes](project_filecreator_verbatim_bytes.md) — verbatim re-extract + content_b64 binary channel.
+- Pythonxer \n auto-repair — `project_pythonxer_escaped_newline_autorepair.md` (historical entry; file absent from this checkout) — decodes literal-\n scripts (stops retry storms).
+- Empty-code-block SHREDDER fix — `project_empty_codeblock_shredder_fix.md` (historical entry; file absent from this checkout) — `str.replace('', link)` spliced a canvas link between EVERY character + saved 1 file 101×; guards+tests in response_parser.py. Frozen needs REBUILD.
+- Parser multiline upgrade — `project_parser_multiline_upgrade_fix.md` (historical entry; file absent from this checkout) — file_creator truncation fixed in tools.py parser.
+- FileCreator verbatim bytes — `project_filecreator_verbatim_bytes.md` (historical entry; file absent from this checkout) — verbatim re-extract + content_b64 binary channel.
 - [Conjunction parser fix](project_conjunction_parser_fix.md) — splitter handles `and KEY=` / `with KEY=`.
-- [Required-param gate fix](project_required_param_gate_localvar_fix.md) — counts only config-traced vars.
+- Required-param gate fix — `project_required_param_gate_localvar_fix.md` (historical entry; file absent from this checkout) — counts only config-traced vars.
 - [Native picker tkinter-free](project_native_picker_tcltk_fix.md) — Win32 ctypes picker; tkinter excluded from build.
-- [Deleter target_path DANGER](project_deleter_target_path_gotcha.md) — Deleter deletes target_path ITSELF (rmtree if dir). One file → target_path=that file; never a base-dir + files_to_delete.
-- [Gitter custom fix](project_gitter_custom_fix.md) — custom prefixes 'git'; use command='custom'.
-- [Temp+Templates policy](project_temp_templates_policy.md) — temp ONLY <app>/Temp; scaffolds <app>/Templates (also [media](project_media_agents_default_to_temp.md), [esphomer](project_esphomer_templates_path_fix.md)).
-- [Multi-Turn binds all tools](project_multiturn_binds_all_tools.md) — full enabled surface bound (planner no longer drops tools).
+- Deleter target_path DANGER — `project_deleter_target_path_gotcha.md` (historical entry; file absent from this checkout) — Deleter deletes target_path ITSELF (rmtree if dir). One file → target_path=that file; never a base-dir + files_to_delete.
+- Gitter custom fix — `project_gitter_custom_fix.md` (historical entry; file absent from this checkout) — custom prefixes 'git'; use command='custom'.
+- [Temp+Templates policy](project_temp_templates_policy.md) — temp ONLY <app>/Temp; scaffolds <app>/Templates (also media — `project_media_agents_default_to_temp.md` (historical entry; file absent from this checkout), esphomer — `project_esphomer_templates_path_fix.md` (historical entry; file absent from this checkout)).
+- Multi-Turn binds all tools — `project_multiturn_binds_all_tools.md` (historical entry; file absent from this checkout) — full enabled surface bound (planner no longer drops tools).
 - [Planner follow-up fix](project_planner_followup.md) — short-follow-up scoring.
 - [Ask Execs](project_ask_execs_feature.md) — Proceed/Deny broker before Multi-Turn tools; Deny halts chain.
-- [Ask-Execs policy A+D only](project_ask_execs_policy.md) — gate A(destroys/overwrites)+D(remote/net) + runners. **B (MESSAGING) REVERSED 2026-07-26** — "Messages must be able to be sent without asking, it depends only on AI desisicion"; C(desktop/hardware) never gated. Both ungated ON PURPOSE — inverse test blocks re-gating. New agents NOT auto-gated: add to `_ASK_EXECS_REQUIRED_TOOLS`. When policy changes, GREP EVERY test encoding it (a stale one lied for 2 weeks).
-- [Cancel run-epoch latch](project_cancel_epoch_latch.md) — cancel = PER-USER RUN-EPOCH LATCH (agent/cancellation.py); storm engine = classification-free `timeout` branch. Backend ⇒ rebuild.
-- [Self-healing button desync fix](project_self_healing_button_desync_fix.md) — anchored isSelfHealingStatusMessage keeps controls disabled during "Tactic…". Verified.
-- [Tool-failure self-correction](project_tool_failure_self_correction.md) — UNIVERSAL: classifier + corrective-feedback + block in mcp_agent._invoke_tool so NO agent/MCP/ext-MCP/ACPX loops on a failing tool (Roblox "false | Unable to cast double to Vector3" was scored SUCCESS). 30/30 tests; BACKEND ⇒ REBUILD.
-- [Notification-debt guard](project_notification_debt_guard.md) — executor guard stops dropped-notify + fake excuses.
+- Ask-Execs policy A+D only — `project_ask_execs_policy.md` (historical entry; file absent from this checkout) — gate A(destroys/overwrites)+D(remote/net) + runners. **B (MESSAGING) REVERSED 2026-07-26** — "Messages must be able to be sent without asking, it depends only on AI desisicion"; C(desktop/hardware) never gated. Both ungated ON PURPOSE — inverse test blocks re-gating. New agents NOT auto-gated: add to `_ASK_EXECS_REQUIRED_TOOLS`. When policy changes, GREP EVERY test encoding it (a stale one lied for 2 weeks).
+- Cancel run-epoch latch — `project_cancel_epoch_latch.md` (historical entry; file absent from this checkout) — cancel = PER-USER RUN-EPOCH LATCH (agent/cancellation.py); storm engine = classification-free `timeout` branch. Backend ⇒ rebuild.
+- Self-healing button desync fix — `project_self_healing_button_desync_fix.md` (historical entry; file absent from this checkout) — anchored isSelfHealingStatusMessage keeps controls disabled during "Tactic…". Verified.
+- Tool-failure self-correction — `project_tool_failure_self_correction.md` (historical entry; file absent from this checkout) — UNIVERSAL: classifier + corrective-feedback + block in mcp_agent._invoke_tool so NO agent/MCP/ext-MCP/ACPX loops on a failing tool (Roblox "false | Unable to cast double to Vector3" was scored SUCCESS). 30/30 tests; BACKEND ⇒ REBUILD.
+- Notification-debt guard — `project_notification_debt_guard.md` (historical entry; file absent from this checkout) — executor guard stops dropped-notify + fake excuses.
 - [Taskbar flash notice](project_taskbar_flash_attention.md) — FlashWindowEx flash + banner on Ask-Execs/Notifier.
 - [Notifier toast REMOVED](project_native_toast.md) — no OS-toast; kept HKCU "Installed apps".
 - [Prompt catalog badges](project_prompt_catalog_mode_badges.md) — cards show mode badges + auto-set toggles.
-- [Catalog viewport fix](project_catalog_of_prompts_viewport_fix.md) — pure CSS fixed top:12px, max-height 100dvh-24px, min-height:0. Never re-add JS positioning.
-- [Catalog grouped/renumbered](project_prompt_catalog_grouping.md) — 13 CATEGORIES (0175); 0176 deleted dup ACPX; **0179 RE-NUMBERED to contiguous 1..N** (Angela override; two-phase PK renumber; append-only forward); 0177/0178 add STM32 stepwise blink demos.
-- [Prompt parameter standard](project_prompt_parameter_standard.md) — `[[ ]]`=user types (at TOP) / `{{ }}`=runtime / `< >`=report slot only; fixes C:/Temp + two-mode/machine paths. Migrations 0183+0184+0185 (45 prompts, base64 payloads for `'''`). **ALL 13 cats clean**; verified TWICE both frozen/source (audit_final.py + verify_twice.py). Applied to frozen DB; NOT committed.
-- [Screenshot → chat box](project_chat_screenshot_paste.md) — Ctrl+V/drop → <app>/Temp/image_<ts>.jpg + path at caret. layout.js PINS form container px height (count new rows!). Backend ⇒ rebuild.
-- [Chat avatar Phase 1](project_chat_avatar_phase1.md) — clickable talking portrait in input footer (rectangle, full-width aligned w/ Send, greets REAL login name not hardcoded, working-state). INLINE in agent_page.html (no static files); formAreaPx 90→170; RESTART for template. Visible test tests_e2e/test_avatar_phase1_visual.py 13/13. Cartoon/Orpheus phases pending.
-- [Create-Flow classifier removal + e2e](project_create_flow_classifier_removal_e2e.md) — validated live 100/100; chat at /agent/agent/; source DB empty (migrate+createsuperuser).
-- [Create-Flow button name-fix](project_create_flow_button_name_resolution_fix.md) — display(space) vs DB(hyphen) mismatch; normalized resolver + drop-don't-block.
+- Catalog viewport fix — `project_catalog_of_prompts_viewport_fix.md` (historical entry; file absent from this checkout) — pure CSS fixed top:12px, max-height 100dvh-24px, min-height:0. Never re-add JS positioning.
+- Catalog grouped/renumbered — `project_prompt_catalog_grouping.md` (historical entry; file absent from this checkout) — 13 CATEGORIES (0175); 0176 deleted dup ACPX; **0179 RE-NUMBERED to contiguous 1..N** (Angela override; two-phase PK renumber; append-only forward); 0177/0178 add STM32 stepwise blink demos.
+- Prompt parameter standard — `project_prompt_parameter_standard.md` (historical entry; file absent from this checkout) — `[[ ]]`=user types (at TOP) / `{{ }}`=runtime / `< >`=report slot only; fixes C:/Temp + two-mode/machine paths. Migrations 0183+0184+0185 (45 prompts, base64 payloads for `'''`). **ALL 13 cats clean**; verified TWICE both frozen/source (audit_final.py + verify_twice.py). Applied to frozen DB; NOT committed.
+- Screenshot → chat box — `project_chat_screenshot_paste.md` (historical entry; file absent from this checkout) — Ctrl+V/drop → <app>/Temp/image_<ts>.jpg + path at caret. layout.js PINS form container px height (count new rows!). Backend ⇒ rebuild.
+- Chat avatar Phase 1 — `project_chat_avatar_phase1.md` (historical entry; file absent from this checkout) — clickable talking portrait in input footer (rectangle, full-width aligned w/ Send, greets REAL login name not hardcoded, working-state). INLINE in agent_page.html (no static files); formAreaPx 90→170; RESTART for template. Visible test tests_e2e/test_avatar_phase1_visual.py 13/13. Cartoon/Orpheus phases pending.
+- Create-Flow classifier removal + e2e — `project_create_flow_classifier_removal_e2e.md` (historical entry; file absent from this checkout) — validated live 100/100; chat at /agent/agent/; source DB empty (migrate+createsuperuser).
+- Create-Flow button name-fix — `project_create_flow_button_name_resolution_fix.md` (historical entry; file absent from this checkout) — display(space) vs DB(hyphen) mismatch; normalized resolver + drop-don't-block.
 - [Flow Compiler dialog wins](project_flow_compiler_dialog_wins.md) — dialog edits survive Start.
 - [Living Canvas dropped](project_living_canvas_dropped.md) — force-reverted; don't re-attempt without live proof.
-- [v1.38.1 release + doc-sync](project_release_v1381_sync.md) — shipped in v1.38.1; /agent/list_prompts/ makes idPrompt contiguity fallback-only; PARAMETRIZER fields derived from agent_contracts.
+- v1.38.1 release + doc-sync — `project_release_v1381_sync.md` (historical entry; file absent from this checkout) — shipped in v1.38.1; /agent/list_prompts/ makes idPrompt contiguity fallback-only; PARAMETRIZER fields derived from agent_contracts.
 - [Desktop-UI lifecycle](project_desktop_ui_lifecycle.md) — open→focus→interact→close→save-dialog→verify (Keyboarder/Mouser/Shoter wrapped: [kbd](project_keyboarder_wrapped_2026_05_07.md)/[mouse](project_mouser_wrapped_2026_05_07.md); [8 misc fixes](project_eight_fixes_2026_05_07.md)).
 - [ACPXer](project_acpxer_added.md) — canvas counterpart of the 12 ACPX tools.
 - [ACPX oneshot-prompt](project_acpx_oneshot_prompt.md) — claude/gemini/cursor/qwen/codex use oneshot-prompt transport.
 - [ACPX toggle + Skills](project_acpx_toggle_skills.md) — acpx_enabled filters the ACPX/Skill surface per-request.
 - [ACPX-Skills menu](project_acpx_skills_menu.md) — Browse/Configure/Diagnostics/Reload; DB = enable/disable only.
 - [TeleTlamatini ACPX parity](project_teletlamatini_acpx.md) — acpx_enabled carried end-to-end for Telegram.
-- [External MCPs native modal](project_external_mcps_native_modal.md) — native CSS modal pattern for dialogs.
-- [External MCPs transports](project_external_mcps_transports.md) — http/sse/websocket clients + MCP Doctor #78.
-- [External MCP structuredContent fix](project_external_mcp_structured_content.md) — surface `structuredContent` in `_format_mcp_tool_result` (else no data → 16× retry). Rebuild.
-- [Roblox bridge lesson](project_external_mcps_roblox_bridge.md) — "0 tools" = port mismatch + watchdog kills; reproduce LIVE + read tlamatini.log.
-- [10-MCP Playwright suite](project_mcp_playwright_suite.md) — chat UI through 10 no-key MCPs, 10/10; cp1252→utf-8 gotcha.
+- External MCPs native modal — `project_external_mcps_native_modal.md` (historical entry; file absent from this checkout) — native CSS modal pattern for dialogs.
+- External MCPs transports — `project_external_mcps_transports.md` (historical entry; file absent from this checkout) — http/sse/websocket clients + MCP Doctor #78.
+- External MCP structuredContent fix — `project_external_mcp_structured_content.md` (historical entry; file absent from this checkout) — surface `structuredContent` in `_format_mcp_tool_result` (else no data → 16× retry). Rebuild.
+- Roblox bridge lesson — `project_external_mcps_roblox_bridge.md` (historical entry; file absent from this checkout) — "0 tools" = port mismatch + watchdog kills; reproduce LIVE + read tlamatini.log.
+- 10-MCP Playwright suite — `project_mcp_playwright_suite.md` (historical entry; file absent from this checkout) — chat UI through 10 no-key MCPs, 10/10; cp1252→utf-8 gotcha.
 - [Unity MCP declined](project_unity_mcp_declined.md) — don't re-pitch unless Unity opens the surface.
-- [Messaging rebuilt](project_whatsapper_meta_cloud_api.md) — official-only Telegrammer+Whatsapper. ⚠️ real Meta token in tracked config.json — redact before push.
-- [Contacts book](project_contacts_book.md) — contacts.json + contact_name resolution. Needs restart+creds.
-- [Instant Messaging Doctor](project_instant_messaging_doctor.md) — diagnose/repair messaging readiness. Needs migrate.
+- Messaging rebuilt — `project_whatsapper_meta_cloud_api.md` (historical entry; file absent from this checkout) — official-only Telegrammer+Whatsapper. ⚠️ real Meta token in tracked config.json — redact before push.
+- Contacts book — `project_contacts_book.md` (historical entry; file absent from this checkout) — contacts.json + contact_name resolution. Needs restart+creds.
+- Instant Messaging Doctor — `project_instant_messaging_doctor.md` (historical entry; file absent from this checkout) — diagnose/repair messaging readiness. Needs migrate.
 - [Emailer/RecMailer one-shot](project_emailer_recmailer_oneshot.md) — one-shot modes + Gmail username fix.
 - [Secret-leak recovery](project_secret_leak_recovery.md) — regen_secrets.py before commit; respect never-rewrite-history.
-- [Go OUT of git (SOLVED)](project_go_toolchain_git_exclusion.md) — Discoverer's Go → %LOCALAPPDATA%/Tlamatini/Go + .gitignore + git_deny_go.py.
-- [Discoverer](project_discoverer_pdcp_wizard.md) — pdcp_api_key wired everywhere (6-file wizard-secret pattern); cvemap API discontinued → [cvemap runs vulnx](project_discoverer_cvemap_vulnx_migration.md), live-proven.
-- [OOB_shift_reaper + NAMU](project_oob_shift_reaper_namu.md) — 3 recon GODS (Kalier/Nmapper/Discoverer) run FREE up to OOB_shift_reaper=3600s; hang→banner inside/kill past window; NAMU=shutdown tree-kill. 21/21 unit + VISIBLE browser PASS (real 168s nmap). DEV-only; needs rebuild.
-- [Robotic-Loop-Training](project_robotic_loop_training_proposal.md) — STM32er→Camcorder→Video-Analyzer(#84) closed loop; verdict-token/timing design.
-- [Video-Analyzer #84](project_video_analyzer_agent.md) — OpenCV motion gate + triple cloud vision + TLM_VERDICT:: tokens.
-- [Image-Interpreter triple-model](project_image_interpreter_triple_model.md) — qwen3.5∥gemma4→glm-5.3 merge; filename clue.
+- Go OUT of git (SOLVED) — `project_go_toolchain_git_exclusion.md` (historical entry; file absent from this checkout) — Discoverer's Go → %LOCALAPPDATA%/Tlamatini/Go + .gitignore + git_deny_go.py.
+- Discoverer — `project_discoverer_pdcp_wizard.md` (historical entry; file absent from this checkout) — pdcp_api_key wired everywhere (6-file wizard-secret pattern); cvemap API discontinued → cvemap runs vulnx — `project_discoverer_cvemap_vulnx_migration.md` (historical entry; file absent from this checkout), live-proven.
+- OOB_shift_reaper + NAMU — `project_oob_shift_reaper_namu.md` (historical entry; file absent from this checkout) — 3 recon GODS (Kalier/Nmapper/Discoverer) run FREE up to OOB_shift_reaper=3600s; hang→banner inside/kill past window; NAMU=shutdown tree-kill. 21/21 unit + VISIBLE browser PASS (real 168s nmap). DEV-only; needs rebuild.
+- Robotic-Loop-Training — `project_robotic_loop_training_proposal.md` (historical entry; file absent from this checkout) — STM32er→Camcorder→Video-Analyzer(#84) closed loop; verdict-token/timing design.
+- Video-Analyzer #84 — `project_video_analyzer_agent.md` (historical entry; file absent from this checkout) — OpenCV motion gate + triple cloud vision + TLM_VERDICT:: tokens.
+- Image-Interpreter triple-model — `project_image_interpreter_triple_model.md` (historical entry; file absent from this checkout) — qwen3.5∥gemma4→glm-5.3 merge; filename clue.
 - [Reviewer+Analyzer #63/#64](project_reviewer_analyzer_agents.md) — + code-review/security-audit skills; commit-state precise ([false-pos](project_reviewer_committed_secrets_falsepos.md)).
 - [Playwrighter #65](project_playwrighter_agent.md) — scripted browser automation; [hold-open](project_playwrighter_hold_open.md) linger before close.
 - [Windower](project_windower_agent.md) — Win32 window manager (12 actions).
 - [Kalier #66](project_kalier_agent.md) — MCP-Kali-Server bridge (12 actions; kali-pentest skill).
 - [PDFer #86](project_pdfer_agent.md) — Document composer: 24 explicit visual styles in five families alongside 20 semantic themes; `mode: styles` returns a catalog without a PDF. Atelier measures cover/table text, draws deterministic vector art within semantic decoration limits, and reports `layout_clean`; `style`/`style_family` are flow outputs. No new runtime dependencies; Ask-Execs tier A remains. Dated 2026-09-15 evidence: 130 PDFer tests passed, 24 two-page samples audited clean. Generated previews are disposable and ignored; see the linked guide. Installed-build status must be checked separately.
 - [LaTeXer #87](project_latexer_agent.md) — Native LaTeX typesetting with 30 opt-in styles / six families and eight independent templates. `list_styles` works without TeX; compilation needs an engine (MiKTeX recommended). Three design siblings must travel with pool copies. Four design result fields wired through chat/canvas/Parametrizer; 483 tests + 132 fresh real builds verified 2026-09-15. Preserve latexmk usability probe, copy-first repair and verdict contracts. [Style guide](../../Tlamatini/agent/agents/latexer/STYLES.md).
-- [Nmapper #85](project_nmapper_agent.md) — LOCAL use-only nmap (NEVER bundles nmap/NPSL); connect-scan default; migrations 0170-0172; NOT committed/live-tested.
+- Nmapper #85 — `project_nmapper_agent.md` (historical entry; file absent from this checkout) — LOCAL use-only nmap (NEVER bundles nmap/NPSL); connect-scan default; migrations 0170-0172; NOT committed/live-tested.
 - [STM32er #68](project_stm32er_agent.md) — inline MCP stdio (23 tools), bootstrap+preflight, demos 63-65 ([HIL fix](project_stm32er_hil_serial_proof_fix.md): VCP≠USART). Cluster: [preflight](project_stm32er_bootstrap_preflight.md)/[demos](project_stm32er_demo_prompts.md)/[docs](project_stm32er_docs_libs_parametrizer.md)/[tests](project_stm32er_tests.md).
-- [STM32er DUAL-backend (Blue Pill→ST line)](project_stm32er_multifamily_platformio.md) — 2026-07-15: Phase 0+1 widened to F0..F7/G/L/H7/U5/WB via NEW PlatformIO backend (shares ESP32er's pio install) + F407 template MCP; `stm32_backend` routes. N6/C0/H5/U0/WBA await CubeCLT (Phase 2/3). 126/126 tests OK (fixed pre-existing _LogCapture level bug). NOT committed/built.
+- STM32er DUAL-backend (Blue Pill→ST line) — `project_stm32er_multifamily_platformio.md` (historical entry; file absent from this checkout) — 2026-07-15: Phase 0+1 widened to F0..F7/G/L/H7/U5/WB via NEW PlatformIO backend (shares ESP32er's pio install) + F407 template MCP; `stm32_backend` routes. N6/C0/H5/U0/WBA await CubeCLT (Phase 2/3). 126/126 tests OK (fixed pre-existing _LogCapture level bug). NOT committed/built.
 - [ESP32er #69](project_esp32er_agent.md) — direct pio CLI bridge, zero-config bootstrap+preflight.
 - [Arduiner #70](project_arduiner_agent.md) — arduino-cli bridge; fqbn.
 - [Camcorder #71](project_camcorder_agent.md) — OpenCV webcam photo/video.
 - [Recorder #72](project_recorder_agent.md) — mic→WAV.
 - [AudioPlayer #73](project_audioplayer_agent.md) — soundfile+sounddevice playback.
 - [VideoPlayer #74](project_videoplayer_agent.md) — ffpyplayer+cv2 playback (silent-cv2 fallback).
-- [Talker #75](project_talker_agent.md) — TTS via Ollama/Orpheus+SNAC; [FEMALE-only HARD](project_talker_female_voice_only.md); [chunking](project_talker_long_text_chunking.md).
-- [Whisperer #76](project_whisperer_agent.md) — self-contained STT (own mic; GPU→CPU fallback).
-- [Blenderer #77](project_blenderer_agent.md) — Blender MCP = CODE-EXECUTION (NUL-framed :9876), direct socket; [connect-only](project_blenderer_mcp_activation.md), [code fix](project_blenderer_params_code_falsereq_fix.md).
-- [Unrealer expanded surface](project_unrealer_expanded_surface.md) — 53 commands/9 cats via XAIHT fork; config placeholders REQUIRED for new params ([ForgeArena](project_unrealer_forgearena.md)).
-- [Unreal 5.8 scaffold + VS-Tools fix](project_unreal_scaffold_vstools_fix.md) — XaihtUnrealEngineMCP scaffolder UE5.8+VS2026; bundle pre-fixed VisualStudioTools plugin. Not pushed.
-- [ImageCreator dropped](sadstoryaboutimagecreator.md) — Ollama image-gen macOS-only; torch-cpu blocker. Don't attempt.
+- Talker #75 — `project_talker_agent.md` (historical entry; file absent from this checkout) — TTS via Ollama/Orpheus+SNAC; FEMALE-only HARD — `project_talker_female_voice_only.md` (historical entry; file absent from this checkout); chunking — `project_talker_long_text_chunking.md` (historical entry; file absent from this checkout).
+- Whisperer #76 — `project_whisperer_agent.md` (historical entry; file absent from this checkout) — self-contained STT (own mic; GPU→CPU fallback).
+- Blenderer #77 — `project_blenderer_agent.md` (historical entry; file absent from this checkout) — Blender MCP = CODE-EXECUTION (NUL-framed :9876), direct socket; connect-only — `project_blenderer_mcp_activation.md` (historical entry; file absent from this checkout), code fix — `project_blenderer_params_code_falsereq_fix.md` (historical entry; file absent from this checkout).
+- [Unrealer expanded surface](project_unrealer_expanded_surface.md) — 53 commands/9 cats via XAIHT fork; config placeholders REQUIRED for new params (ForgeArena — `project_unrealer_forgearena.md` (historical entry; file absent from this checkout)).
+- Unreal 5.8 scaffold + VS-Tools fix — `project_unreal_scaffold_vstools_fix.md` (historical entry; file absent from this checkout) — XaihtUnrealEngineMCP scaffolder UE5.8+VS2026; bundle pre-fixed VisualStudioTools plugin. Not pushed.
+- ImageCreator dropped — `sadstoryaboutimagecreator.md` (historical entry; file absent from this checkout) — Ollama image-gen macOS-only; torch-cpu blocker. Don't attempt.
 - [Exec-safety DISCARDED](project_external_exec_safety_layer.md) — ⚠️ DISCARDED 2026-05-29, history only ([fork-bomb](project_pythonxer_forkbomb_fix.md)).
 - [NetSpeed-Calculator #88 DONE](project_netspeed_calculator_agent.md) — fully wired (262+65+10 tests, 12-pass audit 91/91); 4 endpoint bugs + the never-ship-a-silent-zero rule + the spaced-impostor Agent row lesson.
 

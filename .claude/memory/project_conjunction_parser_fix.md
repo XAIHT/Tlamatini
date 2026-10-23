@@ -12,7 +12,7 @@ originSessionId: 3b708931-1bbc-41a0-b46c-857631a3a9a0
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 On 2026-04-24, six consecutive `file_creator_00N` runs failed while the user was generating CUDA knapsack sources into `C:\Development\AngysBackInCUDA`. Each run's `file_path` looked like `C:\Development\AngysBackInCUDA\drone_knap.h' and content='/*...` — the LLM's whole `content=` payload was absorbed into `file_path`, Python raised `WinError 123`, and one run left a literal directory named `drone_knapsack.h' and content='` inside `include/`.

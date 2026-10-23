@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 **⚠️ DISCARDED 2026-05-29 — the user reverted ALL of this (git discard of the uncommitted tree).** "nothing you did worked." Despite passing tests, this whole external-exec hardening series (gates, containment, `_run_bounded`, the f/u#7 watcher daemon) did NOT solve the real live problem (the `start cmd /k python` window still hung Tlamatini / gave a false "OK"). Treat the description below as HISTORY, not current code — none of it is in the tree. Do NOT reconstruct it or trust the PIVOT_CHANGES.md entries as live. See [[feedback_dont_overbuild_exec_safety]].

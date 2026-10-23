@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.90.0](../../docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-30: A PyInstaller build died with `FileNotFoundError: [Errno 2] No such file or directory: 'C:\Development\Tlamatini\build\manage\warn-manage.txt'` (during `_write_warnings` in assemble). **Root cause = TWO `python build.py` runs in the same dir at once** — I had a background build.py running AND the user started a manual one. build.py cleans `build/` + `dist/` at step 0 ("Cleaning previous build artifacts") AND at end-of-run; whichever finishes first rmtrees the OTHER build's `build/manage` workpath mid-flight → the loser crashes writing warn-manage.txt. It is NOT an asset/build-script bug.

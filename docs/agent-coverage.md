@@ -12,6 +12,8 @@ FlowCreator selects from the entire catalog, then receives detailed reference an
 
 Config → Models exposes **38 model/engine/voice settings** for **21 model-backed agents**. Missing registered fields and quoted `"@config"` inherit global choices; literal canvas/standalone values remain overrides. See [model configuration](model_configuration.md) for all keys, defaults and launch-path precedence, and [dated source/frozen verification](model-configuration-verification.md) for runtime evidence. The offline `check_agent_runtimes` gate prepares every template, executes model loaders, refreshes helpers/catalogs and runs File-Creator; it does not exercise every provider or hardware action.
 
+Config → Live Editor & Terminater (v1.91.0) adds account interaction preferences, not an agent type. New Terminater configurations can inherit shell, pacing, advisor and wait defaults with `use_my_defaults`; older explicit flows remain compatible. Manual Enter and narration remain account choices. See [the complete settings reference](interaction-settings.md).
+
 | Agent | Config keys | Structured fields | Output slots | Lifecycle |
 |---|---:|---:|---|---|
 | ACPXer (`acpxer`) | 10 | 6 | 0: `target_agents` | ordinary |
@@ -93,7 +95,7 @@ Config → Models exposes **38 model/engine/voice settings** for **21 model-back
 | Talker (`talker`) | 29 | 14 | 0: `target_agents` | ordinary |
 | Telegrammer (`telegrammer`) | 11 | 6 | 0: `target_agents` | ordinary |
 | TeleTlamatini (`teletlamatini`) | 6 | 0 | 0: `target_agents` | long_running |
-| Terminater (`terminater`) | 37 | 27 | 0: `target_agents` | ordinary |
+| Terminater (`terminater`) | 42 | 31 | 0: `target_agents` | ordinary |
 | Unrealer (`unrealer`) | 8 | 6 | 0: `target_agents` | ordinary |
 | Video-Analyzer (`video_analyzer`) | 27 | 30 | 0: `target_agents` | ordinary |
 | VideoPlayer (`videoplayer`) | 10 | 22 | 0: `target_agents` | ordinary |

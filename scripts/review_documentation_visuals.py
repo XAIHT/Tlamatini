@@ -73,7 +73,11 @@ def main():
     slides=sorted((ROOT/"build/documentation_refresh/renders/ppt-fallback").glob("s*.png"))
     if slides:
         sheets(slides,"slides",columns=2,rows=3,width=1000)
-        report["slides"]={"rendered":len(slides),"renderer":"bundled artifact-tool; native Office unavailable"}
+        verification_path = ROOT/"build/documentation_refresh/dossier_verification.json"
+        verification = json.loads(verification_path.read_text(encoding="utf-8"))
+        native = verification.get("pptx_native", {}).get("available", False)
+        report["slides"]={"rendered":len(slides), "nativePowerPoint":native,
+                          "renderer":"Microsoft PowerPoint" if native else "bundled artifact-tool; native Office unavailable"}
     (OUT/"visual-audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     print("All render sheets ready for human visual inspection.",flush=True)
 if __name__=="__main__":

@@ -219,4 +219,25 @@ The final review also added interruption whenever the source view becomes hidden
 Migration 0218 must be applied before Interactor appears in Configure tools and
 the catalog. Restart the source server and reload the chat after applying the
 normal migration chain from a verified visible PowerShell `-NoExit` console.
-During the October 21 verification, the source database also had pending migrations 0214–0217. Those checks used isolated databases; they did not apply that chain to the existing source DB or replace an installed application. For v1.90.0 activation, migration 0218 must be applied through the normal startup/migration path.
+During the October 21 verification, the source database also had pending migrations 0214–0217. Those checks used isolated databases; they did not apply that chain to the existing source DB or replace an installed application. For v1.91.0 activation, migrations through 0220 (Interactor registration in 0218 and interaction preferences in 0220) must be applied through the normal startup/migration path.
+
+## Live Editor preferences in v1.91.0
+
+The canvas Settings button and **Config → Live Editor & Terminater** expose real
+editor speed (default 100 WPM, range 40–160), a 0–3 s post-segment pause, teaching
+detail, field suggestions, ghost text versus choices, and cursor following.
+Manual scrolling suspends following for that segment. Font size, line numbers and
+wrap configure CodeMirror itself; newly mounted documents reuse the saved appearance.
+
+The tool read returns teaching-detail guidance for the model; exact wording remains
+model-dependent. Each action carries an account preference snapshot through the
+authenticated bridge. Saved speed overrides a model-supplied speed. Existing
+document/revision checks, one-turn learner handoff and interruption rules remain.
+Opening settings stops the active teaching action; Live editor access is an immediate
+tab permission, while Save applies preference drafts to subsequent actions.
+
+The Voice tab can speak an explanation, literal segment or both before/during/after
+typing. A required before-typing narration can be stopped before any mutation. Missing
+voice support offers explicit Continue without voice or Stop. Shared speech respects
+mute/listening, excludes secret-marked content, and never replays a cancelled edit.
+See [the full reference](interaction-settings.md) for defaults, storage and evidence.

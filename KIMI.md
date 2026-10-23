@@ -12,11 +12,40 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
-> Current release: **[v1.90.0](docs/changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
-## v1.90.0 — editable canvas and Interactor
+## v1.91.0 — Live Editor and Terminater configuration
 
-The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; its GitHub release was published on 2026-10-22 and is marked Latest. `main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 (`939acf6b`) makes the catalog's account wizard request local Notifier pop-ups at its checkpoints (`docs/user-creation-wizard.md`). Dated source and frozen runs remain separate.
+**v1.91.0** is the current source version (2026-10-23). Its existing annotated tag
+resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
+agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
+**29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
+files** in the counted `static/agent/js` and `static/agent/css` directories.
+
+**Config → Live Editor & Terminater** opens one dialog with Live Editor,
+Terminater and Voice tabs, also available from the canvas and terminal Settings
+buttons on the chat and control-panel surfaces. Saved account preferences control
+real action pacing, teaching suggestions, shell defaults, manual Enter, waits and
+narration; editor/terminal appearance stays local to the account and browser.
+Presets and previews are drafts until Save; Stop, mute and tab access are immediate.
+
+Migration **0220** stores account preferences and revisions. One TerminalHub applies
+them across chat, ACP and Prompt Flow; legacy explicit flow values remain compatible.
+Speech uses the shared browser queue, selects one focused tab and can wait for a
+real completion receipt before typing. User interruption wins and private input is
+not narrated. The offline editor bundle and runtime/source carriers include the new
+UI and backend modules.
+
+Source evidence on October 23: **17/17 visible browser checks passed; 929 of 931
+regression tests passed**, with two existing README documentation assertions failing
+before this documentation sweep. These are dated source results, not a new installed
+package acceptance. No GitHub release for v1.91.0 was found during this sweep.
+See the [release record](docs/changes/2026-10-23-v1.91.0.md) and
+[settings guide](docs/interaction-settings.md).
+
+## Carried from v1.90.0 — editable canvas and Interactor
+
+The v1.90.0 source line had **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations** after migration 0219. Interactor added a module/tool, not an Agent. The annotated tag resolves to `ebc5c3b4` and its GitHub release was published on 2026-10-22. Later commits in that line carried the account wizard’s local Notifier checkpoints. This section preserves v1.90.0 history; current configuration and counts are described above. Dated source and frozen runs remain separate.
 
 - **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.
 - **Native files:** `canvas_file_views.py` and `native_dialogs.py` provide local Save As/read/save. Authentication, CSRF, loopback-only host access, account/session-bound capabilities and full revision checks prevent a browser name from becoming an arbitrary host path. Existing Windows replacement preserves metadata; DB backup/restore mechanics are unchanged.
@@ -200,7 +229,7 @@ Every current count in this file was **re-verified against source on 2026-10-16 
 **Tlamatini** (Nahuatl for *"one who knows"*) is a **local-first AI developer assistant** created by **Angela López Mendoza** (@angelahack1, XAIHT). It is a Django 5.2 + Channels monolith with a LangChain/LangGraph agent core, a RAG system, a visual agentic workflow designer, an external coding-agent runtime (ACPX), a markdown skill system, and a pool of standalone agent scripts it spawns as subprocesses. Windows-only distribution (PyInstaller-frozen, carried Python 3.12.10).
 
 - **Repository**: `https://github.com/XAIHT/Tlamatini.git` · **License**: MIT · **Platform**: Windows 10/11
-**v1.90.0 (tagged 2026-10-22)** brings Interactor: a live tutor inside the editable chat canvas. It reads the exact unsaved buffer, types a small teaching segment, hands the next field to the learner and offers optional local completions. It carries v1.89.0’s CodeMirror editor and native Save As, plus tab-visibility recovery, narrow-canvas layout and account-wizard intent fixes. The source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 + 67 + 12 + 10), and 219 migrations**. Interactor is a module/tool, not an additional workflow agent. The tag resolves to `ebc5c3b4`; its GitHub release ("Tlamatini v1.90.0 Win11x64") was published on 2026-10-22 and is marked Latest. `main`/`origin/main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 makes the catalog's account wizard ask for local Notifier pop-ups at its checkpoints. Source tests and an existing frozen-package check are dated separately; this documentation does not certify a newly built executable. See the [v1.90.0 release record](docs/changes/2026-10-22-v1.90.0.md).
+**v1.90.0 (tagged 2026-10-22)** brings Interactor: a live tutor inside the editable chat canvas. It reads the exact unsaved buffer, types a small teaching segment, hands the next field to the learner and offers optional local completions. It carries v1.89.0’s CodeMirror editor and native Save As, plus tab-visibility recovery, narrow-canvas layout and account-wizard intent fixes. That source line had **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 + 67 + 12 + 10), and 219 migrations**. Interactor is a module/tool, not an additional workflow agent. The tag resolves to `ebc5c3b4`; its GitHub release ("Tlamatini v1.90.0 Win11x64") was published on 2026-10-22 and was marked Latest at that time. `main`/`origin/main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and reported 1.90.0 at that time; migration 0219 makes the catalog's account wizard ask for local Notifier pop-ups at its checkpoints. Source tests and an existing frozen-package check are dated separately; this documentation does not certify a newly built executable. See the [v1.90.0 release record](docs/changes/2026-10-22-v1.90.0.md).
 - **Python**: 3.12.10 (carried interpreter under `<repo>/python` is build-provisioned — never use it to run builds)
 
 **Verified counts (2026-10-14: the disk rows re-counted that day; the tool-surface rows come from the isolated live Django tool build of 2026-10-03, unchanged since; skill list confirmed live via `tlamatini_list_skills`):**
@@ -999,7 +1028,7 @@ Guide: `Tlamatini/.skills/create_new_skill.md`; canonical worked example of an i
 
 ## 15. Frontend Architecture
 
-**No SPA framework** — server-rendered Django templates (five main pages: `agent_page.html`, `agentic_control_panel.html`, `prompt_flow_panel.html`, `login.html`, `welcome.html`, plus the `usage_dialog.html` partial and the themed `templates/admin/base_site.html`) + vanilla JS with LOCALLY VENDORED libraries, no CDN at runtime (`static/agent/vendor/frontend/manifest.json`, pinned by `scripts/vendor_frontend.py`: jQuery 3.7.1 + jQuery-UI 1.13.3 draggable canvas, Bootstrap 5.3.3, highlight.js 11.9.0, Marked 18.1.0 + DOMPurify 3.4.16 for the Markdown canvas, the Nunito font; PDF.js under `vendor/pdfjs`). Cross-file communication is via **script-scope globals** (whitelisted in `eslint.config.mjs`). Cache-busting: `?v={{ STATIC_VERSION }}` on every static URL (bump via the `tlamatini-static-version-bumper` skill after frontend changes; the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2`). 28 CSS files under `static/agent/css/`, plus the separate Interactor stylesheet (re-counted 2026-10-22).
+**No SPA framework** — server-rendered Django templates (five main pages: `agent_page.html`, `agentic_control_panel.html`, `prompt_flow_panel.html`, `login.html`, `welcome.html`, plus the `usage_dialog.html` partial and the themed `templates/admin/base_site.html`) + vanilla JS with LOCALLY VENDORED libraries, no CDN at runtime (`static/agent/vendor/frontend/manifest.json`, pinned by `scripts/vendor_frontend.py`: jQuery 3.7.1 + jQuery-UI 1.13.3 draggable canvas, Bootstrap 5.3.3, highlight.js 11.9.0, Marked 18.1.0 + DOMPurify 3.4.16 for the Markdown canvas, the Nunito font; PDF.js under `vendor/pdfjs`). Cross-file communication is via **script-scope globals** (whitelisted in `eslint.config.mjs`). Cache-busting: `?v={{ STATIC_VERSION }}` on every static URL (bump via the `tlamatini-static-version-bumper` skill after frontend changes; the live suffix is `-agent-catalog-1-quality-cleanup-1-usage-status-2`). 29 CSS files under `static/agent/css/`, plus the separate Interactor stylesheet (re-counted 2026-10-22).
 
 **Chat navbar (reorganized 2026-09-25):** Open · Save · Context ▾ · **Panels ▾** (Agentic Control Panel, Prompt Flow Panel, staff-only Admin Panel) · ACPX-Skills ▾ · External ▾ · **Config ▾** (Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, Voice, Mic) · DB ▾ · Reconnect · About ▾. The standalone MCPs, Agents and Admin menus are gone; ⚠️ harnesses must wait on `#config-menu-button` / `#panels-menu-button`, never `#mcps-menu-button` / `#agents-menu-button` / `#admin-menu-button`. Panels stays usable during a long operation; every end-of-operation path re-arms the menu locks through `agent_page_ui.js::restoreMenuControlsAfterOperation()`. Contract: `docs/claude/frontend.md` → *Chat navbar*.
 
@@ -1115,14 +1144,14 @@ Hardcoded assumptions (know before changing these subsystems):
 8. The web port is configurable (`django_port`, §5); still genuinely hardcoded: direct `daphne`/`uvicorn` launches, `:8765`/`:50051` helpers, TeleTlamatini's `tlamatini.base_url`.
 9. Carried-Python media libs: Recorder/Camcorder/AudioPlayer/VideoPlayer/Whisperer run under the CARRIED Python (`<install>/python`), NOT the frozen exe — numpy + cv2 must exist in BOTH Pythons; `build.py` aborts otherwise. A dep pinned in `requirements.txt` but missing from the carried Python crashes the pool agent at runtime.
 10. Frontend `let`-not-`const` for cross-file mutable globals (§15, const-poison).
-Current worktree inventory, verified 2026-10-22: **86 agents, 67 wrapped chat agents,
-110 built-in Multi-Turn tools, 29 runtime skills, 219 migrations, 61 JS modules
-and 28 CSS files**. The JS/CSS added since v1.78.0 implement the Markdown canvas, the shared theme and the file-drop router. Historical
+Current worktree inventory, verified 2026-10-23: **86 agents, 67 wrapped chat agents,
+110 built-in Multi-Turn tools, 29 runtime skills, 220 migrations, 64 JS modules
+and 29 CSS files**. The JS/CSS added since v1.78.0 implement the Markdown canvas, the shared theme and the file-drop router. Historical
 counts below remain dated to their original inspections.
 
 
 
-11. Count discipline: the current source inventory (verified 2026-10-22) is 86 workflow agents, 67 wrapped chat agents, 110 built-in Multi-Turn tools (21 direct/module + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 103 root stdio MCP tools (86 agent launchers + 7 management/skill + 10 ACPX), 29 runtime skills, 219 migrations, and 61 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
+11. Count discipline: the current source inventory (verified 2026-10-23) is 86 workflow agents, 67 wrapped chat agents, 110 built-in Multi-Turn tools (21 direct/module + 67 wrapped + 12 ACPX/Skill + 10 External-MCP supervisors), 103 root stdio MCP tools (86 agent launchers + 7 management/skill + 10 ACPX), 29 runtime skills, 220 migrations, and 64 JavaScript modules. Dynamic `ext__*` remote tools are reported separately. Historical release notes may retain their dated counts; active guidance must be re-verified from source and updated together.
 12. **The self-knowledge is a SWITCH (2026-10-03), and dev mode always has it.** `rag/config.self_modify_available()` is True for every source run of this checkout and for a frozen `--self-modify` build only; the chat toolbar's **Self-modify** box is rendered only then. ON (the default) sends Tlamatini.md (~115K chars) with every request that can hold it; OFF and "locked OFF" (a model that cannot hold it) send one honest line instead. A test that compares prompt TEXT must say which it wants (`_build_system_prompt(…, self_knowledge=True/False)`), and a test that runs `fit_request` should `compact_mode.reset_cache()` — the verdict is process-wide. ⚠️ Compact mode's STRICT check is measured WITHOUT the self-knowledge; keep it that way (§7.9).
 13. **`build.py` ERASES `Tlamatini/db.sqlite3` and wipes `dist/` before it builds** (and removes `dist/` again after it writes `pkg.zip`). The dev database holds the chat history and the test account, and `dist/` holds release zips — never run a build just to "check the frozen mode"; frozen behaviour is unit-tested by rendering the real view under a patched `sys.frozen` (`test_self_modify_switch.FrozenPageTests`). Ask Angela before any real build.
 
@@ -1284,7 +1313,7 @@ From the very start of a session, perform the work with **Tlamatini's OWN** agen
 
 ---
 
-*KIMI.md — counts refreshed 2026-10-22 against the current source tree (86 agent templates / 67 wrapped `chat_agent_*` specs / 110 built-in Multi-Turn tools / 103 root `mcp__tlamatini__*` tools / 29 skills / 219 migrations / 61 JS modules / 28 CSS files). The 2026-08-23 sweep (v1.50.0) brought in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
+*KIMI.md — counts refreshed 2026-10-23 against the current source tree (86 agent templates / 67 wrapped `chat_agent_*` specs / 110 built-in Multi-Turn tools / 103 root `mcp__tlamatini__*` tools / 29 skills / 220 migrations / 64 JS modules / 29 CSS files). The 2026-08-23 sweep (v1.50.0) brought in: NetSpeed-Calculator, Googler's structured dork builder, plain-HTTP-first/two-tier resilience path, live harness, and tests, the WAL-safe `sqlite_copy.py` engine replacing `db_guard.py`, the Ollama-Pro-or-higher operating requirement, migration 0194's Deep-Internet-Research starter, the `adding-external-mcp` skill, and private contact synchronization. Sibling files: CLAUDE.md (Claude Code), GEMINI.md (Gemini CLI). Counts were verified from disk, manifest, and isolated live tool construction; when they drift again, re-verify from source — never copy from docs.*
 
 *Partial refresh 2026-09-25: the reorganized chat navbar (Panels / Config), the ACP editor toolbar + zoom + edit lock, and the Prompt Flow Panel (`.fpmt`). The counts marked † in §1 were re-counted from disk that day; everything else still carries the 2026-08-23 verification.*
 

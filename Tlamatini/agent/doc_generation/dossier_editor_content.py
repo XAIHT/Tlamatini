@@ -1,9 +1,59 @@
 # Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
-"""Canvas/Interactor chapters shared by the v1.90.0 PDF and editable deck."""
+"""Canvas, Interactor and configuration chapters shared by the PDF and deck."""
 
 
 def editor_sections(section):
     return [
+        section("interaction_settings", "CONFIGURATION · v1.91.0", "Choose how she types and teaches",
+                "Config → Live Editor & Terminater opens one shared dialog on the chat and control panels.",
+                body=[
+                    "Live Editor controls 40–160 WPM, a 0–3 second pause after each segment, teaching detail, "
+                    "field suggestions, ghost text versus choices, and following the typed cursor. Manual "
+                    "scrolling suspends following for that segment. Font, line numbers and wrapping affect "
+                    "the real editor. Teaching detail instructs the model; exact wording still varies.",
+                    "Standard and Guided learning presets populate a draft. Preview types and speaks a harmless "
+                    "sample without editing files or executing commands. Save applies behavior to the next action. "
+                    "Cancel, Escape and Close discard the draft. Stop, mute and current-tab editor access are immediate.",
+                ], points=[
+                    ("Pace", "Separate speeds or a linked 40–160 WPM setting; no instant typing."),
+                    ("Teaching", "Brief, balanced or detailed guidance with optional local suggestions."),
+                    ("Appearance", "Editor and terminal presentation saved per account/browser."),
+                    ("Account", "Behavior persists on the server; concurrent saves detect revision conflicts."),
+                ]),
+        section("terminal_settings", "TERMINATER SETTINGS", "A command follows the learner's controls",
+                "One TerminalHub resolves account preferences across chat, ACP, Prompt Flow and browser actions.",
+                body=[
+                    "Choose 20–160 WPM, an available default shell, advisor for new terminals, a command wait "
+                    "window, a no-output threshold and a user handoff wait. Shell and advisor defaults affect "
+                    "new terminals. A wait timeout does not kill the process. Layout, font and cursor changes "
+                    "apply to existing views; resized prompts retain honest screen-based read-back.",
+                    "I always press Enter prevents automated submission, including aliases, encoded text and "
+                    "control characters; the user's keyboard still works. New flows can use account defaults. "
+                    "Older flow files retain explicit values. Manual Enter and narration remain account choices, "
+                    "and typed chat preserves a shell explicitly requested by the task.",
+                ], points=[
+                    ("Type", "One key at a time, 20–160 WPM; no paste or instant mode."),
+                    ("Submit", "Task-controlled execution or user-only Enter enforced by the hub."),
+                    ("Wait", "Command, no-output and handoff windows have separate meanings."),
+                    ("Inherit", "use_my_defaults applies account preferences without rewriting older flows."),
+                ]),
+        section("interaction_voice", "COMMAND AND LESSON VOICE", "Hear the step before the first key",
+                "Narration uses the existing browser voice and a shared, cancellable speech queue.",
+                body=[
+                    "Enable narration independently for Terminater commands and Live Editor segments. Choose "
+                    "an explanation, literal command/code or both, spoken before, during or after typing. When "
+                    "waiting before typing is enabled, a real speech-completion receipt or explicit skip is "
+                    "required. An unavailable voice offers Continue without voice or Stop.",
+                    "A single focused account tab speaks each terminal event. Receipts belong to that exact "
+                    "connection; disconnect, Stop and the bounded deadline can cancel before any key. A reconnect "
+                    "never replays a command. Secret-marked text and user handoff values are excluded. Outcome "
+                    "notices describe command-action status without reading terminal output aloud.",
+                ], points=[
+                    ("Shared voice", "Reuse voice choice, rate, volume and pitch from Config → Voice."),
+                    ("Priority", "Global mute and microphone listening override narration."),
+                    ("Timing", "Before/during/after; optional completion before typing."),
+                    ("Control", "Escape stops speech; Ctrl+Shift+M toggles global mute."),
+                ]),
         section("canvas_edit", "CANVAS EDITOR · v1.89.0", "Edit the document you are discussing",
                 "A local CodeMirror 6 editor keeps text, code, JSON and Markdown Source editable in the chat canvas.",
                 body=[
@@ -123,7 +173,26 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
-        section("release190", "CURRENT RELEASE · v1.90.0", "Edit, teach and preserve the learner's control",
+        section("release191", "CURRENT VERSION · v1.91.0", "Real settings for editor and terminal behavior",
+                "Existing tag a771d27c, dated October 23, 2026; publication and installed acceptance are separate.",
+                body=[
+                    "The Live Editor, Terminater and Voice tabs share one schema, authenticated account storage "
+                    "and optimistic revisions. Migration 0220 adds InteractionSettings. Account behavior reaches "
+                    "the actual editor and the one TerminalHub; browser/account appearance stays local.",
+                    "October 23 source evidence: 17 visible browser checks passed, including genuine OS speech "
+                    "finishing before the first terminal key. The implementation regression run passed 929 of "
+                    "931 tests; two existing README documentation assertions failed. This documentation sweep "
+                    "restores those sections; its 94 focused tests passed, including both README assertions.",
+                    "No v1.91.0 GitHub release was found during this sweep. These regenerated documents do not "
+                    "claim a new executable build or installed acceptance. The existing tag is preserved.",
+                ], points=[
+                    ("Dialog", "Pacing, teaching, terminal behavior, narration, appearance and draft previews."),
+                    ("Runtime", "Real settings snapshots, revision checks and cancellable narration receipts."),
+                    ("Compatibility", "Legacy explicit flows keep their values; new flows can inherit defaults."),
+                    ("Inventory", f"{facts['agents']} agents; {facts['tools']} tools; {facts['migrations']} migrations; "
+                     f"{facts['js']} JS modules; {facts['css']} stylesheets."),
+                ]),
+        section("release190", "CARRIED FROM v1.90.0", "Edit, teach and preserve the learner's control",
                 "v1.89.0 introduced editing and native saving; v1.90.0 carries Interactor and the intent corrections.",
                 body=[
                     "The annotated v1.90.0 tag resolves to ebc5c3b4; this documentation refresh began at d274f89c, "

@@ -723,7 +723,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Limits", "Cold model loading, provider latency and hardware vary; no zero-latency promise."),
                 ("Detailed guide", "docs/chat-microphone-design.md records configuration, protocol and evidence."),
             ], deck="cards"),
-        Section("navbar", "NAVIGATION", "The menu bar in v1.90.0",
+        Section("navbar", "NAVIGATION", "The menu bar in v1.91.0",
             "Views controls the workspace, Panels opens the flow editors, and Config holds settings.",
             table={"columns": ["Menu", "What you find there"], "widths": [0.20, 0.80], "rows": [
                 ["Open · Save", "Open a canvas file; menu Save chooses a destination with native Save As."],
@@ -734,7 +734,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["ACPX-Skills", "Browse, configure, diagnose and reload the skill catalog."],
                 ["External", "The External MCPs dialog: catalog, activation and runtime readiness."],
                 ["Config", "Configure MCPs, Configure Agents, Models, URLs, Contacts, Access Keys Wizard, "
-                 "Voice, then Mic (dictation behavior and capture preferences)."],
+                 "Voice, Mic, and Live Editor & Terminater (pacing, narration and interaction preferences)."],
                 ["DB", "WAL-safe database backup and staged replacement."],
                 ["Reconnect · About", "Rebuild the chat connection; version, author credits and Check for "
                  "updates. Since v1.78.0, About also opens Usage, even while she is busy."],

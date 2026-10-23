@@ -270,7 +270,7 @@ Usage examples for the improved agents:
 ```yaml
 # Mouser: read physical cursor and monitor layout without moving anything.
 
-> Current release: **[v1.90.0](changes/2026-10-22-v1.90.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.0](changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
 
 movement_type: inspect
 ```
