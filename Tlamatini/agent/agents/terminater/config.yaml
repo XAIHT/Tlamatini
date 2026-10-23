@@ -35,6 +35,10 @@ secret: false           # the typed/handed-over part is a secret: never logged o
 
 # Typing speed in words per minute (20..160).  There is NO instant/paste mode, by design.
 typing_wpm: 50
+# New flows inherit account pacing/shell/wait defaults. Turn off for explicit flow values.
+use_my_defaults: true
+# A short, non-secret explanation to accompany optional command narration.
+explanation: ""
 
 # Waiting
 wait: true

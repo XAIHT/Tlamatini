@@ -12,6 +12,10 @@
 
 ## v1.90.0 — editable canvas and Interactor
 
+Source addition (2026-10-23): [Live Editor & Terminater settings](../interaction-settings.md)
+documents the shared dialog, account behavior, local appearance, narration receipts,
+legacy flow compatibility and migration 0220. This is source work, not a new release.
+
 The current source has **86 workflow agents, 67 wrapped chat agents, 110 built-in tools (21 direct/module + 67 wrapped + 12 ACPX/Skills + 10 supervisors), and 219 migrations**. Interactor adds a module/tool; do not register it as an Agent. The annotated tag resolves to `ebc5c3b4`; its GitHub release was published on 2026-10-22 and is marked Latest. `main` continues after the tag (`d274f89c`, `8c577d3a`, `939acf6b`, `5403fa49`) and still reports 1.90.0; migration 0219 (`939acf6b`) makes the catalog's account wizard request local Notifier pop-ups at its checkpoints (`docs/user-creation-wizard.md`). Dated source and frozen runs remain separate.
 
 - **Editor:** `agent_page_editing.js` owns the CodeMirror document, dirty baseline, encoding and save snapshot. `agent_page_canvas.js` owns load/refresh generation and cancellation. Markdown Preview and Source share the buffer; HTML/SVG remain inert source; PDF saving copies the original PDF. Never read a hidden compatibility element instead of the editor.

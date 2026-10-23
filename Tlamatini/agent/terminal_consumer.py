@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from . import terminal_hub
+from .interaction_narration import narration
 from .chat_voice_consumer import same_origin
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ class TerminalConsumer(AsyncWebsocketConsumer):
         self._sender = self._spawn(self._send_loop())
         self._worker = self._spawn(self._ordered_loop())
         self._cb = self._on_hub_event
+        self.narration_id = narration.connect(self.user_key, self._cb)
         await asyncio.to_thread(self.hub.add_listener, self.user_key, self._cb)
         await self._send_hello()
 
@@ -169,6 +171,8 @@ class TerminalConsumer(AsyncWebsocketConsumer):
         kind = str(msg.get("t") or "")
         if kind == "ping":
             await self._send({"t": "pong"})
+        elif kind in {"narration_presence", "narration_receipt"}:
+            narration.receive(self.narration_id, msg)
         elif kind in _ORDERED:
             self._inq.put_nowait(msg)
         else:
@@ -220,7 +224,7 @@ class TerminalConsumer(AsyncWebsocketConsumer):
         user = self.user_key
         hub = self.hub
         if kind == "open":
-            res = hub.call("open", {"user": user, "kind": msg.get("kind") or "powershell",
+            res = hub.call("open", {"user": user, **({"kind": msg["kind"]} if msg.get("kind") else {}),
                                     "title": msg.get("title") or "", "cwd": msg.get("cwd") or "",
                                     "show": True})
             if not res.get("ok"):
@@ -253,6 +257,7 @@ class TerminalConsumer(AsyncWebsocketConsumer):
 
     # -------------------------------------------------------------- disconnect
     async def disconnect(self, close_code: int) -> None:
+        narration.disconnect(getattr(self, "narration_id", ""))
         self._closed = True
         self.connected = False
         hub = getattr(self, "hub", None)

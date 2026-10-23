@@ -151,6 +151,10 @@ class HubTests(SimpleTestCase):
 
 class ToolTests(SimpleTestCase):
     def setUp(self):
+        from .interaction_settings import ACCOUNT_DEFAULTS
+        preferences = patch('agent.interactor.tool.settings_snapshot', return_value=(dict(ACCOUNT_DEFAULTS), 0))
+        preferences.start()
+        self.addCleanup(preferences.stop)
         self.req = request()
         token = context.current.set(self.req)
         self.addCleanup(context.current.reset, token)

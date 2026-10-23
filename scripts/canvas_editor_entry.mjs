@@ -29,6 +29,8 @@ import { createInteractorEditor, editOrigin } from '../Tlamatini/agent/interacto
 const language = new Compartment();
 const editing = new Compartment();
 const wrapping = new Compartment();
+const appearance = new Compartment();
+let appearanceSettings = {};
 let view = null;
 let onChange = null;
 let readOnly = false;
@@ -136,6 +138,7 @@ function createState(content, filename) {
             language.of(support),
             editing.of([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
             wrapping.of(wrap ? EditorView.lineWrapping : []),
+            Prec.highest(appearance.of(appearanceExtension())),
             EditorState.tabSize.of(4),
             EditorView.contentAttributes.of({ 'aria-label': 'File source editor', spellcheck: 'false' }),
             // Tab keeps its native focus-navigation behavior; Ctrl+[ / Ctrl+]
@@ -206,7 +209,18 @@ function find() {
     if (view) openSearchPanel(view);
 }
 
+function appearanceExtension() {
+    return EditorView.theme({ '&': { fontSize: `${appearanceSettings.editor_font || 13}px` },
+        '.cm-lineNumbers': { display: appearanceSettings.line_numbers === false ? 'none !important' : '' } });
+}
+
+function configureAppearance(settings) {
+    appearanceSettings = settings;
+    view?.dispatch({ effects: appearance.reconfigure(appearanceExtension()) });
+}
+
 window.TlamatiniTextEditor = {
+    configureAppearance,
     mount, setDocument, destroy, historyState,
     inspect, interactor,
     getText: () => view?.state.doc.toString() || '',

@@ -50,8 +50,8 @@ const field = StateField.define({
         const ranges = [];
         if (guide.end > guide.start) ranges.push(Decoration.mark({ class: 'tlm-interactor-field' }).range(guide.start, guide.end));
         const suggestion = candidate(state, guide);
-        if (suggestion) ranges.push(Decoration.widget({ widget: new Ghost(suggestion.suffix), side: 1 }).range(guide.end));
-        else if (guide.start === guide.end) ranges.push(Decoration.widget({ widget: new Ghost('‹your choice›'), side: 1 }).range(guide.end));
+        if (suggestion && guide.ghost !== false) ranges.push(Decoration.widget({ widget: new Ghost(suggestion.suffix), side: 1 }).range(guide.end));
+        else if (guide.enabled && guide.ghost !== false && guide.start === guide.end) ranges.push(Decoration.widget({ widget: new Ghost('‹your choice›'), side: 1 }).range(guide.end));
         return Decoration.set(ranges, true);
     }),
 });
@@ -102,13 +102,17 @@ export function createInteractorEditor(getView) {
         }),
     ];
 
-    async function type({ start, end, text, typing_wpm }, signal, waitForView = async () => {}) {
+    async function type({ start, end, text, typing_wpm, preferences = {} }, signal, waitForView = async () => {}) {
         const view = getView();
         if (!view || view.composing) throw new Error('Finish the current input composition before Tlamatini types.');
         setGuide(null);
         const delay = Math.max(30, 60000 / (5 * typing_wpm));
         const stepTime = Date.now();
         let cursor = start, first = true;
+        let following = preferences.follow_typing !== false;
+        const suspendFollowing = () => { following = false; };
+        view.scrollDOM.addEventListener('wheel', suspendFollowing, { passive: true });
+        view.scrollDOM.addEventListener('touchstart', suspendFollowing, { passive: true });
         view.focus();
         try {
             for (const char of text) {
@@ -119,7 +123,7 @@ export function createInteractorEditor(getView) {
                     throw new Error('Typing stopped because the source editor is hidden. Your content is kept.');
                 }
                 view.dispatch({ changes: { from: cursor, to: first ? end : cursor, insert: char },
-                    selection: { anchor: cursor + char.length }, scrollIntoView: true,
+                    selection: { anchor: cursor + char.length }, scrollIntoView: following,
                     annotations: [editOrigin.of('interactor'), Transaction.time.of(stepTime), ...(first ? [isolateHistory.of('before')] : [])],
                     userEvent: 'input.type.interactor' });
                 first = false;
@@ -132,6 +136,8 @@ export function createInteractorEditor(getView) {
             }
             if (signal.aborted) throw new Error('Typing stopped; your editor content is kept.');
         } finally {
+            view.scrollDOM.removeEventListener('wheel', suspendFollowing);
+            view.scrollDOM.removeEventListener('touchstart', suspendFollowing);
             if (view === getView()) view.dispatch({ annotations: [editOrigin.of('interactor'), isolateHistory.of('after')] });
         }
     }

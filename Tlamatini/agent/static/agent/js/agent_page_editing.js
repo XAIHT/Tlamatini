@@ -16,6 +16,14 @@
     let current = null;
     let saving = false;
     let wrap = false;
+    window.addEventListener('tlm:interaction-settings', event => {
+        if (typeof event.detail?.wrap === 'boolean') { wrap = event.detail.wrap; editor.setWrap(wrap); sync(); }
+    });
+    window.TlamatiniInteractionSettings?.ready.then(() => {
+        const settings = window.TlamatiniInteractionSettings.snapshot();
+        if (typeof settings.wrap === 'boolean') { wrap = settings.wrap; editor.setWrap(wrap); sync(); }
+        editor.configureAppearance?.(settings);
+    });
     let notice = '';
     const normalize = value => String(value).replace(/\r\n?|\n/g, '\n');
     const dirty = () => !!current && editor.getText() !== current.baseline;

@@ -172,13 +172,29 @@
             lastMessage = 'File opened · edits stay unsaved until Save';
         } else if (action === 'type') {
             lastMessage = '';
-            await visibleAction(message, (signal, waitForView) => editor.interactor.type(payload, signal, waitForView));
+            await visibleAction(message, async (signal, waitForView) => {
+                const preferences = payload.preferences || {};
+                const type = async () => {
+                    checkExpected(payload, true, true);
+                    await editor.interactor.type(payload, signal, waitForView);
+                    const delay = Number(preferences.segment_pause || 0) * 1000;
+                    if (delay) await new Promise(resolve => {
+                        const done = () => { clearTimeout(timer); signal.removeEventListener('abort', done); resolve(); };
+                        const timer = setTimeout(done, delay); signal.addEventListener('abort', done, { once: true });
+                    });
+                    await waitForView();
+                };
+                if (window.TlamatiniInteractionSpeech) await window.TlamatiniInteractionSpeech.around(preferences, payload.narration || '', message.id, signal, type, waitForView);
+                else await type();
+            });
             lastMessage = 'Tlamatini finished this step · changes are unsaved';
         } else if (action === 'guide') {
             await visibleAction(message, async () => {
                 editor.interactor.select(payload.start, payload.end);
                 editor.interactor.setGuide({ id: message.id, start: payload.start, end: payload.end,
-                    label: payload.label, hint: payload.hint, choices: payload.choices || [], enabled: true });
+                    label: payload.label, hint: payload.hint, choices: payload.choices || [],
+                    enabled: payload.preferences?.suggestions !== false,
+                    ghost: payload.preferences?.suggestion_display !== 'choices' });
             });
             lastMessage = 'Your turn · fill the marked field';
         } else if (action === 'select') {
@@ -279,6 +295,7 @@
     window.addEventListener('pagehide', () => { closed = true; clearTimeout(retry); stop('', false, false); socket?.close(); });
     window.addEventListener('pageshow', event => { if (event.persisted) { closed = false; connect(); } });
     window.TlamatiniInteractor = {
+        stop: () => { if (active) stop('Tutor stopped. Your editor content is kept.', true); },
         get clientId() { return enabled ? clientId : ''; },
         get enabled() { return enabled; },
         beforeChat: () => { if (active) stop(); userStopped = false; lastMessage = ''; render(); return enabled ? clientId : ''; },

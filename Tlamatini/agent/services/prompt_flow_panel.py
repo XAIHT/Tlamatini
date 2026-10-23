@@ -39,17 +39,17 @@ TERMINATER_DEFAULTS = {
     "severity": "warning", "suggestion": "", "hint": "", "which": "last", "until": "", "pattern": "",
     "layout": "", "area": "", "submit": True, "secret": False, "wait": True, "close_after": False,
     "load_profile": True, "advisor": True, "typing_wpm": 50, "wait_seconds": 120, "hang_seconds": 45,
-    "user_wait_seconds": 300, "idle_seconds": 2,
+    "user_wait_seconds": 300, "idle_seconds": 2, "use_my_defaults": False, "explanation": "",
 }
 TERMINATER_TEXT_LIMITS = {
     "terminal": 80, "title": 80, "cwd": 1000, "keys": 500, "message": 2000, "suggestion": 1000,
-    "hint": 200, "which": 40, "until": 20, "pattern": 500,
+    "hint": 200, "which": 40, "until": 20, "pattern": 500, "explanation": 1000,
 }
 TERMINATER_NUMBERS = {
     "typing_wpm": (20, 160, True), "wait_seconds": (1, 3600, False), "hang_seconds": (3, 3600, False),
     "user_wait_seconds": (5, 3600, False), "idle_seconds": (0.2, 600, False),
 }
-TERMINATER_BOOLEANS = ("submit", "secret", "wait", "close_after", "load_profile", "advisor")
+TERMINATER_BOOLEANS = ("submit", "secret", "wait", "close_after", "load_profile", "advisor", "use_my_defaults")
 
 
 class FlowError(ValueError):

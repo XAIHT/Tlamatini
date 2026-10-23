@@ -3080,6 +3080,9 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True, config_over
         terminal_owner = current_user()
         if terminal_owner is not None:
             runtime_config["user"] = str(terminal_owner)
+            if config_overrides is not None:
+                from .interaction_settings import chat_preferences
+                runtime_config = chat_preferences(runtime_config, config_overrides, terminal_owner)
 
     # File-Creator must write the model's content BYTE-FOR-BYTE (Angela
     # 2026-06-12). The generic value coercion that every wrapped agent shares

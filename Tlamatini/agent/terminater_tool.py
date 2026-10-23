@@ -75,6 +75,7 @@ _FIELDS = (
     ("hang_seconds", float, 45.0, "Flag the command as hung after this long without output."),
     ("user_wait_seconds", float, 300.0, "How long to wait for the user's part of a <<USER:...>> hand-over."),
     ("typing_wpm", int, 50, "Typing speed, 20-160 words per minute. Never instant."),
+    ("explanation", str, "", "Brief non-secret explanation for command narration. Never include passwords or private input."),
     ("secret", bool, False, "true = the typed text is a secret: never logged or returned."),
     ("keys", str, "", "send_key: key names, e.g. 'ctrl+c', 'enter', 'up up enter'."),
     ("which", str, "last", "read: 'last', a command number, 'screen' (what is visible now) or 'all'."),
@@ -102,7 +103,7 @@ _FIELDS = (
 
 FIELD_NAMES = tuple(name for name, _kind, _default, _doc in _FIELDS)
 
-_TEXT_KEYS = ("text", "text_b64", "message", "suggestion", "hint")      # never stripped / reshaped
+_TEXT_KEYS = ("text", "text_b64", "message", "suggestion", "hint", "explanation")      # never stripped / reshaped
 _STRING_KEYS = ("terminal", "kind", "title", "cwd", "keys", "which", "until", "pattern", "severity",
                 "layout", "area")
 _BOOL_KEYS = ("submit", "wait", "secret", "show", "close_after", "load_profile", "advisor",
@@ -342,7 +343,9 @@ def shell_kind(tool_input: Any) -> str:
             text = tool_input
         found = re.search(r"(pwsh|powershell\s*7|cmd|powershell)", text, re.IGNORECASE)
         if not found:
-            return "powershell"
+            from .context_governor import current_user
+            from .interaction_settings import snapshot
+            return snapshot(current_user())[0]['shell']
         token = found.group(1).lower().replace(" ", "")
         if token in ("pwsh", "powershell7"):
             return "pwsh"

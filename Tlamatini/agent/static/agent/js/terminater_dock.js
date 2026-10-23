@@ -53,6 +53,23 @@
         autoOpened: false, fontSize: 13, error: '', kindPin: '',
     };
     const listeners = new Set();
+    let interaction = {};
+    function applyInteraction(settings) {
+        interaction = settings;
+        S.fontSize = settings.terminal_font || 13;
+        S.terms.forEach(T => {
+            if (T.term) { T.term.options.fontSize = S.fontSize; T.term.options.cursorBlink = settings.cursor_blink !== false; T.term.options.cursorStyle = settings.cursor_style || 'block'; }
+        });
+        if (S.inited) {
+            if (settings.terminal_layout) {
+                setLayout(settings.terminal_layout, false);
+                if (S.hello) send({ t: 'layout', layout: settings.terminal_layout, show: S.visible });
+            }
+            if (settings.shell && S.els.kind && S.kinds.includes(settings.shell)) { S.els.kind.value = settings.shell; S.kindPin = settings.shell; }
+            scheduleFitAll();
+        }
+    }
+    function narrationPresence() { send({ t: 'narration_presence', visible: !document.hidden && document.hasFocus() }); }
 
     /* ── tiny helpers ───────────────────────────────────────────────────── */
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -226,6 +243,7 @@
             h('span', { class: 'tlm-term-sep', 'aria-hidden': 'true' }),
             h('label', { title: 'Warn me about dangerous or mistyped commands in this terminal' }, advisor, 'Advisor'),
             h('span', { class: 'tlm-term-sep', 'aria-hidden': 'true' }),
+            btn('', '⚙', 'Settings', 'Configure Live Editor and Terminater', () => window.TlamatiniInteractionSettings?.open('terminal')),
             els.layoutGroup, els.areaGroup,
             els.status);
         els.body.append(els.empty);
@@ -277,7 +295,7 @@
             return;
         }
         const term = new Term({
-            allowProposedApi: true, cursorBlink: true, cursorStyle: 'block', scrollback: 10000, convertEol: false,
+            allowProposedApi: true, cursorBlink: interaction.cursor_blink !== false, cursorStyle: interaction.cursor_style || 'block', scrollback: 10000, convertEol: false,
             fontFamily: "'Cascadia Mono','Cascadia Code',Consolas,'Courier New',monospace", fontSize: S.fontSize, lineHeight: 1.12,
             theme: THEME, windowsPty: { backend: 'conpty', buildNumber: 22621 }, rightClickSelectsWord: true,
             smoothScrollDuration: 0,
@@ -418,7 +436,13 @@
     /* ── server frames ──────────────────────────────────────────────────── */
     function handle(m) {
         const kind = m.t;
-        if (kind === 'hello') return onHello(m);
+        if (kind === 'narration') {
+            if (document.hidden) { send({ t: 'narration_receipt', id: m.id, status: 'cancel' }); return undefined; }
+            window.TlamatiniInteractionSpeech?.narrate(m).then(status => send({ t: 'narration_receipt', id: m.id, status }));
+            return undefined;
+        }
+        if (kind === 'narration_cancel') { window.TlamatiniInteractionSpeech?.cancel(m); return undefined; }
+        if (kind === 'hello') { const result = onHello(m); applyInteraction(interaction); narrationPresence(); return result; }
         if (kind === 'pong') return undefined;
         if (kind === 'error') { S.error = m.message || 'Terminal request failed.'; updateStatus(); emit('error', m); return undefined; }
         if (kind === 'ui') { applyUi(m.ui || {}, m.active); return undefined; }
@@ -505,11 +529,17 @@
         const ui = m.ui || {};
         // the user's own saved layout wins; push it so the server (and Tlamatini) agree with it
         const stored = storeGet();
-        if (stored.layout && LAYOUTS.includes(stored.layout) && stored.layout !== ui.layout) send({ t: 'layout', layout: stored.layout });
-        if (stored.area && AREAS.includes(stored.area) && stored.area !== ui.area) send({ t: 'layout', area: stored.area });
+        if (stored.layout && LAYOUTS.includes(stored.layout) && stored.layout !== ui.layout) send({ t: 'layout', layout: stored.layout, show: Boolean(ui.visible) });
+        if (stored.area && AREAS.includes(stored.area) && stored.area !== ui.area) send({ t: 'layout', area: stored.area, show: Boolean(ui.visible) });
         applyUi({ visible: Boolean(ui.visible), focus: m.active || ui.focus }, m.active);
         renderTabs(); layoutPanes(); updateBar();
-        if (S.visible && S.order.length === 0 && !S.autoOpened) { S.autoOpened = true; openTerminal(S.els.kind.value || 'powershell'); }
+        if (S.visible && S.order.length === 0 && !S.autoOpened) {
+            Promise.resolve(window.TlamatiniInteractionSettings?.ready).then(() => {
+                if (S.visible && S.order.length === 0 && !S.autoOpened) {
+                    S.autoOpened = true; openTerminal(interaction.shell || S.els.kind.value);
+                }
+            });
+        }
         emit('hello', { terminals: S.order.length });
     }
 
@@ -526,7 +556,7 @@
     /* ── actions ────────────────────────────────────────────────────────── */
     function withActive(fn) { const T = getTerm(S.active); if (T) fn(T); }
     function openTerminal(kind, title) {
-        if (!send({ t: 'open', kind: kind || 'powershell', title: title || '' })) {
+        if (!send({ t: 'open', kind: kind || interaction.shell || '', title: title || '' })) {
             S.error = 'Not connected to the terminal hub yet.'; updateStatus(); return false;
         }
         S.openPending += 1;
@@ -859,6 +889,13 @@
         host.append(root);
         bindSplitter();
         bindToggles();
+        window.TlamatiniInteractionSettings?.ready.then(() => applyInteraction(window.TlamatiniInteractionSettings.snapshot()));
+        window.addEventListener('tlm:interaction-settings', event => applyInteraction(event.detail));
+        document.addEventListener('visibilitychange', narrationPresence);
+        window.addEventListener('focus', narrationPresence);
+        window.addEventListener('blur', narrationPresence);
+        const narrationHeartbeat = setInterval(narrationPresence, 10000);
+        window.addEventListener('pagehide', () => { clearInterval(narrationHeartbeat); window.TlamatiniInteractionSpeech?.cancel(); });
         if (typeof ResizeObserver !== 'undefined') {
             const ro = new ResizeObserver(() => { if (S.visible) applyHeight(); });
             ro.observe(region());

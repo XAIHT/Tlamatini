@@ -248,7 +248,7 @@ if getattr(sys, 'frozen', False):
 
 # Version stamp for cache-busting of static assets in templates
 # Override via env var STATIC_VERSION when deploying
-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-3-canvas-edit-1-interactor-2-canvas-fit-1'
+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-3-canvas-edit-1-interactor-2-canvas-fit-1-interaction-settings-1'
 
 # WhiteNoise configuration: dev vs release.
 # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines

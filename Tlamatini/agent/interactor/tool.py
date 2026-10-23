@@ -9,6 +9,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..canvas_file_views import SaveError
+from ..interaction_settings import snapshot as settings_snapshot, DETAIL, spoken_text
 from . import context
 from .files import prepare_file
 from .hub import hub
@@ -32,13 +33,15 @@ class Arguments(BaseModel):
     start: int = Field(default=-1, ge=-1, description="UTF-16 offset for type/guide/select. -1 uses the freshly read selection start.")
     end: int = Field(default=-1, ge=-1, description="UTF-16 exclusive end; -1 uses the freshly read selection end.")
     typing_wpm: int = Field(default=100, ge=40, le=160)
+    explanation: str = Field(default="", max_length=1000, description="Brief explanation of this teaching segment for optional narration. No private values.")
+    secret: bool = Field(default=False, description="True when this segment contains private values; never read its text aloud.")
     label: str = Field(default="", max_length=160, description="For guide: name the one field the learner must supply.")
     hint: str = Field(default="", max_length=2000, description="For guide: explain what to enter, why it matters, and recommendations. Also explain in the normal chat answer.")
     choices: list[Choice] = Field(default_factory=list, max_length=12, description="For guide: anticipated field values, with explanations. Completion is local, instant, optional, and begins when the user types.")
 
 
 def perform(action, document_id="", revision=-1, filename="", path="", text="", start=-1,
-            end=-1, typing_wpm=100, label="", hint="", choices=None):
+            end=-1, typing_wpm=100, label="", hint="", choices=None, explanation="", secret=False):
     request = context.current.get()
     created_path = None
     try:
@@ -51,9 +54,11 @@ def perform(action, document_id="", revision=-1, filename="", path="", text="", 
             request.handed_off = True
             return json.dumps(result, ensure_ascii=False)
         current = snapshot(hub.call(request, "read").get("snapshot"))
+        preferences, settings_revision = settings_snapshot(request.user_id)
         if action == "read":
             request.document_id, request.revision = current["document_id"], current["revision"]
-            return json.dumps({"ok": True, "status": "read", **current}, ensure_ascii=False)
+            return json.dumps({"ok": True, "status": "read", **current, "preferences": preferences,
+                               "teaching_instruction": DETAIL[preferences["teaching_detail"]]}, ensure_ascii=False)
         document_id = document_id or request.document_id
         revision = request.revision if revision == -1 else revision
         expect(current, document_id, revision)
@@ -82,13 +87,18 @@ def perform(action, document_id="", revision=-1, filename="", path="", text="", 
             splice(current["text"], start, end, "")
             payload = {**expected, "start": start, "end": end}
             if action == "type":
+                if settings_revision:
+                    typing_wpm = preferences["editor_wpm"]
                 if not text or "\r" in text or any(ord(char) < 32 and char not in "\n\t" for char in text):
                     raise InteractorError("Type nonempty text with LF newlines and ordinary characters.")
                 intended = splice(current["text"], start, end, text)
                 if units(intended) > MAX_UNITS:
                     raise InteractorError("This edit exceeds the live tutoring document limit. No text was inserted.", "too_large")
-                result = hub.call(request, "type", {**payload, "text": text, "typing_wpm": typing_wpm},
-                                  timeout=units(text) * 60 / (typing_wpm * 5) + 20, visibility_grace=120)
+                result = hub.call(request, "type", {**payload, "text": text, "typing_wpm": typing_wpm,
+                                  "preferences": preferences,
+                                  "narration": spoken_text(text, explanation, preferences, secret=secret, editor=True)},
+                                  timeout=units(text) * 60 / (typing_wpm * 5) + 20 + preferences["segment_pause"]
+                                  + (125 if preferences["narrate_editor"] else 0), visibility_grace=120)
                 actual = snapshot(result.get("snapshot"))
                 if actual["text"] != intended or actual["document_id"] != document_id:
                     request.handed_off = True
@@ -101,9 +111,10 @@ def perform(action, document_id="", revision=-1, filename="", path="", text="", 
                            for choice in (choices or [])]
                 if any(not item["text"] or "\n" in item["text"] or "\r" in item["text"] for item in options):
                     raise InteractorError("Completion choices must be nonempty single-field values, not multiple code lines.")
-                result = hub.call(request, "guide", {**payload, "label": label, "hint": hint, "choices": options}, visibility_grace=120)
+                result = hub.call(request, "guide", {**payload, "label": label, "hint": hint, "choices": options,
+                                  "preferences": preferences}, visibility_grace=120)
                 request.handed_off = True
-                result["instruction"] = "Stop editing now. Explain this field and recommendations in your normal chat answer, then wait for the user to fill it and Continue. Do not execute, save, or fill the user's choice yourself."
+                result["instruction"] = "Stop editing now. " + DETAIL[preferences["teaching_detail"]] + " Explain this field in your normal chat answer, then wait for the user to fill it and Continue. Do not execute, save, or fill the user's choice yourself."
             else:
                 result = hub.call(request, action, payload, timeout=30, visibility_grace=120 if action == "select" else 0)
         if "snapshot" in result:

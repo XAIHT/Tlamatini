@@ -61,6 +61,15 @@ def main():
                     reset_for_tests(int(owner[0]))
                     request = Request(owner, client, int(owner[0]), begin_llm_run(int(owner[0])))
                     value = {'ok': True}
+                elif frame['method'] == 'terminal':
+                    from agent import terminal_hub
+                    value = terminal_hub.run_action(frame['action'], {**frame.get('params', {}), 'user': str(user.pk)}, True)
+                elif frame['method'] == 'terminal_settings':
+                    from agent import terminal_hub
+                    active_hub = terminal_hub.get_hub()
+                    session = active_hub._get(active_hub.space(str(user.pk)), frame['terminal'])
+                    value = {'hang_seconds': session.hang_seconds, 'user_wait_seconds': session.user_wait_seconds,
+                             'advisor': session.advisor_enabled, 'kind': session.kind}
                 else:
                     token = current.set(request)
                     try:

@@ -280,6 +280,13 @@ class CompactState(models.Model):
         return f"Compact mode {'ON' if self.active else 'OFF'}{' (strict)' if self.strict else ''}"
 
 
+class InteractionSettings(models.Model):
+    """Per-account editor and terminal preferences; unrelated to backup/restore."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
+    preferences = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+
+
 class UsageDaily(models.Model):
     """UTC daily measured chat totals. Never stores prompt or response content."""
     user = models.ForeignKey(User, on_delete=models.CASCADE)

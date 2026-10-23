@@ -23,6 +23,8 @@ MAX_RELEASE_ZIP_BYTES = 1_990_000_000  # decimal GB, not GiB; user release ceili
 STATIC_SOURCE = "Tlamatini/agent/static"
 PDFJS = "agent/vendor/pdfjs/"
 REQUIRED_STATIC = (
+    "agent/js/interaction_settings.js", "agent/js/interaction_speech.js",
+    "agent/js/voice_runtime.js", "agent/css/interaction_settings.css",
     # Views must retain the real canvas loaders, divider state and avatar lock.
     "agent/js/agent_page_layout.js", "agent/js/avatar_size.js",
     "agent/js/agent_page_canvas.js", "agent/js/agent_page_init.js",
@@ -84,6 +86,7 @@ SOURCE_TREES = (
 )
 ROOT_SOURCES = {
     "Tlamatini/agent/templates/agent/interactor.html": "_internal/agent/templates/agent/interactor.html",
+    "Tlamatini/agent/templates/agent/interaction_settings.html": "_internal/agent/templates/agent/interaction_settings.html",
     "docs/interactor.md": "docs/interactor.md",
     "Tlamatini/agent/templates/agent/agent_page.html":
         "_internal/agent/templates/agent/agent_page.html",

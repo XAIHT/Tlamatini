@@ -15,8 +15,8 @@
     const terminaterActions = ['run', 'open', 'type', 'send_key', 'wait', 'read', 'commands', 'abort', 'kill', 'force_kill', 'kill_all', 'list', 'status', 'focus', 'rename', 'layout', 'clear', 'watch_user', 'warn_user', 'handover'];
     const terminaterKinds = ['cmd', 'powershell', 'pwsh'];
     const terminaterTextActions = ['run', 'type', 'handover'];
-    const terminaterDefaults = { action: 'run', kind: 'powershell', terminal: '', title: '', cwd: '', keys: '', message: '', severity: 'warning', suggestion: '', hint: '', which: 'last', until: '', pattern: '', layout: '', area: '', submit: true, secret: false, wait: true, close_after: false, load_profile: true, advisor: true, typing_wpm: 50, wait_seconds: 120, hang_seconds: 45, user_wait_seconds: 300, idle_seconds: 2 };
-    const terminaterTextLimits = { terminal: 80, title: 80, cwd: 1000, keys: 500, message: 2000, suggestion: 1000, hint: 200, which: 40, until: 20, pattern: 500 };
+    const terminaterDefaults = { action: 'run', kind: 'powershell', terminal: '', title: '', cwd: '', keys: '', message: '', severity: 'warning', suggestion: '', hint: '', which: 'last', until: '', pattern: '', layout: '', area: '', submit: true, secret: false, wait: true, close_after: false, load_profile: true, advisor: true, typing_wpm: 50, wait_seconds: 120, hang_seconds: 45, user_wait_seconds: 300, idle_seconds: 2, use_my_defaults: false, explanation: '' };
+    const terminaterTextLimits = { terminal: 80, title: 80, cwd: 1000, keys: 500, message: 2000, suggestion: 1000, hint: 200, which: 40, until: 20, pattern: 500, explanation: 1000 };
     const terminaterNumbers = { typing_wpm: [20, 160, true], wait_seconds: [1, 3600, false], hang_seconds: [3, 3600, false], user_wait_seconds: [5, 3600, false], idle_seconds: [0.2, 600, false] };
     const isFlowFilename = name => /\.fpmt$/i.test(name);
     // Migrate old flow draft/save names without changing system prompt files.
@@ -52,7 +52,7 @@
         if (type === 'prompt' || type === 'programmed_prompt') Object.assign(config, { multi_turn: false, acpx: false });
         if (type === 'programmed_prompt') Object.assign(config, { delay_seconds: 5, scheduled_at: '' });
         if (type === 'decision') Object.assign(config, { comparison: 'contains', value: '', case_sensitive: false });
-        if (type === 'terminater') Object.assign(config, terminaterDefaults);
+        if (type === 'terminater') Object.assign(config, terminaterDefaults, { use_my_defaults: true });
         if (type === 'user_commentary') Object.assign(config, { width: 360, height: 160, color: '#fef3c7', text_color: '#202938', font_family: 'Nunito', font_size: 16, bold: false, italic: false, underline: false, align: 'left', runs: [] });
         return { id: id(), type, label: operations[type].label, x, y, config };
     }
@@ -147,7 +147,7 @@
                 for (const [key, max] of Object.entries(terminaterTextLimits)) text(c[key], max, `Terminater ${key}`);
                 if (!['info', 'hint', 'warning', 'danger'].includes(c.severity)) fail('Unknown Terminater severity.');
                 if (!['', 'tabs', 'tile', 'tile-h', 'tile-v', 'grid'].includes(c.layout) || !['', 'dock', 'full'].includes(c.area)) fail('Unknown Terminater layout or area.');
-                for (const key of ['submit', 'secret', 'wait', 'close_after', 'load_profile', 'advisor']) if (typeof c[key] !== 'boolean') fail(`Terminater ${key} must be true or false.`);
+                for (const key of ['submit', 'secret', 'wait', 'close_after', 'load_profile', 'advisor', 'use_my_defaults']) if (typeof c[key] !== 'boolean') fail(`Terminater ${key} must be true or false.`);
                 for (const [key, [min, max, integer]] of Object.entries(terminaterNumbers)) {
                     number(c[key], min, max, `Terminater ${key}`);
                     if (integer && !Number.isInteger(c[key])) fail(`Terminater ${key} must be a whole number.`);

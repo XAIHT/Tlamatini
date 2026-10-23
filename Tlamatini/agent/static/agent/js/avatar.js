@@ -3,94 +3,8 @@
 (function(){
   "use strict";
   function ready(fn){ if(document.readyState!=='loading'){setTimeout(fn,0);} else {document.addEventListener('DOMContentLoaded',fn);} }
-  const FEMALE_RE=/(female|zira|jenny|aria|michelle|clara|nanami|sara|hazel|heera|catherine|hedda|elsa|paulina|helena|laura|isabel|sabina|woman|girl|monica|google us english|google uk english female|samantha|victoria|karen|tessa|fiona|moira|serena|allison|ava|susan|zoe|nora|mia|jess|tara|leah)/i;
-  const MALE_RE=/(\bmale\b|david|mark|guy|ryan|george|james|richard|paul|thomas|daniel|alex|fred|diego|jorge|pablo|\bman\b|\bboy\b)/i;
-  function allVoices(){ try{return window.speechSynthesis.getVoices()||[];}catch(e){return [];} }
-  function femaleVoices(){
-    const vs=allVoices();
-    const en=vs.filter(function(v){return /^en(-|_|$)/i.test(v.lang||'');});
-    const pool=en.length?en:vs;
-    let fem=pool.filter(function(v){const n=(v.name||'');return FEMALE_RE.test(n) && !MALE_RE.test(n);});
-    if(!fem.length) fem=pool.filter(function(v){return !MALE_RE.test(v.name||'');});
-    if(!fem.length) fem=pool.slice();
-    return fem;
-  }
-  const DEF={mode:'notify',voiceURI:'',volume:100,rate:1,pitch:1.05};
-  function loadSettings(){ try{const s=JSON.parse(localStorage.getItem('tlm_voice_settings')||'{}');return Object.assign({},DEF,s);}catch(e){return Object.assign({},DEF);} }
-  function saveSettings(s){ try{localStorage.setItem('tlm_voice_settings',JSON.stringify(s));}catch(e){ /* Storage may be unavailable; retain the in-memory voice settings. */ } }
-  let settings=loadSettings();
-  function pickVoice(){
-    const fem=femaleVoices(); if(!fem.length)return null;
-    if(settings.voiceURI){ const m=fem.filter(function(v){return v.voiceURI===settings.voiceURI;}); if(m.length)return m[0]; }
-    const pref=fem.filter(function(v){return /zira|jenny|aria|samantha|google us english|hazel/i.test(v.name||'');});
-    return (pref[0]||fem[0]);
-  }
-  let _primed=false;
-  function prime(){ if(_primed)return; _primed=true; try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; window.speechSynthesis.speak(u);}catch(e){ /* Speech priming is optional when the browser denies synthesis. */ } }
-  let _keep=null;
-  function keepAlive(on){ if(on){ if(_keep)return; _keep=setInterval(function(){ try{ if(window.speechSynthesis.speaking) window.speechSynthesis.resume(); else {clearInterval(_keep);_keep=null;} }catch(e){ /* Speech synthesis can disappear while the page is closing. */ } },4000);} else { if(_keep){clearInterval(_keep);_keep=null;} } }
-  function chunk(text){
-    text=(text||'').replace(/\s+/g,' ').trim(); if(!text)return [];
-    const parts=text.match(/[^.!?;:]+[.!?;:]?/g)||[text];
-    const out=[]; let buf='';
-    parts.forEach(function(p){ p=p.trim(); if(!p)return;
-      if((buf+' '+p).length>170){ if(buf)out.push(buf); if(p.length>170){ for(let i=0;i<p.length;i+=170)out.push(p.slice(i,i+170)); buf=''; } else buf=p; }
-      else buf=(buf?buf+' ':'')+p;
-    });
-    if(buf)out.push(buf); return out;
-  }
-  let _listening=false;
-  function speak(text,opts){
-    if(_listening || !('speechSynthesis' in window))return;
-    const s=loadSettings(); settings=s;
-    // opts.queue = true  ->  do NOT cut off what is already being said, so that
-    // consecutive messages are ALL spoken, one after another, none swallowed.
-    if(!(opts&&opts.queue)){ try{window.speechSynthesis.cancel();}catch(e){ /* Cancellation is best effort; text chat remains usable. */ } }
-    const pieces=chunk(text); if(!pieces.length)return;
-    const v=pickVoice(); keepAlive(true);
-    pieces.forEach(function(p,i){
-      const u=new SpeechSynthesisUtterance(p);
-      if(v)u.voice=v;
-      u.volume=Math.max(0,Math.min(1,(s.volume||100)/100));
-      u.rate=s.rate||1; u.pitch=(s.pitch==null?1.05:s.pitch); u.lang=(v&&v.lang)||'en-US';
-      if(i===pieces.length-1)u.onend=function(){
-        // only stand down once NOTHING else is still speaking or queued
-        try{ if(!window.speechSynthesis.speaking && !window.speechSynthesis.pending) keepAlive(false); }
-        catch(e){ keepAlive(false); }
-      };
-      try{window.speechSynthesis.speak(u);}catch(e){ /* Speech output is optional; the visible chat already contains the text. */ }
-    });
-  }
-  // ---- STOP TALKING, RIGHT NOW -------------------------------------------
-  // Kills whatever is being said AND everything still queued behind it.
-  function stopSpeaking(){
-    try{ window.speechSynthesis.cancel(); }catch(e){ /* An unavailable speech engine has nothing left to cancel. */ }
-    try{ window.speechSynthesis.cancel(); }catch(e){ /* The second cancellation is best effort for Chrome. */ }   // Chrome sometimes needs a 2nd
-    try{ keepAlive(false); }catch(e){ /* Stopping speech must remain safe during browser teardown. */ }
-  }
-  // Turn the voice OFF for good (persists) - or back ON.
-  function setSilent(on){
-    const s=loadSettings(); s.mode=on?'silent':'notify'; saveSettings(s);
-    if(on)stopSpeaking();
-    return s.mode;
-  }
-  window.TLM_VOICE={speak:speak,notify:function(){speak("I've finished your request.");},femaleVoices:femaleVoices,pickVoice:pickVoice,loadSettings:loadSettings,saveSettings:saveSettings,prime:prime,stop:stopSpeaking,setSilent:setSilent,setListening:function(on){_listening=!!on;if(on)stopSpeaking();}};
-  try{ if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged=function(){}; }catch(e){ /* Some browsers do not expose a writable voice-change hook. */ }
-  // ESC anywhere = shut up immediately.  Ctrl+Shift+M = mute for good / unmute.
-  document.addEventListener('keydown',function(e){
-    try{
-      if(e.key==='Escape'){ stopSpeaking(); return; }
-      if(e.ctrlKey&&e.shiftKey&&(e.key==='M'||e.key==='m')){
-        e.preventDefault();
-        const m=setSilent(loadSettings().mode!=='silent');
-        const b=document.getElementById('tlm-avatar-bubble');
-        if(b){ b.textContent=(m==='silent')?"Voice OFF - I'll stay quiet.":"Voice ON - I'll talk to you again!"; b.classList.add('tlm-show');
-               clearTimeout(b._t); b._t=setTimeout(function(){b.classList.remove('tlm-show');},2600); }
-      }
-    }catch(err){ /* Optional voice shortcuts must not interrupt normal keyboard handling. */ }
-  },true);
-  document.addEventListener('click',prime,{once:true});
-  document.addEventListener('keydown',prime,{once:true});
+  const {speak, prime, stop:stopSpeaking, setSilent, femaleVoices, pickVoice, loadSettings, saveSettings} = window.TLM_VOICE;
+
 
   ready(function(){
     const dock=document.getElementById('tlm-avatar-dock');
@@ -253,7 +167,7 @@
     }
     function doCancelSpeak(){
       _pending=false; _spoken=true;
-      try{window.speechSynthesis.cancel();}catch(e){ /* Cancellation remains usable without a speech engine. */ }
+      stopSpeaking();
       _said['cancel']=0;                        // a cancel always gets announced
       announce('cancel',CANCEL_PHRASE,0);
     }

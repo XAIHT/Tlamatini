@@ -1,0 +1,38 @@
+/* Tlamatini Author Banner — Angela López Mendoza */
+.tlm-interaction-overlay[hidden] { display: none !important; }
+.tlm-interaction-overlay { position: fixed; inset: 0; z-index: 20020; display: flex; align-items: center; justify-content: center; padding: 20px; background: #080d16bb; }
+.tlm-interaction-dialog { width: min(760px, 100%); max-height: min(880px, 90dvh); display: flex; flex-direction: column; color: var(--tlm-text, #e6edf7); background: var(--tlm-panel, #202733); border: 1px solid #536174; border-radius: 14px; box-shadow: 0 24px 80px #0008; overflow: hidden; font: 14px/1.5 'Segoe UI', sans-serif; }
+.tlm-interaction-heading { display: flex; justify-content: space-between; gap: 16px; padding: 20px 24px 12px; }
+.tlm-interaction-eyebrow { color: #79d8c7; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+.tlm-interaction-heading h2 { font-size: 23px; margin: 3px 0 4px; color: inherit; }
+.tlm-interaction-heading p { margin: 0; color: #b5c3d6; }
+.tlm-interaction-dialog button { color: inherit; background: #303c4c; border: 1px solid #596b80; border-radius: 6px; padding: 7px 12px; cursor: pointer; font: inherit; }
+.tlm-interaction-dialog button:focus-visible, .tlm-interaction-dialog input:focus-visible, .tlm-interaction-dialog select:focus-visible { outline: 2px solid #79d8c7; outline-offset: 2px; }
+#interaction-settings-close { align-self: flex-start; font-size: 22px; padding: 0 9px; }
+.tlm-interaction-tabs { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid #47546a; }
+.tlm-interaction-tabs button { border: 0; border-radius: 6px 6px 0 0; background: transparent; padding: 10px 16px; }
+.tlm-interaction-tabs button[aria-selected="true"] { background: #30463f; color: #9aebd9; box-shadow: inset 0 -3px #55bbaa; }
+.tlm-interaction-body { overflow: auto; padding: 18px 24px; min-height: 0; }
+.tlm-interaction-presets { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 10px; }
+.tlm-interaction-presets span, .tlm-interaction-help, .tlm-interaction-footer small { color: #b5c3d6; font-size: 12px; }
+.tlm-interaction-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 22px; }
+.tlm-interaction-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.tlm-interaction-field:has(input[type="checkbox"]) { flex-direction: row; align-items: center; }
+.tlm-interaction-dialog input[type="number"], .tlm-interaction-dialog select { background: #161d28; border: 1px solid #596b80; border-radius: 5px; padding: 7px 9px; color: inherit; min-width: 0; width: 100%; font: inherit; }
+.tlm-interaction-presets select { width: auto; margin-left: 8px; }
+.tlm-interaction-dialog input[type="checkbox"] { accent-color: #55bbaa; width: 17px; height: 17px; flex-shrink: 0; }
+.tlm-interaction-advanced { grid-column: 1 / -1; border-top: 1px solid #47546a; padding-top: 12px; }
+.tlm-interaction-advanced summary { cursor: pointer; margin-bottom: 12px; }
+.tlm-interaction-advanced > div { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+.tlm-interaction-footer { border-top: 1px solid #47546a; padding: 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+.tlm-interaction-footer > div { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.tlm-interaction-dialog .tlm-interaction-primary { background: #377e6e; border-color: #77ceba; color: white; }
+.tlm-interaction-dialog button:disabled { opacity: .5; cursor: default; }
+#interaction-preview { border: 1px solid #536174; padding: 12px; border-radius: 8px; margin-top: 16px; }
+#interaction-preview pre { min-height: 44px; color: #dce4f3; white-space: pre-wrap; overflow-wrap: anywhere; }
+#interaction-access-row { display: block; margin-bottom: 18px; }
+#interaction-access-row small { display: block; color: #b5c3d6; }
+#interaction-settings-feedback { margin: 12px 0 0; overflow-wrap: anywhere; }
+.tlm-narration-notice { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100005; max-width: min(680px, 92vw); padding: 14px; color: #e6edf7; background: #263644; border: 1px solid #79d8c7; border-radius: 8px; display: flex; gap: 10px; flex-wrap: wrap; box-shadow: 0 8px 30px #0008; }
+.tlm-narration-notice button { background: #377e6e; color: white; border: 1px solid #79d8c7; border-radius: 4px; padding: 6px; }
+@media (max-width: 620px) { .tlm-interaction-overlay { padding: 8px; } .tlm-interaction-fields, .tlm-interaction-advanced > div { grid-template-columns: 1fr; } .tlm-interaction-heading, .tlm-interaction-body, .tlm-interaction-footer { padding: 12px 16px; } .tlm-interaction-tabs { padding: 0 8px; } .tlm-interaction-tabs button { padding: 9px; } }

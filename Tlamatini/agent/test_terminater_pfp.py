@@ -275,8 +275,12 @@ class ValidatorTests(SimpleTestCase):
         import yaml
 
         data = yaml.safe_load(CONFIG_YAML.read_text(encoding="utf-8"))
+        # Legacy flow files retain explicit values. Newly created nodes and
+        # newly deployed agents opt in to the user's defaults.
+        self.assertIs(fm.TERMINATER_DEFAULTS['use_my_defaults'], False)
+        self.assertIs(data['use_my_defaults'], True)
         for key, value in fm.TERMINATER_DEFAULTS.items():
-            if key in data:
+            if key in data and key != 'use_my_defaults':
                 self.assertEqual(data[key], value, f"{key}: PFP default differs from agents/terminater/config.yaml")
 
     def test_number_ranges_agree_with_the_engine_clamps(self):

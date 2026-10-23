@@ -49,6 +49,18 @@ class TerminalAuditRegressions(unittest.TestCase):
         self.assertEqual(session.last_command().output, "hello")
         self.assertEqual(session.last_command().source, "user")
 
+    def test_resized_idle_prompt_is_read_from_repainted_screen_without_new_markers(self):
+        session = self.session()
+        session.resize(29, 14)
+        session._on_output('\x1b[H\x1b[2JC:\\>echo SETTINGS_OK')
+        self.assertEqual(session.input_line(), 'echo SETTINGS_OK')
+        verified = session.verify_line('echo SETTINGS_OK', timeout=.2)
+        self.assertTrue(verified['verified'])
+        self.assertFalse(session.verify_line('echo NOT_SENT', timeout=.2)['verified'])
+        session._begin_command('user', session.input_line())
+        session._on_output('\r\nSETTINGS_OK\r\n\x1b]133;A\x07C:\\>\x1b]133;B\x07')
+        self.assertEqual(session.last_command().output, 'SETTINGS_OK')
+
     def test_live_output_limit_discloses_more(self):
         result = self.running_output().read(limit=4)
         self.assertEqual(result["output"], "line")

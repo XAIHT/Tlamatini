@@ -835,8 +835,11 @@
                 form.append(element('small', '', 'Wait until this time, then apply the delay. Past times run immediately. Keep the page and Tlamatini open.'));
             }
             if (kind === 'terminater') {
+                const inherited = field('use_my_defaults', 'Use my defaults (speed, shell, waiting and advisor)', 'checkbox', config.use_my_defaults);
+                const inheritedFields = [];
+                field('explanation', 'Spoken explanation (optional; never include private values)', 'text', config.explanation || '').maxLength = 1000;
                 field('action', 'What to do', 'select', config.action, [['run', 'Run a command (type it, wait, read the result)'], ['open', 'Open a new terminal'], ['type', 'Type into a terminal'], ['handover', 'Type part of a command, then hand over to the user'], ['send_key', 'Press keys (Ctrl+C, Enter, ...)'], ['wait', 'Wait for the running command'], ['read', 'Read terminal output'], ['abort', 'Interrupt the running command'], ['kill', 'Close a terminal'], ['force_kill', 'Force-kill a terminal'], ['kill_all', 'Force-kill every terminal'], ['list', 'List the terminals'], ['focus', 'Focus a terminal'], ['layout', 'Change the layout (tabs, tile, ...)'], ['clear', 'Clear a screen'], ['watch_user', 'Watch what the user types'], ['warn_user', 'Warn the user']]);
-                field('kind', 'Terminal type', 'select', config.kind, [['cmd', 'CMD'], ['powershell', 'PowerShell'], ['pwsh', 'PowerShell 7']]);
+                inheritedFields.push(field('kind', 'Terminal type', 'select', config.kind, [['cmd', 'CMD'], ['powershell', 'PowerShell'], ['pwsh', 'PowerShell 7']]));
                 field('terminal', 'Terminal (id or title; empty = the active one)', 'text', config.terminal).maxLength = 80;
                 field('cwd', 'Start folder (optional)', 'text', config.cwd).maxLength = 1000;
                 field('submit', 'Press Enter after typing', 'checkbox', config.submit);
@@ -845,7 +848,10 @@
                 field('close_after', 'Close the terminal when it finishes', 'checkbox', config.close_after);
                 for (const [name, label, min, max] of [['typing_wpm', 'Typing speed (words per minute, 20-160)', 20, 160], ['wait_seconds', 'Give up waiting after (seconds)', 1, 3600], ['hang_seconds', 'No output for this long = hung (seconds)', 3, 3600], ['user_wait_seconds', "Wait for the user's part (seconds)", 5, 3600]]) {
                     const input = field(name, label, 'number', config[name]); input.min = min; input.max = max; input.step = 'any';
+                    inheritedFields.push(input);
                 }
+                const syncInherited = () => { for (const input of inheritedFields) input.disabled = inherited.checked; };
+                inherited.addEventListener('change', syncInherited); syncInherited();
             }
             if (kind === 'decision') {
                 field('comparison', 'Decision rule', 'select', config.comparison, [['contains', 'Last output contains'], ['not_contains', 'Last output does not contain'], ['equals', 'Last output equals'], ['is_empty', 'Last output is empty'], ['user', 'Ask the user: Yes or No']]);
@@ -856,8 +862,8 @@
             if (!editable()) throw new Error('Stop playback before editing.');
             draft.label = fields.label.value.trim() || M.operations[kind].label;
             if (fields.text) config.text = fields.text.value;
-            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'submit', 'secret', 'wait', 'close_after']) if (fields[name]) config[name] = fields[name].checked;
-            for (const name of ['comparison', 'value', 'action', 'kind', 'terminal', 'cwd']) if (fields[name]) config[name] = fields[name].value;
+            for (const name of ['multi_turn', 'acpx', 'case_sensitive', 'submit', 'secret', 'wait', 'close_after', 'use_my_defaults']) if (fields[name]) config[name] = fields[name].checked;
+            for (const name of ['comparison', 'value', 'action', 'kind', 'terminal', 'cwd', 'explanation']) if (fields[name]) config[name] = fields[name].value;
             for (const name of ['typing_wpm', 'wait_seconds', 'hang_seconds', 'user_wait_seconds']) if (fields[name]) config[name] = Number(fields[name].value);
             if (fields.delay_seconds) config.delay_seconds = Number(fields.delay_seconds.value);
             if (fields.scheduled_at) config.scheduled_at = fields.scheduled_at.value ? new Date(fields.scheduled_at.value).toISOString() : '';

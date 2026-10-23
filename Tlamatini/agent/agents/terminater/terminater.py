@@ -361,7 +361,7 @@ PARAM_KEYS = (
     "wait", "wait_seconds", "hang_seconds", "user_wait_seconds", "until", "pattern", "idle_seconds",
     "which", "read_chars", "offset", "keys", "cursor", "message", "severity", "suggestion", "hint",
     "layout", "area", "show", "close_after", "load_profile", "advisor", "user",
-    "create_if_missing", "clear_line", "check_line",
+    "create_if_missing", "clear_line", "check_line", "use_my_defaults", "explanation",
 )
 
 #: Yes/no parameters.  They are read STRICTLY (terminater_text.parse_flag): a value that is not
@@ -531,11 +531,23 @@ def build_params(config: Dict[str, Any], notes: Optional[List[str]] = None) -> D
 
 
 def _deadline(action: str, params: Dict[str, Any]) -> float:
-    wait_s = float(params.get("wait_seconds") or 120)
+    inherit = _tx.parse_flag(params.get('use_my_defaults'), False, False)[0]
+    # Account defaults are resolved in the Django hub. The pool agent allows
+    # their documented maxima; the hub still enforces the actual shorter waits.
+    wait_s = 3600 if inherit else float(params.get("wait_seconds") or 120)
     text = str(params.get("text") or "")
-    typing = 0.3 * len(text) + 5 if action in ("run", "type", "handover") else 0
-    user = float(params.get("user_wait_seconds") or 300) if "<<USER" in text or action == "handover" else 0
-    return wait_s + typing + user + 90
+    encoded = str(params.get('text_b64') or '')
+    if encoded:
+        import base64
+        try:
+            text = base64.b64decode(encoded, validate=True).decode('utf-8')
+        except (ValueError, UnicodeError):
+            text = encoded  # The hub will reject malformed input.
+    wpm = 20 if inherit else max(20, min(160, float(params.get('typing_wpm') or 50)))
+    typing = 12 / wpm * len(text) + 5 if action in ("run", "type", "handover") else 0
+    handoffs = max(text.count('<<USER'), int(action == 'handover'))
+    user = (3600 if inherit else float(params.get("user_wait_seconds") or 300)) * handoffs
+    return wait_s + typing + user + 210  # Bounded narration receipt plus transport margin.
 
 
 def _sanitize_value(value: Any) -> str:

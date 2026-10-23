@@ -166,6 +166,7 @@ out["deadline_read"] = T._deadline("read", {})
 out["deadline_handover"] = T._deadline("handover", {"text": "x", "user_wait_seconds": 7})
 out["deadline_user_marker"] = T._deadline("run", {"text": "a<<USER:b>>"})
 out["deadline_type_default"] = T._deadline("type", {"text": ""})
+out["deadline_inherited"] = T._deadline("run", {"text_b64": "YTw8VVNFUjpiPj4=", "use_my_defaults": True})
 out["sanitize"] = [T._sanitize_value("a\r\nb\nc  "), T._sanitize_value(None), T._sanitize_value(5), T._sanitize_value("  x  ")]
 
 out["s_completed"] = section("run", {
@@ -278,19 +279,22 @@ class ProbeHelperTests(_ProbeBase):
         self.assertEqual(self.out["params_booleans_native"], {"submit": True, "wait": False})
 
     def test_deadline_covers_typing_waiting_and_a_margin(self):
-        self.assertAlmostEqual(self.out["deadline_run"], 10 + (0.3 * 4 + 5) + 90, places=3)
+        self.assertAlmostEqual(self.out["deadline_run"], 10 + (0.24 * 4 + 5) + 210, places=3)
 
     def test_deadline_of_a_plain_read(self):
-        self.assertEqual(self.out["deadline_read"], 120 + 90)
+        self.assertEqual(self.out["deadline_read"], 120 + 210)
 
     def test_deadline_waits_for_the_user_on_a_handover(self):
-        self.assertAlmostEqual(self.out["deadline_handover"], 120 + (0.3 * 1 + 5) + 7 + 90, places=3)
+        self.assertAlmostEqual(self.out["deadline_handover"], 120 + (0.24 * 1 + 5) + 7 + 210, places=3)
 
     def test_deadline_waits_for_the_user_when_the_text_has_a_marker(self):
-        self.assertAlmostEqual(self.out["deadline_user_marker"], 120 + (0.3 * 11 + 5) + 300 + 90, places=3)
+        self.assertAlmostEqual(self.out["deadline_user_marker"], 120 + (0.24 * 11 + 5) + 300 + 210, places=3)
 
     def test_deadline_for_type_adds_typing_overhead(self):
-        self.assertAlmostEqual(self.out["deadline_type_default"], 120 + 5 + 90, places=3)
+        self.assertAlmostEqual(self.out["deadline_type_default"], 120 + 5 + 210, places=3)
+
+    def test_inherited_deadline_covers_slowest_speed_longest_waits_and_base64_handoff(self):
+        self.assertGreaterEqual(self.out['deadline_inherited'], 3600 + 3600 + .6 * 11 + 120)
 
     def test_sanitize_value(self):
         self.assertEqual(self.out["sanitize"], ["a  b c", "", "5", "x"])

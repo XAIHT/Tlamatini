@@ -148,6 +148,11 @@ def get_hub() -> Any:
         except (TypeError, ValueError):
             hang = engine.HANG_SECONDS_DEFAULT
         _HUB = engine.TerminalHub(max_terminals=max_terminals, hang_seconds=hang)
+        from .interaction_settings import terminal_preferences
+        from .interaction_narration import narration
+        _HUB.prepare_action = lambda action, params: terminal_preferences(action, params, engine)
+        _HUB.presentation = narration.present
+        _HUB.action_outcome = narration.outcome
         _register_exit()
         logger.info("--- [TERMINATER] hub ready: up to %s terminals, hang window %ss", max_terminals, hang)
         return _HUB

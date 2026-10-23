@@ -408,6 +408,7 @@ class TerminalSession:
 
     def _prompt_ready(self, row: int, col: int) -> None:
         self._prompt_row, self._prompt_col = row, col
+        self._resized_prompt_prefix = None
         if self.state in (ST_STARTING, ST_RUNNING):
             self._set_state(ST_PROMPT)
         elif self.state == ST_PROMPT:
@@ -525,6 +526,25 @@ class TerminalSession:
         with self.cv:
             try:
                 if self.state in (ST_PROMPT, ST_TYPING) and hasattr(self, "_prompt_row"):
+                    prefix = getattr(self, '_resized_prompt_prefix', None)
+                    if prefix:
+                        # ConPTY can repaint a resized idle prompt without OSC
+                        # markers. Read its actual cursor line, never the sent
+                        # keys or the expected command, at the new geometry.
+                        line = self.screen.cursor_line_text(0)
+                        if line.startswith(prefix):
+                            row = self.screen.abs_row()
+                            while row > self.screen.dropped and self.screen._row_text(row)[1]:
+                                row -= 1
+                            col = len(prefix)
+                            while col >= len(self.screen._row_text(row)[0]):
+                                following = self.screen._row_text(row + 1)
+                                if not following or not following[1]:
+                                    break
+                                col -= len(self.screen._row_text(row)[0])
+                                row += 1
+                            self._prompt_row, self._prompt_col = row, col
+                            return line[len(prefix):].rstrip()
                     return self.screen.text_from(self._prompt_row, self._prompt_col).rstrip()
                 return self.screen.cursor_line_text(0).rstrip()
             except Exception:  # noqa: BLE001
@@ -624,11 +644,20 @@ class TerminalSession:
     # ----------------------------------------------------------------- resize
     def resize(self, cols: int, rows: int) -> bool:
         cols, rows = max(20, min(400, int(cols))), max(5, min(120, int(rows)))
-        ok = bool(self.pty and self.pty.resize(cols, rows))
         with self.cv:
+            if (cols, rows) == (self.cols, self.rows):
+                return True
+            if self.state in (ST_PROMPT, ST_TYPING) and self.current is None and hasattr(self, '_prompt_row'):
+                line = self.screen.cursor_line_text(0)
+                entered = self.input_line()
+                prefix = line[:-len(entered)] if entered and line.endswith(entered) else line if not entered else ''
+                if prefix:
+                    self._resized_prompt_prefix = prefix
+            # Prepare geometry before asking ConPTY to repaint. Do not hold
+            # the reader lock across the native call: output must keep draining.
             self.screen.resize(cols, rows)
             self.cols, self.rows = cols, rows
-        return ok
+        return bool(self.pty and self.pty.resize(cols, rows))
 
     # ----------------------------------------------------------- raw key write
     def _write(self, data: str) -> int:
@@ -751,6 +780,7 @@ class TerminalSession:
         rng: Optional[random.Random] = None,
         secret: bool = False,
         cancel_event: Optional[threading.Event] = None,
+        presentation: Optional[Callable] = None,
     ) -> Dict[str, Any]:
         """Type ``text`` like a person, one key at a time.  Returns what was typed.
 
@@ -775,7 +805,10 @@ class TerminalSession:
             self.handover_resume.clear()
             was_prompt = self.state == ST_PROMPT
             self._set_state(ST_TYPING, text=("" if secret else text[:200]))
-            for index, (kind, payload) in enumerate(segments):
+            if presentation and not presentation("before"):
+                result["aborted"] = True
+                result["handover"] = "narration_unavailable"
+            for index, (kind, payload) in enumerate(segments if not result["aborted"] else []):
                 if kind == "type":
                     plan = _tx.plan_typing(payload, wpm=wpm, rng=rng, submit=False,
                                            lead_in=(index == 0))
@@ -809,6 +842,8 @@ class TerminalSession:
                     typed.append(user_part)
                     self.handover_resume.clear()
                     self._set_state(ST_TYPING, text="")
+            if presentation and not result["aborted"]:
+                presentation("after")
             if not result["aborted"] and not result.get("user_submitted") and submit:
                 final = _tx.plan_typing("", submit=True, rng=rng, lead_in=False)
                 for key in final:
@@ -823,6 +858,8 @@ class TerminalSession:
                         break
                     result["enter_pressed"] = True
         finally:
+            if presentation and (result["aborted"] or self._abort_typing.is_set()):
+                presentation("cancel")
             self._typing_by = ""
             self.secret_input = False
             self._type_lock.release()
@@ -1097,6 +1134,9 @@ class TerminalHub:
     """Owns the terminals of every user and exposes the whole action API."""
 
     def __init__(self, max_terminals: int = 12, hang_seconds: float = HANG_SECONDS_DEFAULT) -> None:
+        self.prepare_action = None
+        self.presentation = None
+        self.action_outcome = None
         self.max_terminals = max(1, int(max_terminals))
         self.hang_seconds = hang_seconds
         self._spaces: Dict[str, UserSpace] = {}
@@ -1315,7 +1355,11 @@ class TerminalHub:
             # Resolve once: opening a shell can take seconds, during which another
             # browser can become the most recently active user.
             params["user"] = self.resolve_user(params.get("user"))
+            if self.prepare_action:
+                params = self.prepare_action(action, params)
             result = handler(params)
+            if self.action_outcome:
+                self.action_outcome(action, params, result)
             result.setdefault("ok", True)
             result.setdefault("action", action)
             return result
@@ -1510,6 +1554,8 @@ class TerminalHub:
 
         cancellation = p.get("_cancel_event")
         options = {"cancel_event": cancellation} if isinstance(cancellation, threading.Event) else {}
+        if self.presentation:
+            options["presentation"] = lambda stage: self.presentation(stage, session, p)
         if already_present and not submit:
             typed: Dict[str, Any] = {"typed": "", "user_part": "", "aborted": False, "enter_pressed": False}
         else:
@@ -1528,6 +1574,7 @@ class TerminalHub:
                 **extra, "status": "operator_required" if reason == "timeout" else "aborted",
                 "success": False, "reason": reason,
                 "message": ("The user did not finish their part in time." if reason == "timeout"
+                            else "Narration could not finish. Check Voice settings or use a visible tab, then retry the step." if reason == "narration_unavailable"
                             else "The user took over the keyboard; typing stopped.")}, read_chars)
 
         # READ IT BACK.  "I sent the keys" is not "the line is on the prompt": ask the screen.

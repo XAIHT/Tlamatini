@@ -1,0 +1,42 @@
+{# Tlamatini Author Banner — Angela López Mendoza #}
+<div id="interaction-settings-overlay" class="tlm-interaction-overlay" hidden>
+  <form id="interaction-settings-form" class="tlm-interaction-dialog" role="dialog" aria-modal="true" aria-labelledby="interaction-settings-title">
+    {% csrf_token %}
+    <div class="tlm-interaction-heading">
+      <div><span class="tlm-interaction-eyebrow">Config</span><h2 id="interaction-settings-title">Live Editor &amp; Terminater</h2><p>Choose how I type, guide you, and speak.</p></div>
+      <button id="interaction-settings-close" type="button" aria-label="Close settings">×</button>
+    </div>
+    <div class="tlm-interaction-tabs" role="tablist" aria-label="Interaction settings">
+      <button type="button" role="tab" id="interaction-tab-editor" aria-controls="interaction-panel-editor" data-interaction-tab="editor">Live Editor</button>
+      <button type="button" role="tab" id="interaction-tab-terminal" aria-controls="interaction-panel-terminal" data-interaction-tab="terminal">Terminater</button>
+      <button type="button" role="tab" id="interaction-tab-voice" aria-controls="interaction-panel-voice" data-interaction-tab="voice">Voice</button>
+    </div>
+    <div class="tlm-interaction-body">
+      <div class="tlm-interaction-presets"><label>Preset <select id="interaction-preset"><option value="custom">Custom</option><option value="standard">Standard</option><option value="guided">Guided learning</option></select></label><span>Presets change this draft. Save to apply.</span></div>
+      <section id="interaction-panel-editor" role="tabpanel" aria-labelledby="interaction-tab-editor">
+        <p>Changes apply to the next teaching segment. Typing remains editable and unsaved.</p>
+        <label id="interaction-access-row"><input id="interaction-access" type="checkbox"> Live editor access for this tab <small>Applies immediately, like the canvas checkbox.</small></label>
+        <div data-interaction-fields="editor" class="tlm-interaction-fields"></div>
+      </section>
+      <section id="interaction-panel-terminal" role="tabpanel" aria-labelledby="interaction-tab-terminal" hidden>
+        <p>Changes apply to the next action. Shell and advisor defaults apply to new terminals. Explicit flow values remain in use unless “Use my defaults” is selected.</p>
+        <div data-interaction-fields="terminal" class="tlm-interaction-fields"></div>
+        <p class="tlm-interaction-help">The command wait window stops waiting; it does not kill the command. No output means “possibly stalled,” not proof of failure. Ask Execs and Step-by-Step retain their own controls.</p>
+      </section>
+      <section id="interaction-panel-voice" role="tabpanel" aria-labelledby="interaction-tab-voice" hidden>
+        <p>Uses your existing female voice, volume, speed and pitch from Config → Voice. Global mute and microphone listening always take priority.</p>
+        <div data-interaction-fields="voice" class="tlm-interaction-fields"></div>
+        <p id="interaction-voice-description" class="tlm-interaction-help"></p>
+        <button type="button" id="interaction-toggle-mute">Mute voice</button>
+        <button type="button" id="interaction-open-voice">Open Voice settings</button>
+        <p class="tlm-interaction-help">Mute applies immediately across this browser. Ctrl+Shift+M also toggles it. Choose your voice in the main chat’s Config → Voice.</p>
+      </section>
+      <div id="interaction-preview" hidden><strong>Sample only — no command runs and no open file changes</strong><pre id="interaction-preview-text"></pre><button type="button" id="interaction-preview-stop">Stop preview</button></div>
+      <p id="interaction-settings-feedback" role="status" aria-live="polite"></p>
+    </div>
+    <div class="tlm-interaction-footer">
+      <small>Behavior: your account · Appearance and voice selection: this browser</small>
+      <div><button type="button" id="interaction-preview-button">Preview</button><button type="button" id="interaction-settings-reset">Reset this tab</button><button type="button" id="interaction-settings-cancel">Cancel</button><button type="submit" id="interaction-settings-save" class="tlm-interaction-primary">Save</button></div>
+    </div>
+  </form>
+</div>
