@@ -1244,6 +1244,30 @@ class MultiTurnToolAgentExecutor:
             return json.dumps({"ok": False, "status": "operator_required", "retryable": False,
                                "message": "The editor has been handed to the learner. End this turn with guidance; do not continue through another tool."})
         tool = self.tool_map.get(tool_name)
+        if tool is None and tool_name:
+            # A weaker model sometimes calls a wrapped agent by its bare/short
+            # name (e.g. 'terminater' instead of 'chat_agent_terminater'). The
+            # agent IS bound in this session — only the emitted name slipped.
+            # Resolve it to the real key instead of reporting it unavailable,
+            # and log the correction (never silent).
+            _bare = tool_name.strip()
+            _norm = re.sub(r"[\s-]+", "_", _bare.lower())
+            _resolved = None
+            for _cand in ("chat_agent_" + _bare, "chat_agent_" + _norm):
+                if _cand in self.tool_map:
+                    _resolved = _cand
+                    break
+            if _resolved is None:
+                for _key in self.tool_map:
+                    _kl = _key.lower()
+                    if _kl == _bare.lower() or _kl == "chat_agent_" + _norm:
+                        _resolved = _key
+                        break
+            if _resolved is not None and _resolved != tool_name:
+                logger.info("--- [TOOL-ALIAS] tool name '%s' resolved to '%s' "
+                            "(model used a short name; the agent IS bound)", tool_name, _resolved)
+                tool_name = _resolved
+                tool = self.tool_map[_resolved]
         if tool is None:
             logger.warning("[MultiTurnExecutor._invoke_tool] Tool '%s' NOT FOUND in tool_map. Available: %s",
                            tool_name, list(self.tool_map.keys()))
