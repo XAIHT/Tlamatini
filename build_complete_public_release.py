@@ -234,7 +234,9 @@ TEXT_EXT = {".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".env"
 # then makes the verifier hunt for the literal text "<REDACTED>" and "find" it in
 # every scrubbed file (the 737-false-positive bug). data.keys must stay intact too.
 SCRUB_SKIP_FILES = {"data.keys", ".private_targets.json", "private_targets.json",
-                    "contacts.private.json"}
+                    "contacts.private.json",
+                    "flow_catalog.json", "test_canvas_file_views.py",
+                    "test_terminater_agent.py", "test_terminater_hub_api.py"}
 
 SECRET_KEY_RE = re.compile(
     r'(?i)("(?:api[_-]?key|api[_-]?secret|token|access[_-]?token|auth[_-]?token|'
