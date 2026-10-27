@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 A dated, append-only log of surgical changes with the verbatim request and the
@@ -538,3 +538,11 @@ Existing tag `v1.91.0` at `a771d27c` is preserved. Source counts are 86 agents, 
 wrapped agents, 110 tools, 29 skills, 220 migrations, 64 JS modules and 29 stylesheets.
 Historical implementation tests retain their original dates and limits; documentation
 verification is separate. [Release and sweep record](docs/changes/2026-10-23-v1.91.0.md).
+
+## 2026-10-27 — v1.91.1 version bump
+
+Request: bump every current-version reference to 1.91.1. Updated the README badge and
+links, `package.json`, the `/agent/version/` sample, the self-knowledge version
+marker, the manual, the dossier/atlas source text and every Markdown release banner,
+and added the [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md). The
+existing tag `v1.91.1` at `9915938a` is preserved; no code behavior changed. Regenerated the PDF dossier (157 pages), editable PPTX (192 slides) and architecture atlas (31 pages); their verifications passed with 1608/1608 files.

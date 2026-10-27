@@ -12,7 +12,7 @@ originSessionId: c4ba907a-c91d-4c2c-8f86-5b38594aaca7
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 The user is the only person authorized to execute git operations that change state on the Tlamatini repository. Read-only inspection is fine; writes require an explicit ask.

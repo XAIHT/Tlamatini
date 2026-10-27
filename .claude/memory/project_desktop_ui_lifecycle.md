@@ -12,7 +12,7 @@ originSessionId: 1ee89777-fd83-41c5-abca-8fda542e7e6f
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 2026-05-07: Tlamatini left a Notepad window open after typing into it (image.png evidence) because no rule told the LLM to close the window or handle Notepad's "Save changes?" prompt. Fix codifies the lifecycle in two layers:

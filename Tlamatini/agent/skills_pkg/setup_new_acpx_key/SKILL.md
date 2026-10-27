@@ -55,7 +55,7 @@ metadata:
 
 # Set Up a New ACPX Agent Key
 
-> Current release: **[v1.91.0](../../../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](../../../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).

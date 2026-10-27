@@ -12,11 +12,33 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
-## v1.91.0 — Live Editor and Terminater configuration
+## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.0** is the current source version (2026-10-23). Its existing annotated tag
+**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
+`9915938a` and is present on origin; it is published on GitHub as the Latest
+release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
+tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
+wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
+
+- **Prompt Flow history:** every chain loads the history of the request's own
+  `conversation_user_id`; a Prompt Flow run uses only its own in-memory history.
+- **YES/NO Decisions:** an `equals` Decision accepts an answer that opens with the
+  value (`## YES - ...` equals `YES`; `Yesterday` does not), and the Prompt before it
+  asks for that short answer alone on the first line.
+- **Usage:** a Prompt Flow run is recorded for the account that owns it.
+- **Telegrammer:** "using the bot ..." anywhere in the request (outside quoted values)
+  sends as the bot; an explicit `provider` still wins.
+- **Short tool names:** a wrapped agent called by its short name (`terminater`) is
+  resolved to `chat_agent_terminater` and logged as `[TOOL-ALIAS]`.
+- **Prompt Flow tab title:** an Untitled flow shows the name of its file.
+
+See the [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md).
+
+## Carried from v1.91.0 — Live Editor and Terminater configuration
+
+**v1.91.0** was the source version of 2026-10-23. Its existing annotated tag
 resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
 agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
 **29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
@@ -39,7 +61,7 @@ UI and backend modules.
 Source evidence on October 23: **17/17 visible browser checks passed; 929 of 931
 regression tests passed**, with two existing README documentation assertions failing
 before this documentation sweep. These are dated source results, not a new installed
-package acceptance. No GitHub release for v1.91.0 was found during this sweep.
+package acceptance. v1.91.0 was published on GitHub on 2026-10-23.
 See the [release record](docs/changes/2026-10-23-v1.91.0.md) and
 [settings guide](docs/interaction-settings.md).
 
@@ -1062,7 +1084,7 @@ It carries **`v1.76.0`** (tagged 2026-10-08): annotated tag `v1.76.0`, pushed �
 It carries **`v1.75.0`** (annotated tag at `f7eb53ff`, 2026-10-03) — *"Release v1.75.0 Making Compact mode a real checkbox: it unticks the real Configure rows, locks ON for a small model, prices every row, and warns when a request is cut."* The toolbar's **Compact mode** box became a real switch the user drives (see the *Compact mode* section above). It was **published on GitHub on 2026-10-03** ("Tlamatini Release v1.75.0 Win11x64", marked Latest; checked with `gh release list` the same day), so **About ▸ Check for updates** delivered v1.75.0 until v1.76.0 was published on 2026-10-09. Angela's own v1.75.0 install, built from `main` that morning just before the release went up, already carries the Self-modify switch (migration 0212) and the four-stop-sequence fix; the annotated tag itself still points to `f7eb53ff`. The **Self-modify** switch (`70aeeb87`, 2026-10-03) landed on `main` right after that tag and ships in `v1.76.0` (see the *Self-modify* section above). It carries **`v1.74.0`** (annotated tag at `c1fadb90`, 2026-10-01) — *"Release v1.74.0 Making every request fit the model it is sent to: Compact mode for small models, the complete context for big ones, and readable answer tables."* A model whose real window cannot hold Tlamatini's complete request now gets a COMPACT one (System-Metrics, Files-Search and Current-Time only; ACPX and External MCPs paused; in v1.74.0 a dialog and a badge said so — the badge is gone since v1.75.0), a model that can hold it gets the complete request byte for byte, and every answer table is kept readable (see the *Compact mode* section above). It was published on GitHub on 2026-10-01; until then **About ▸ Check for updates** delivered v1.73.0. It carries **`v1.73.1`** (`757b0edc`, a tag with no published release) — Config ▸ Models asks the CONFIGURED Ollama, with its token, for the model catalog instead of the browser's local one — which stands on **`v1.73.0`** (tag at `606470bb`, published 2026-09-30) — *"Release v1.73.0 Implemented the Drop button, which erases one message from the chat AND from the history the model reads."* Every chat card, the user's and Tlamatini's, has a **Drop** button beside Copy; after a themed confirmation (Cancel focused, Escape and ✕ cancel) that one `AgentMessage` row is deleted, so from the next question on the model answers as if it had never existed while the messages before and after it stay untouched — no reconnect, refused while an answer is running, and a note in the `memory` External MCP is NOT erased (see the *Drop* section above). It was the latest *published* release ("Tlamatini Release v1.73.0 Win11x64", checked with `gh release list` on 2026-09-30) until v1.74.0 was published on 2026-10-01. It carries **`v1.72.4`** (`323c1051`, published 2026-09-29) — Crawler and Googler read a page's text with a stack of open tags instead of a counter, so a void element, an omitted `</head>` or a stray `<svg/>` can no longer swallow the rest of the page, and a plain-text safety net replaces any parse that kept less than a quarter of the page's text — and logs a WARNING saying so. That in turn carries two tags with no published release of their own: **`v1.72.3`** (`87db1df8`) — the chat avatar's lips now open and close clearly while she speaks, never wider than her own open-mouth portrait, plus a small refinement of the general prompt — and **`v1.72.2`** (`524a67ff`) — Googler and Crawler became block- and hang-proof: one deadline bounds every run, a CAPTCHA, bot wall or rate limit is reported as `blocked` instead of being read as content, and a search or crawl that read nothing says so plainly instead of returning silence. Those stand on **`v1.72.1`** (`df709d78`, published 2026-09-28): the REAL context gauge — the ring beside the message box shows Ollama's own token count for the exact request (`N tokens REAL`), exact in both one-shot and Multi-Turn — plus the removal of the one-shot System-Metrics "No system context required for this question." line. It follows `v1.72.0` (tag at `e3668a47`, published 2026-09-28): the direct chat microphone and the **Config ▸ Mic** settings. `v1.71.0` (`512973fb`) predates the microphone and has no published release. Runtime version comes from the resolver; feature availability also depends on build contents.
 
 
-**Current source version: v1.91.0.** The existing tag at `a771d27c` selects the bare runtime/build version `1.91.0`. The catalog has 86 workflow agents, 67 wrapped chat agents, 110 built-in tools and 220 migrations. Config → Live Editor & Terminater controls pacing, narration and real interaction behavior. Publication and installed acceptance require separate evidence; see the current release record above.
+**Current version: v1.91.1** (2026-10-27, published as the Latest release). Its tag at `9915938a` selects the bare runtime/build version `1.91.1`; it is a patch on v1.91.0 (`a771d27c`) and adds no agent, tool or migration. The catalog has 86 workflow agents, 67 wrapped chat agents, 110 built-in tools and 220 migrations. Config → Live Editor & Terminater controls pacing, narration and real interaction behavior. Installed acceptance requires separate evidence; see the current release record above.
 
 **The carried v1.60.0 line enhances the entire chain of visual agents.** The document family gained a third member — **PPTXer**, the editable-deck composer (36 named treatments = 24 automatic content treatments + 12 explicit visual styles, 17 font pairings, measured full-text pagination that continues long content onto a new slide instead of truncating it, and a native-render audit) — while **PDFer** gained **24** explicit visual identities in five families alongside its 20 semantic themes, and **LaTeXer** gained **30** signature styles in six families, discoverable with `action: list_styles` (no TeX installed required). Alongside them the desktop-control and flow contracts were tightened: Mouser resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes its capture geometry; Parametrizer derives its parser registry from the live contracts and validates complete typed mappings; and FlowCreator selects from the complete installed catalog and validates the generated graph before publishing. ⚠️ **`input_sent` is delivery evidence, not proof the application accepted the input** — a failed or interrupted input segment must be observed before replay. Contracts: `docs/desktop-input-and-flow-contracts.md`, `docs/agent-coverage.md`, and the three `STYLES.md` guides.
 

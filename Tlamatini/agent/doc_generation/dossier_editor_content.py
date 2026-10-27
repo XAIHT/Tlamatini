@@ -173,8 +173,26 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
-        section("release191", "CURRENT VERSION · v1.91.0", "Real settings for editor and terminal behavior",
-                "Existing tag a771d27c, dated October 23, 2026; publication and installed acceptance are separate.",
+        section("release1911", "CURRENT VERSION · v1.91.1", "Prompt Flow fixes and short tool names",
+                "Tag 9915938a, dated October 27, 2026; published as the Latest release.",
+                body=[
+                    "A patch on v1.91.0. Every chain loads the history of its own conversation, so a Prompt "
+                    "Flow run keeps its own memory and is never answered with another conversation.",
+                    "An equals Decision accepts an answer that opens with the expected word, and the Prompt "
+                    "before it asks for that word alone on the first line. A flow run's usage is recorded for "
+                    "the account that owns it.",
+                    "Telegrammer sends as the bot when the request says 'using the bot'. A wrapped agent "
+                    "called by its short name is resolved and logged as [TOOL-ALIAS]. No agent, tool, skill "
+                    "or migration was added.",
+                ], points=[
+                    ("History", "Each run and each user reads only its own conversation."),
+                    ("Decisions", "'## YES - ...' equals YES; 'Yesterday' does not."),
+                    ("Routing", "'Using the bot' sends as the bot; short tool names still run."),
+                    ("Inventory", f"{facts['agents']} agents; {facts['tools']} tools; {facts['migrations']} migrations; "
+                     f"{facts['js']} JS modules; {facts['css']} stylesheets."),
+                ]),
+        section("release191", "CARRIED FROM v1.91.0", "Real settings for editor and terminal behavior",
+                "Tag a771d27c, dated October 23, 2026, and published on GitHub that day.",
                 body=[
                     "The Live Editor, Terminater and Voice tabs share one schema, authenticated account storage "
                     "and optimistic revisions. Migration 0220 adds InteractionSettings. Account behavior reaches "
@@ -183,7 +201,7 @@ def release_sections(section, facts):
                     "finishing before the first terminal key. The implementation regression run passed 929 of "
                     "931 tests; two existing README documentation assertions failed. This documentation sweep "
                     "restores those sections; its 94 focused tests passed, including both README assertions.",
-                    "No v1.91.0 GitHub release was found during this sweep. These regenerated documents do not "
+                    "v1.91.0 was published on GitHub on October 23, 2026. These regenerated documents do not "
                     "claim a new executable build or installed acceptance. The existing tag is preserved.",
                 ], points=[
                     ("Dialog", "Pacing, teaching, terminal behavior, narration, appearance and draft previews."),

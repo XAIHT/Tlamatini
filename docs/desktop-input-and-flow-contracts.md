@@ -1,6 +1,6 @@
 # Desktop input and flow contracts
 
-> Current release: **[v1.91.0](changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 Implementation update, 2026-09-15. GUI-Manager is still **design only**; it is not an installed agent or tool. See [its design](GUI-Manager-design.md). The [generated inventory](agent-coverage.md) lists every installed agent.

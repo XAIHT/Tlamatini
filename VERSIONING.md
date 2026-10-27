@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Versioning
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 This document is the **authoritative reference** for how Tlamatini is versioned. Read it once end-to-end before cutting your first release; after that, the [Cheat Sheet](#9-cheat-sheet) at the bottom is the only thing you need on screen.
@@ -23,12 +23,12 @@ and the flow-knowledge regression suite before building. Regenerate the shipped 
 [the implementation guide](docs/desktop-input-and-flow-contracts.md) does not itself assign a version tag.
 
 1. **Standard**: [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH[-prerelease][+build]`.
-2. **Single source of truth**: a **git tag** of the form `v1.91.0`.
+2. **Single source of truth**: a **git tag** of the form `v1.91.1`.
 3. **Runtime/build versions are derived**: tag, then build; never hand-edit generated version files. The tracked `package.json` version mirrors the release as a manifest convention and does not control the runtime resolver.
 4. **Three injection points**, all computed automatically at build time:
    - `Tlamatini/agent/_version.py` (read at runtime by the About dialog, the startup banner, and `/agent/version/`)
    - PyInstaller `--version-file=…` → embedded into the Win32 `VERSIONINFO` resource of `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` (visible in Explorer → Properties → Details)
-   - The release folder name (`dist/Tlamatini_Release_v1.91.0/`)
+   - The release folder name (`dist/Tlamatini_Release_v1.91.1/`)
 5. **Fallback**: if you don't tag at HEAD, the version is the **bare base tag** that's reachable from HEAD (e.g. `1.1.1`). No `.devN`, no `+gSHA`, no `.dirty` suffix is ever emitted — the displayed version is always a clean SemVer. If no `v*` tag exists at all, the fallback is `0.0.0`.
 
 ---
@@ -42,9 +42,9 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 
 Examples:
   1.0.0
-  1.91.0
+  1.91.1
   2.0.0-rc.1
-  1.91.0+build.491
+  1.91.1+build.491
 ```
 
 **Bump rules** (when do you increment what?):
@@ -81,10 +81,10 @@ build.py / build_installer.py / build_uninstaller.py
    ▼  the build outputs ship with the version baked in
    ├─►  Tlamatini.exe / Installer.exe / Uninstaller.exe
    │       └── right-click → Properties → Details → ProductVersion
-   ├─►  dist/Tlamatini_Release_v1.91.0/      (release folder name)
+   ├─►  dist/Tlamatini_Release_v1.91.1/      (release folder name)
    └─►  Runtime surfaces:
-            ├── About dialog:   "Tlamatini v1.91.0"
-            ├── Console banner: "--- [VERSION] Tlamatini 1.91.0"
+            ├── About dialog:   "Tlamatini v1.91.1"
+            ├── Console banner: "--- [VERSION] Tlamatini 1.91.1"
             ├── tlamatini.log:  (same banner — tee'd)
             └── GET /agent/version/  →  { version, build, commit, date, source }
 ```
@@ -106,9 +106,9 @@ When you run `python build.py`, `build_installer.py`, or `build_uninstaller.py`,
 
 | # | Source | How to use it | Example value |
 |---|---|---|---|
-| 1 | **`--version X.Y.Z` CLI flag** | `python build.py --version 1.91.0` | `1.91.0` |
-| 2 | **`$env:TLAMATINI_VERSION`** | `$env:TLAMATINI_VERSION = "1.91.0"; python build.py` | `1.91.0` |
-| 3 | **`git describe --tags --abbrev=0 --match 'v[0-9]*'`** | `git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <summary>"; python build.py` | always the bare base tag → `1.91.0` (distance / dirty state never appear in the version string) |
+| 1 | **`--version X.Y.Z` CLI flag** | `python build.py --version 1.91.1` | `1.91.1` |
+| 2 | **`$env:TLAMATINI_VERSION`** | `$env:TLAMATINI_VERSION = "1.91.1"; python build.py` | `1.91.1` |
+| 3 | **`git describe --tags --abbrev=0 --match 'v[0-9]*'`** | `git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <summary>"; python build.py` | always the bare base tag → `1.91.1` (distance / dirty state never appear in the version string) |
 | 4 | **Sentinel** | _(no git, no tags, no flag)_ | `0.0.0+unknown` |
 
 The complete public and private release wrappers resolve the version **once at startup**,
@@ -170,7 +170,7 @@ git log --oneline (git describe --tags --abbrev=0)..HEAD
 
 ### Step 3 — Create the annotated tag
 
-The current source release is **v1.91.0**, tagged 2026-10-23 at `a771d27c` and present on origin. The tag already exists: never recreate or move it. No GitHub release for v1.91.0 was found during this documentation sweep. Commands below use `vMAJOR.MINOR.PATCH` for a future unused version; a tag identifies source, while package publication and installed acceptance need separate evidence.
+The current release is **v1.91.1**, tagged 2026-10-27 at `9915938a`, present on origin and published on GitHub as the Latest release; it replaced the release tagged 2026-10-23 at `a771d27c`. The tag already exists: never recreate or move it. Commands below use `vMAJOR.MINOR.PATCH` for a future unused version; a tag identifies source, while package publication and installed acceptance need separate evidence.
 
 ```powershell
 git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <summary>"
@@ -188,25 +188,25 @@ git push origin vMAJOR.MINOR.PATCH
 ### Step 5 — Build
 
 ```powershell
-python build_complete_public_release.py --version 1.91.0
+python build_complete_public_release.py --version 1.91.1
 # For a private keyed release, use build_complete_private_release.py instead.
 ```
 
-The wrapper pins **1.91.0** and passes it explicitly to all three build stages.
+The wrapper pins **1.91.1** and passes it explicitly to all three build stages.
 Omit `--version` to resolve from the calling environment or reachable Git tag once
 at startup. Run only in a verified visible foreground console; a real build requires
 Angela's approval because `build.py` erases `Tlamatini/db.sqlite3` and `dist/`.
 
 You'll see this in each script's output:
 ```
-Tlamatini version : 1.91.0
+Tlamatini version : 1.91.1
 VERSIONINFO file  : C:\Development\Tlamatini\Tlamatini.version.txt
 …
   Build completed successfully in 240s
-  Version : 1.91.0
+  Version : 1.91.1
 ```
 
-The final artefact is **`dist/Tlamatini_Release_v1.91.0/`** — zip and distribute.
+The final artefact is **`dist/Tlamatini_Release_v1.91.1/`** — zip and distribute.
 
 ### Step 6 — Verify
 
@@ -214,12 +214,12 @@ The final artefact is **`dist/Tlamatini_Release_v1.91.0/`** — zip and distribu
 
 After install, the user (or you) should see:
 
-- **About dialog**: `Tlamatini v1.91.0`
-- **Right-click `Tlamatini.exe` → Properties → Details**: ProductVersion = `1.91.0`
-- **Console banner on startup**: `--- [VERSION] Tlamatini 1.91.0`
+- **About dialog**: `Tlamatini v1.91.1`
+- **Right-click `Tlamatini.exe` → Properties → Details**: ProductVersion = `1.91.1`
+- **Console banner on startup**: `--- [VERSION] Tlamatini 1.91.1`
 - **`curl http://localhost:8000/agent/version/`** (after login or with anonymous access since it's open):
   ```json
-  {"version":"1.91.0","build":"1.91.0","commit":"abc1234","date":"2026-10-23T12:00:00Z","source":"generated"}
+  {"version":"1.91.1","build":"1.91.1","commit":"abc1234","date":"2026-10-27T12:00:00Z","source":"generated"}
   ```
 
 If any of those four says something different, you missed Step 3 (the tag), or you've got a stale `_version.py` from a previous build — clean it up and re-run `build.py`.
@@ -329,15 +329,15 @@ PICK A NUMBER         MAJOR.MINOR.PATCH per SemVer 2.0.0
 TAG IT                git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <summary>"
                       git push origin vMAJOR.MINOR.PATCH
 
-BUILD IT (VISIBLE)    python build_complete_public_release.py --version 1.91.0
+BUILD IT (VISIBLE)    python build_complete_public_release.py --version 1.91.1
                       Private keyed release: use build_complete_private_release.py.
                       Real builds require approval (database/dist are erased).
 
-WHERE IT LANDS        dist/Tlamatini_Release_v1.91.0/
-                      About dialog : "Tlamatini v1.91.0"
-                      Exe → Properties → Details : ProductVersion = 1.91.0
-                      curl /agent/version/ : {"version":"1.91.0", …}
-                      Console banner : --- [VERSION] Tlamatini 1.91.0
+WHERE IT LANDS        dist/Tlamatini_Release_v1.91.1/
+                      About dialog : "Tlamatini v1.91.1"
+                      Exe → Properties → Details : ProductVersion = 1.91.1
+                      curl /agent/version/ : {"version":"1.91.1", …}
+                      Console banner : --- [VERSION] Tlamatini 1.91.1
 
 NO TAG AT HEAD?       Build still works.  Version becomes the most recent
                       reachable v* tag, bare (no dev/sha/dirty suffix), or

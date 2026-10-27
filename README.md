@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/tree/v1.91.0"><img src="https://img.shields.io/badge/SOURCE-v1.91.0-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.91.0" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/tree/v1.91.1"><img src="https://img.shields.io/badge/SOURCE-v1.91.1-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.91.1" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/OPEN%20SOURCE-MIT-E9C46A?style=for-the-badge&labelColor=101827" alt="MIT open source" /></a>
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-818CF8?style=for-the-badge&labelColor=101827&logo=discord&logoColor=white" alt="Join the community on Discord" /></a>
@@ -31,7 +31,7 @@
   <a href="https://xaiht.org">Website</a> ·
   <a href="BookOfTlamatini.md">Full guide</a> ·
   <a href="Tlamatini-Architecture.pdf">Architecture atlas</a> ·
-  <a href="docs/changes/2026-10-23-v1.91.0.md">What's new</a>
+  <a href="docs/changes/2026-10-27-v1.91.1.md">What's new</a>
 </p>
 
 > [!IMPORTANT]
@@ -39,7 +39,7 @@
 
 <p align="center">
   <b>86 workflow agents</b> &nbsp;·&nbsp; <b>67 agents callable from chat</b> &nbsp;·&nbsp; <b>110 built-in tools</b><br />
-  <sub>Current v1.91.0 source inventory. The 67 chat wrappers are included in the 110 tools; enabled external MCP servers add their own tools.</sub>
+  <sub>Current v1.91.1 source inventory. The 67 chat wrappers are included in the 110 tools; enabled external MCP servers add their own tools.</sub>
 </p>
 
 <p align="center">
@@ -106,7 +106,11 @@ teaching segment, choose what she says and when, and let speech finish before
 typing. **Standard** and **Guided learning** presets give you a starting point;
 Preview lets you try the draft before saving. [Explore the settings →](docs/interaction-settings.md)
 
-**New in [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
+**New in [v1.91.1](docs/changes/2026-10-27-v1.91.1.md):** Prompt Flow runs keep their own
+history, YES/NO Decisions accept an answer that opens with the verdict, and an agent
+called by its short name still runs. v1.91.1 is the Latest published release.
+
+**Since [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
 dialog controls the real editor and terminal behavior across chat and both control
 panels. This source tag is available; the Downloads link refers to published packages.
 
@@ -285,6 +289,7 @@ Pick a doorway and go as deep as your project needs.
 | :--- | :--- |
 | [Book of Tlamatini](BookOfTlamatini.md) | The full guide, architecture, workflows and development history. |
 | [Every agent](agents_descriptions.md) | The specialist catalog and each agent's role. |
+| [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md) | The current patch release: what it fixes and where. |
 | [v1.91.0 release record](docs/changes/2026-10-23-v1.91.0.md) | Recent developments, source inventory and dated verification evidence. |
 | [Canvas editing](docs/canvas-editing.md) · [Interactor](docs/interactor.md) · [Terminater](docs/terminater.md) | Edit, learn and run with direct control. |
 | [Live Editor & Terminater settings](docs/interaction-settings.md) | Typing, teaching, narration, terminal behavior, presets and appearance. |

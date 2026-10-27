@@ -2,7 +2,7 @@
      Tlamatini Author Banner — do not remove -->
 # Docked avatar resizing from the composer divider
 
-> Current release: **[v1.91.0](2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 Date: 2026-10-13. Commit `63a62cc1`; shipped in `v1.83.0` (2026-10-14).

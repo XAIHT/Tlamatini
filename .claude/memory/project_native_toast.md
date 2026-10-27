@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.91.0](../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 **2026-05-30: the Notifier "toast"/native-desktop-popup experiment was REMOVED COMPLETELY** at the user's explicit request — it "never worked" and burned a lot of effort/tokens. **Do NOT re-introduce any desktop/OS-toast notification surface for the Notifier.** History (all gone): first a WinRT/OS toast (`native_toast.py` + PowerShell 5.1 + HKCU AUMID + `tlamatini:` focus protocol), then a self-drawn pure-ctypes Win32 top-most popup (`toast_popup.py`). Neither was reliable — an *unpackaged* app's banners get silently dropped by Focus Assist / DND / throttling even when `Show()`=ok, and the self-drawn window was abandoned too. The Notifier is back to its single, reliable surface: it drops `notification.json`, the chat UI polls it and renders an in-page popup (+ optional `.wav`).

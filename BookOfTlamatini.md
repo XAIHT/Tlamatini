@@ -8,7 +8,7 @@
 -->
 # Tlamatini
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 ![Project Logo](Tlamatini.jpg)
@@ -998,7 +998,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-This book documents **v1.91.0**, including Live Editor & Terminater configuration, editable canvas files, native Save As and Interactor. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
+This book documents **v1.91.1** (the Prompt Flow and short-tool-name fixes on top of v1.91.0), including Live Editor & Terminater configuration, editable canvas files, native Save As and Interactor. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2852,14 +2852,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.91.0 is taken)
+git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.91.1 is taken)
 git push origin vMAJOR.MINOR.PATCH
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.91.0/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.91.0`, so the bare runtime version resolves to `1.91.0`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.91.1/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.91.1`, so the bare runtime version resolves to `1.91.1`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -4662,3 +4662,13 @@ a running command. Teaching detail guides the model, rather than guaranteeing ex
 prose. The [full settings reference](docs/interaction-settings.md) lists defaults,
 ranges, storage scope and compatibility; the [1.91.0 record](docs/changes/2026-10-23-v1.91.0.md)
 separates source verification from installed-package acceptance.
+
+## Prompt Flow fixes and short tool names — v1.91.1
+
+v1.91.1 keeps everything above and fixes what a Prompt Flow run saw and decided.
+Each run reads only its own history, so a step is never answered with another
+conversation. A YES/NO Decision set to **equals** accepts an answer that begins with
+the expected word, and the Prompt before it asks the model to give that word on the
+first line. Telegrammer sends as the bot when your request says "using the bot".
+If the model calls an agent by its short name, Tlamatini still runs it. The
+[1.91.1 record](docs/changes/2026-10-27-v1.91.1.md) lists every change.

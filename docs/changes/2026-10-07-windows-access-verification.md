@@ -1,7 +1,7 @@
 <!-- Created by Angela López Mendoza · @angelahack1 — Tlamatini. -->
 # Windows access scripts and non-admin execution checks — 2026-10-07
 
-> Current release: **[v1.91.0](2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 The `security/` changes prepare Windows exceptions for the operator to apply.

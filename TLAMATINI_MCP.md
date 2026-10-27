@@ -8,11 +8,33 @@
 -->
 # Tlamatini Agents — MCP connector
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
-## v1.91.0 — Live Editor and Terminater configuration
+## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.0** is the current source version (2026-10-23). Its existing annotated tag
+**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
+`9915938a` and is present on origin; it is published on GitHub as the Latest
+release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
+tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
+wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
+
+- **Prompt Flow history:** every chain loads the history of the request's own
+  `conversation_user_id`; a Prompt Flow run uses only its own in-memory history.
+- **YES/NO Decisions:** an `equals` Decision accepts an answer that opens with the
+  value (`## YES - ...` equals `YES`; `Yesterday` does not), and the Prompt before it
+  asks for that short answer alone on the first line.
+- **Usage:** a Prompt Flow run is recorded for the account that owns it.
+- **Telegrammer:** "using the bot ..." anywhere in the request (outside quoted values)
+  sends as the bot; an explicit `provider` still wins.
+- **Short tool names:** a wrapped agent called by its short name (`terminater`) is
+  resolved to `chat_agent_terminater` and logged as `[TOOL-ALIAS]`.
+- **Prompt Flow tab title:** an Untitled flow shows the name of its file.
+
+See the [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md).
+
+## Carried from v1.91.0 — Live Editor and Terminater configuration
+
+**v1.91.0** was the source version of 2026-10-23. Its existing annotated tag
 resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
 agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
 **29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
@@ -35,7 +57,7 @@ UI and backend modules.
 Source evidence on October 23: **17/17 visible browser checks passed; 929 of 931
 regression tests passed**, with two existing README documentation assertions failing
 before this documentation sweep. These are dated source results, not a new installed
-package acceptance. No GitHub release for v1.91.0 was found during this sweep.
+package acceptance. v1.91.0 was published on GitHub on 2026-10-23.
 See the [release record](docs/changes/2026-10-23-v1.91.0.md) and
 [settings guide](docs/interaction-settings.md).
 
@@ -54,12 +76,12 @@ Contracts and evidence: [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), [Canvas e
 
 
 
-Exposes **every complete live Tlamatini agent directory (86 in v1.91.0, unchanged since Terminater arrived in v1.88.0;
+Exposes **every complete live Tlamatini agent directory (86 in v1.91.1, unchanged since Terminater arrived in v1.88.0;
 85 in v1.87.0)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **103 root stdio MCP tools total in v1.91.0, unchanged since v1.88.0 (102 in v1.87.0)**. The server discovers agents
+ACPX tools: **103 root stdio MCP tools total in v1.91.1, unchanged since v1.88.0 (102 in v1.87.0)**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files

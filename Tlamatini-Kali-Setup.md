@@ -8,7 +8,7 @@
 -->
 # Tlamatini ↔ Kali Linux — Zero-Client Setup (Kalier)
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 **Who this is for:** Anyone (human or AI) who wants Tlamatini to drive Kali Linux

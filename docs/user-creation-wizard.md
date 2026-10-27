@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Create a Tlamatini login account
 
-Current source: **v1.91.0**, inspected at `a771d27c` on `main` on 2026-10-23
+Current source: **v1.91.1** (`9915938a`, no wizard change); last inspected at `a771d27c` on `main` on 2026-10-23
 (tag `ebc5c3b4`; migration 0219 lands after it).
 This guide describes the existing catalog wizard and the corrected intent
 guards; it does not assert that a particular installed binary has been updated.

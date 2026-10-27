@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Current release: **[v1.91.0](../changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](../changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 > **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 
@@ -5647,3 +5647,16 @@ also fixed preset event order, hidden CodeMirror gutters and real prompt read-ba
 after terminal resize. The source campaign passed 17 visible browser checks and
 929/931 regressions; the two baseline README documentation failures are addressed
 by the subsequent documentation sweep. See [the dated release record](../changes/2026-10-23-v1.91.0.md).
+
+## 2026-10-27 — v1.91.1 Prompt Flow history, Decisions and short tool names
+
+Every chain now passes `conversation_user_id` to `DBChatHistoryLoader.load`, and a
+conversation id that is not an account number (a Prompt Flow run key) gets no
+database history: the old unfiltered fallback had handed a flow run OTHER
+conversations. An `equals` Decision accepts an answer that opens with its verdict
+(`## YES - ...`; `Yesterday` is still not `yes`), and the Prompt before it gets
+`VERDICT_FIRST_HINT`. A run's usage is recorded for its owning account. Telegrammer
+reads "using the bot" anywhere outside quoted values (`prose_mode_anywhere`), and
+`_invoke_tool` resolves a short wrapped-agent name and logs `--- [TOOL-ALIAS]`.
+⚠️ Do not restore the unfiltered history fallback. See
+[the release record](../changes/2026-10-27-v1.91.1.md).

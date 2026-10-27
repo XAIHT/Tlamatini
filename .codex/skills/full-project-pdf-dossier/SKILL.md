@@ -13,7 +13,7 @@ description: Use when asked to create or update a complete project PDF dossier, 
 
 # Full Project PDF Dossier
 
-> Current release: **[v1.91.0](../../../docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](../../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
@@ -80,7 +80,7 @@ Verify exact path parity within that declared application scope.
 
 ## Prompt Flow graphical editing and layout gate (2026-10-04)
 
-Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.91.0 as the current version; its existing tag and inspected source are a771d27c. Keep source, GitHub publication and installed-package acceptance separate. Include the Live Editor & Terminater settings, migration 0220, shared narration receipts and the dated October 23 evidence. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
+Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.91.1 as the current version; its tag and inspected source are 9915938a (v1.91.0 was a771d27c). Keep source, GitHub publication and installed-package acceptance separate. Include the Live Editor & Terminater settings, migration 0220, shared narration receipts and the dated October 23 evidence. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
 
 ## Usage documentation gate (2026-10-10)
 

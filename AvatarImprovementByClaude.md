@@ -1,6 +1,6 @@
 # The Avatar — from a 150 ms metronome to a talking head
 
-> Current release: **[v1.91.0](docs/changes/2026-10-23-v1.91.0.md)**. Dated records below retain their original evidence dates.
+> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
 
 
 **Date:** 2026-09-11 · **Baseline:** v1.51.5 · **Author of Tlamatini:** Angela López Mendoza

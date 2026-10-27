@@ -2135,7 +2135,7 @@ def sheet_dsm():
 
 
 def sheet_live_editor():
-    sh = new_sheet("Live canvas editor and Interactor - v1.91.0",
+    sh = new_sheet("Live canvas editor and Interactor - v1.91.1",
                    "Editable source, native persistence and tutoring share one document authority. Interactor is a module/tool, not a workflow agent.",
                    "presentation")
     o = sh.body
@@ -2170,7 +2170,7 @@ def sheet_live_editor():
             "Migration 0218 registers the Tool and catalog example, not an Agent. tool_gate_table drives binding, Compact and costs.",
             "Ask Execs gates new/save. New unnamed-path work uses a unique Temp/interactor directory; manual files need user-granted write access.",
             "Password input is not command ownership; an email field or DONE reply does not authorize outbound notification.",
-            "Current tag and source a771d27c (v1.91.0). Source checks do not certify a newly built installed package."]),
+            "Current tag and source 9915938a (v1.91.1). Source checks do not certify a newly built installed package."]),
     ]
     stack(o, 12, TOP, 193, left, size=12.0)
     stack(o, 215, TOP, 193, right, size=12.0)
@@ -2178,7 +2178,7 @@ def sheet_live_editor():
 
 
 def sheet_interaction_settings():
-    sh = new_sheet("Live Editor and Terminater configuration - v1.91.0",
+    sh = new_sheet("Live Editor and Terminater configuration - v1.91.1",
                    "One account schema controls real actions; local appearance and a shared speech queue complete the user experience.",
                    "presentation")
     o = sh.body
