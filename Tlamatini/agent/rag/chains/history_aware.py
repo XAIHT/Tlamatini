@@ -148,6 +148,7 @@ class HistoryAwareNoDocsChain:
     def invoke(self, payload: dict):
         print("--- HistoryAwareNoDocsChain: Processing contextual request without retrieval ---")
         print("--- Evaluating conversation history for intelligent rephrasing ---")
+        history_owner = payload.get("conversation_user_id")
         payload = {
             "input": payload.get("input", ""),
             "chat_history": payload.get("chat_history", []),
@@ -158,7 +159,7 @@ class HistoryAwareNoDocsChain:
         }
 
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
+            payload["chat_history"] = DBChatHistoryLoader.load(limit=8, conversation_user_id=history_owner)
 
         # 1) Optional history summarization + keep tail
         hist = self._summarize_history_if_needed(payload["chat_history"], payload["input"])
@@ -394,7 +395,8 @@ class OptimizedHistoryAwareRAGChain:
         external_sources = payload.get("external_sources", [])
         
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
+            payload["chat_history"] = DBChatHistoryLoader.load(
+                limit=8, conversation_user_id=payload.get("conversation_user_id"))
             chat_history = payload.get("chat_history", [])
         
         # 1) History summarization (optional) + keep last few turns

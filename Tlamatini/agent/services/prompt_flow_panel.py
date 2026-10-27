@@ -277,12 +277,47 @@ def expand_text(text, last_output):
     return text.replace("{{last_output}}", last_output)
 
 
+_END_RESPONSE = re.compile(r"\bEND-RESPONSE\b")
+_HTML_TAG = re.compile(r"<[^>]+>")
+_MARKDOWN_MARKS = re.compile(r"[#*_`>~|]+")
+_EDGE_PUNCTUATION = " \t\r\n.,;:!?\"'()[]{}—–-"
+# What a Prompt step sends to the model when the next operation is an "equals" Decision.
+VERDICT_FIRST_HINT = (
+    "\n\n(This answer is read by an automatic Decision. Put your short answer - "
+    "exactly the word or phrase this request asks for - alone on the first line, "
+    "then any explanation.)"
+)
+
+
+def _plain(text):
+    """An answer as a reader sees it: no END-RESPONSE, HTML tags or Markdown marks."""
+    text = _HTML_TAG.sub(" ", _END_RESPONSE.sub(" ", text))
+    text = _MARKDOWN_MARKS.sub(" ", text.replace("&nbsp;", " ").replace("&amp;", "&"))
+    return " ".join(text.split()).strip(_EDGE_PUNCTUATION)
+
+
+def _equals(output, value):
+    """True when the answer IS the value, or opens with it as its verdict.
+
+    A model asked to "answer YES, otherwise NOT" writes "## YES - the toolkit
+    is current ..." (2026-10-26: a 6,055-character answer). An exact comparison
+    called that "not YES" and the flow took the wrong branch. The verdict must
+    stand alone at the start: "Yesterday" does not equal "yes".
+    """
+    if output.strip() == value.strip():
+        return True
+    answer, wanted = _plain(output), _plain(value)
+    if not wanted:
+        return False
+    return answer == wanted or re.match(re.escape(wanted) + r"(?!\w)", answer) is not None
+
+
 def decide(config, output):
     value = config["value"]
     if not config["case_sensitive"]:
         output, value = output.casefold(), value.casefold()
     return {"contains": lambda: value in output, "not_contains": lambda: value not in output,
-            "equals": lambda: output.strip() == value.strip(), "is_empty": lambda: not output.strip()}[config["comparison"]]()
+            "equals": lambda: _equals(output, value), "is_empty": lambda: not output.strip()}[config["comparison"]]()
 
 
 class FlowRunner:
@@ -365,7 +400,12 @@ class FlowRunner:
                     await self.wait_delay(config["delay_seconds"])
             await self.gate()
             if kind in {"prompt", "programmed_prompt"}:
-                output = await self.runtime.prompt(expand_text(config["text"], self.last_output), config)
+                text = expand_text(config["text"], self.last_output)
+                following = edges.get((current, "next"))
+                if following and nodes[following["target"]]["type"] == "decision" \
+                        and nodes[following["target"]]["config"]["comparison"] == "equals":
+                    text += VERDICT_FIRST_HINT
+                output = await self.runtime.prompt(text, config)
             elif kind == "feed_embeddings":
                 await self.runtime.feed(expand_text(config["text"], self.last_output))
             elif kind == "flush_embeddings":

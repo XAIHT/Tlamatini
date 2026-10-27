@@ -625,7 +625,9 @@
         renderEdges(); extent();
         $id('pmt-empty').hidden = flow.nodes.length > 0;
         $id('filename').textContent = `${filename}${dirty ? ' •' : ''}`;
-        document.title = `${dirty ? '• ' : ''}${flow.name} — Prompt Flow Panel`;
+        // The tab shows the Flow name when one was set, otherwise the file it was opened from or saved as.
+        const shownName = flow.name && flow.name !== 'Untitled' ? flow.name : filename.replace(/\.fpmt$/i, '');
+        document.title = `${dirty ? '• ' : ''}${shownName} — Prompt Flow Panel`;
         const operations = flow.nodes.filter(n => !M.isComment(n));
         const counted = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
         $id('pmt-count').textContent = `${counted(operations.length, 'operation')} · ${counted(flow.nodes.length - operations.length, 'comment')} · ${counted(flow.edges.length, 'connection')}`;

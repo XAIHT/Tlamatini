@@ -42,9 +42,12 @@ class ChatWrappedAgentSpec:
     # -- written anywhere in the request. ``prose_mode_field`` is set from the
     # first ``(value, keywords)`` pair whose keyword appears in the prose BEFORE
     # the first assignment, unless the model assigned that field explicitly.
+    # ``prose_mode_anywhere`` widens that to the WHOLE request minus the quoted
+    # assignment values (models also write "(using the bot X)" after them).
     prose_media_field: str = ""
     prose_mode_field: str = ""
     prose_mode_keywords: tuple[tuple[str, tuple[str, ...]], ...] = field(default_factory=tuple)
+    prose_mode_anywhere: bool = False
 
 
 WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
@@ -827,10 +830,20 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         tool_name="chat_agent_telegrammer",
         tool_description="Chat-Agent-Telegrammer",
         display_name="Telegrammer",
-        purpose="Send OR receive Telegram messages using official Telegram surfaces only. Keep contacts/configs readable with @username values: Telegrammer first uses a private local username cache, then official Bot API getChat/getUpdates lookup, and then an official Telegram user session when configured. Bot API mode uses a bot_token from @BotFather and can send to public groups/channels or private users that have pressed Start/messaged the bot at least once; Telegram itself does not let a bot cold-DM a private @username. User-session mode uses Telegram API credentials/session (telegram.api_id, telegram.api_hash, telegram.session_name or session_string) so a real logged-in Telegram account can send directly to private @usernames. Set mode='send' to send one message, or mode='receive' to wait for incoming Bot API updates. Address the recipient by contact_name from contacts.json, or by telegram.chat_id containing a readable @username; use contact_name='me' to use the configured default telegram.chat_id. CHOOSE WHICH IDENTITY SENDS via provider: provider='bot' sends AS the bot, provider='user' sends AS the user's OWN logged-in Telegram account; plain English is accepted, so when the user says 'send it as me' / 'as myself' / 'from my account' pass provider='me' (== user), and when they say 'send it as the bot' / 'as a bot' pass provider='bot'. If they don't specify, omit provider (auto: bot for numeric ids/channels, the user's account for private @usernames when configured).",
+        purpose="Send OR receive Telegram messages using official Telegram surfaces only. Keep contacts/configs readable with @username values: Telegrammer first uses a private local username cache, then official Bot API getChat/getUpdates lookup, and then an official Telegram user session when configured. Bot API mode uses a bot_token from @BotFather and can send to public groups/channels or private users that have pressed Start/messaged the bot at least once; Telegram itself does not let a bot cold-DM a private @username. User-session mode uses Telegram API credentials/session (telegram.api_id, telegram.api_hash, telegram.session_name or session_string) so a real logged-in Telegram account can send directly to private @usernames. Set mode='send' to send one message, or mode='receive' to wait for incoming Bot API updates. Address the recipient by contact_name from contacts.json, or by telegram.chat_id containing a readable @username; use contact_name='me' to use the configured default telegram.chat_id. CHOOSE WHICH IDENTITY SENDS via provider: provider='bot' sends AS the bot, provider='user' sends AS the user's OWN logged-in Telegram account; plain English is accepted, so when the user says 'send it as me' / 'as myself' / 'from my account' pass provider='me' (== user), and when they say 'send it as the bot' / 'as a bot' / 'using the bot' / 'via the bot' (or name the bot that must send) pass provider='bot'. If they don't specify, omit provider (auto: bot for numeric ids/channels, the user's account for private @usernames when configured).",
         example_request="Send Telegram with mode='send', provider='me' (send as my own account) and contact_name='<REDACTED>' and message='Im ok!'  -- or provider='bot' to send AS the bot instead; omit provider to auto-pick. (contacts.json may keep telegram='@ana_lazcano'; sending as the bot cannot cold-DM a private @username unless they pressed Start, so 'as me' is best for private people; to receive use mode='receive' and rx_max_seconds=30)",
         aliases=("telegrammer", "telegram"),
         security_hints=("telegram", "telegram message", "send telegram", "receive telegram"),
+        # "Using the bot 'X'" (a Prompt Flow step, 2026-10-26) means the BOT sends. The model
+        # wrote it only as words, so the auto route sent from the user's own account instead.
+        prose_mode_field="provider",
+        prose_mode_anywhere=True,
+        prose_mode_keywords=(
+            ("bot", ("using the bot", "using the configured bot", "using the telegram bot", "using bot ",
+                     "using my bot", "using our bot", "via the bot", "via bot ", "through the bot",
+                     "with the bot", "as the bot", "as a bot", "from the bot", "by the bot",
+                     "bot mechanism")),
+        ),
     ),
     ChatWrappedAgentSpec(
         key="whatsapper",

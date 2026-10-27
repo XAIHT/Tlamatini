@@ -127,6 +127,7 @@ class BasicPromptOnlyChain:
     def invoke(self, payload: dict):
         print("--- BasicPromptOnlyChain: Processing request without document context ---")
         print("--- Analyzing conversation history for possible question rephrasing ---")
+        history_owner = payload.get("conversation_user_id")
         payload = {
             "input": payload.get("input", ""),
             "chat_history": payload.get("chat_history", []),
@@ -138,7 +139,7 @@ class BasicPromptOnlyChain:
         }
 
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
+            payload["chat_history"] = DBChatHistoryLoader.load(limit=8, conversation_user_id=history_owner)
 
         # 1) Optional history summarization + keep tail
         hist = self._summarize_history_if_needed(payload["chat_history"], payload["input"])

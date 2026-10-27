@@ -458,6 +458,7 @@ _PROSE_MEDIA_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 _PROSE_TRAILING_PUNCTUATION = '.,;:!?)]}>\'"'
+_PROSE_QUOTED_VALUE_RE = re.compile(r'=\s*(?:\'[^\']*\'|"[^"]*")')
 
 
 def _apply_prose_fallbacks(spec, runtime_config, request_text, assignment_notes):
@@ -491,9 +492,15 @@ def _apply_prose_fallbacks(spec, runtime_config, request_text, assignment_notes)
                 added.append(f"{media_field}={value} (taken from the request text)")
         mode_field = getattr(spec, 'prose_mode_field', '') or ''
         keywords = getattr(spec, 'prose_mode_keywords', ()) or ()
-        if mode_field and keywords and mode_field.lower() not in assigned:
+        explicit = any(note == mode_field.lower() or note.endswith('.' + mode_field.lower()) for note in assigned)
+        if mode_field and keywords and not explicit:
             first = _find_first_assignment_index(text)
-            prose = (text if first < 0 else text[:first]).lower()
+            if getattr(spec, 'prose_mode_anywhere', False):
+                # Words anywhere count, but never the words INSIDE a quoted value:
+                # a message that mentions "the bot" is not a routing choice.
+                prose = _PROSE_QUOTED_VALUE_RE.sub('= ', text).lower()
+            else:
+                prose = (text if first < 0 else text[:first]).lower()
             prose = _PROSE_URL_RE.sub(' ', prose)  # a link's own words are not the user's intent
             for value, words in keywords:
                 if any(word in prose for word in words):

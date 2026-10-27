@@ -60,6 +60,16 @@ class DBChatHistoryLoader:
             if not limit or limit <= 0 or limit > cls.HISTORY_WINDOW_MAX:
                 limit = cls.HISTORY_WINDOW_MAX
 
+            # A conversation id that is not an account number belongs to an
+            # isolated run (a Prompt Flow Panel run key): it keeps its own history
+            # in memory and has none in the database. Querying would fail, and
+            # the old unfiltered fallback handed it OTHER conversations (2026-10-26).
+            if conversation_user is None and conversation_user_id is not None:
+                try:
+                    conversation_user_id = int(str(conversation_user_id).strip())
+                except (TypeError, ValueError):
+                    return []
+
             if limit and limit > 0:
                 # Get the N newest messages (descending), then reverse to chronological
                 qs = AgentMessage.objects.select_related("user")

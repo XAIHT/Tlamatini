@@ -473,7 +473,8 @@ class UnifiedAgentChain:
         }
 
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
+            payload["chat_history"] = DBChatHistoryLoader.load(
+                limit=8, conversation_user_id=payload.get("conversation_user_id"))
 
         # Summarize history if needed
         hist = self._summarize_history_if_needed(payload["chat_history"], payload["input"])
@@ -824,7 +825,8 @@ class UnifiedAgentRAGChain:
         external_sources = payload.get("external_sources", [])
         
         if not payload["chat_history"]:
-            payload["chat_history"] = DBChatHistoryLoader.load(limit=8)
+            payload["chat_history"] = DBChatHistoryLoader.load(
+                limit=8, conversation_user_id=payload.get("conversation_user_id"))
             chat_history = payload.get("chat_history", [])
         
         # 1) History summarization (optional) + keep last few turns

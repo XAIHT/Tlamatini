@@ -3,6 +3,7 @@
 import logging
 from datetime import timedelta, timezone as dt_timezone
 import queue
+import re
 import threading
 
 from django.db import close_old_connections, transaction
@@ -16,6 +17,17 @@ _QUEUE = queue.Queue(maxsize=2048)
 _WORKER_LOCK = threading.Lock()
 _WORKER = None
 _FAILURES = 0
+# A Prompt Flow Panel run speaks for its owner: prompt_flow_panel_<account>_<run>.
+_RUN_KEY_OWNER = re.compile(r"^prompt_flow_panel_(\d+)_")
+
+
+def _account_id(user_id):
+    """The account number behind a conversation id, or None when it has none."""
+    text = str(user_id if user_id is not None else "").strip()
+    if text.isdigit():
+        return int(text)
+    match = _RUN_KEY_OWNER.match(text)
+    return int(match.group(1)) if match else None
 
 
 def enqueue_usage(**counts):
@@ -46,8 +58,12 @@ def _write_pending():
 def record_usage(*, user_id, model, input_tokens, output_tokens, **_kwargs):
     """Called once per completed measured chat call, before the gauge publishes."""
     global _FAILURES
+    account = _account_id(user_id)
+    if account is None:
+        logger.info("[USAGE] Not recorded: %r is not a Tlamatini account", user_id)
+        return
     now = timezone.now()
-    key = {"user_id": user_id, "model": str(model or "Model name not reported")[:255],
+    key = {"user_id": account, "model": str(model or "Model name not reported")[:255],
            "day": now.astimezone(dt_timezone.utc).date()}
     increments = {"calls": 1, "input_tokens": input_tokens,
                   "output_tokens": output_tokens or 0,
