@@ -40,7 +40,7 @@ from typing import Deque, Dict, List, NamedTuple, Optional, Tuple
 #: terminal watchable and leaves the user time to read what is being typed.
 DEFAULT_WPM = 50
 MIN_WPM = 20
-MAX_WPM = 160
+MAX_WPM = 250
 #: The fastest any key may follow the previous one.  Real fingers do not go
 #: below ~30 ms between keystrokes; this is the floor that makes "instant paste"
 #: structurally impossible, whatever a caller asks for.

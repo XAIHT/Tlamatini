@@ -17,7 +17,7 @@
     const terminaterTextActions = ['run', 'type', 'handover'];
     const terminaterDefaults = { action: 'run', kind: 'powershell', terminal: '', title: '', cwd: '', keys: '', message: '', severity: 'warning', suggestion: '', hint: '', which: 'last', until: '', pattern: '', layout: '', area: '', submit: true, secret: false, wait: true, close_after: false, load_profile: true, advisor: true, typing_wpm: 50, wait_seconds: 120, hang_seconds: 45, user_wait_seconds: 300, idle_seconds: 2, use_my_defaults: false, explanation: '' };
     const terminaterTextLimits = { terminal: 80, title: 80, cwd: 1000, keys: 500, message: 2000, suggestion: 1000, hint: 200, which: 40, until: 20, pattern: 500, explanation: 1000 };
-    const terminaterNumbers = { typing_wpm: [20, 160, true], wait_seconds: [1, 3600, false], hang_seconds: [3, 3600, false], user_wait_seconds: [5, 3600, false], idle_seconds: [0.2, 600, false] };
+    const terminaterNumbers = { typing_wpm: [20, 250, true], wait_seconds: [1, 3600, false], hang_seconds: [3, 3600, false], user_wait_seconds: [5, 3600, false], idle_seconds: [0.2, 600, false] };
     const isFlowFilename = name => /\.fpmt$/i.test(name);
     // Migrate old flow draft/save names without changing system prompt files.
     const flowFilename = name => isFlowFilename(name) ? name : name.replace(/\.pmt$/i, '') + EXTENSION;

@@ -1,6 +1,9 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Live Editor and Terminater settings
 
+Source update (2026-10-30): both typing-speed limits are now 250 WPM; v1.91.1
+shipped with a 160 WPM limit. Defaults and minimum speeds are unchanged.
+
 Open **Config → Live Editor & Terminater**, the canvas Settings button, or the
 terminal Settings button. Live Editor, Terminater and Voice share one dialog.
 Save applies behavior to the next action; Cancel and Escape discard the draft.
@@ -17,14 +20,14 @@ Account preferences use `InteractionSettings` (migration 0220), strict validatio
 and optimistic revisions at authenticated, CSRF-protected
 `/agent/interaction-settings/`. Concurrent saves require reloading the dialog.
 
-* Editor: 40–160 WPM, pause 0–3 seconds after a segment, teaching detail, initial
+* Editor: 40–250 WPM, pause 0–3 seconds after a segment, teaching detail, initial
   field suggestions, ghost text versus choices, and following the typed cursor.
   Scrolling manually suspends following for that segment. Saved speed overrides
   the model's suggested speed. Teaching detail is included in the tool's read
   response as an instruction; the language model determines the final wording.
-* Terminal: 20–160 WPM, default available shell, task-controlled or user-only
+* Terminal: 20–250 WPM, default available shell, task-controlled or user-only
   Enter, advisor for new terminals, command wait, no-output threshold and user
-  handoff wait. There is no paste or instant mode. Linked speeds use 40–160 WPM.
+  handoff wait. There is no paste or instant mode. Linked speeds use 40–250 WPM.
   User-only Enter rejects line breaks/control characters and automated Enter,
   including base64 commands and action aliases. It does not restrict user input.
 * Voice: editor and terminal narration, explanation/literal/both, before/during/
@@ -98,11 +101,11 @@ new dialog, speech lifecycle, migration and backend modules. Source validation
 does not certify a rebuilt or installed executable. Never run the destructive
 release builder solely to test this feature.
 
-## Live Editor parameter reference — v1.91.0
+## Live Editor parameter reference
 
 | Parameter | Default | Allowed values | Stored for |
 |---|---|---|---|
-| Typing speed (WPM) (`editor_wpm`) | 100 | 40–160 | Account |
+| Typing speed (WPM) (`editor_wpm`) | 100 | 40–250 | Account |
 | Use the same typing speed for both (`link_speeds`) | Off | On / Off | Account |
 | Pause after each segment (seconds) (`segment_pause`) | 0 | 0–3 | Account |
 | Teaching detail (`teaching_detail`) | Balanced | Brief, Balanced, Detailed | Account |
@@ -113,11 +116,11 @@ release builder solely to test this feature.
 | Show line numbers (`line_numbers`) | On | On / Off | This account/browser |
 | Wrap long lines (`wrap`) | Off | On / Off | This account/browser |
 
-## Terminater parameter reference — v1.91.0
+## Terminater parameter reference
 
 | Parameter | Default | Allowed values | Stored for |
 |---|---|---|---|
-| Typing speed (WPM) (`terminal_wpm`) | 50 | 20–160 | Account |
+| Typing speed (WPM) (`terminal_wpm`) | 50 | 20–250 | Account |
 | Default shell (`shell`) | PowerShell | PowerShell, CMD, PowerShell 7 | Account |
 | Command execution (`execution`) | Follow the task’s instructions | Follow the task’s instructions, I always press Enter | Account |
 | Enable advisor in new terminals (`advisor`) | On | On / Off | Account |

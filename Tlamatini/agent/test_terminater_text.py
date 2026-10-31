@@ -60,11 +60,11 @@ class TypistTests(SimpleTestCase):
 
     def test_every_key_waits_at_least_the_human_floor(self):
         """There is no paste mode: no key may follow the previous one faster than a finger can."""
-        plan = self.plan("a" * 400, wpm=160, submit=True)
+        plan = self.plan("a" * 400, wpm=250, submit=True)
         self.assertGreaterEqual(min(k.delay for k in plan), self.t.MIN_KEY_DELAY_S)
 
     def test_instant_typing_is_structurally_impossible(self):
-        for wpm in (1, 20, 160, 10_000, "999999", -50):
+        for wpm in (1, 20, 160, 250, 10_000, "999999", -50):
             plan = self.plan("x" * 50, wpm=wpm)
             self.assertGreater(self.t.plan_duration(plan), 50 * self.t.MIN_KEY_DELAY_S * 0.99, wpm)
 
@@ -83,8 +83,14 @@ class TypistTests(SimpleTestCase):
         at_min = self.t.plan_duration(self.plan("abcdefgh", wpm=20))
         self.assertAlmostEqual(below, at_min, places=6)
         above = self.t.plan_duration(self.plan("abcdefgh", wpm=9999))
-        at_max = self.t.plan_duration(self.plan("abcdefgh", wpm=160))
+        at_max = self.t.plan_duration(self.plan("abcdefgh", wpm=250))
         self.assertAlmostEqual(above, at_max, places=6)
+
+    def test_250_wpm_really_types_faster_than_the_previous_limit(self):
+        old = self.plan("hello there friend", wpm=160)
+        new = self.plan("hello there friend", wpm=250)
+        self.assertEqual([k.key for k in old], [k.key for k in new])
+        self.assertLess(self.t.plan_duration(new), self.t.plan_duration(old))
 
     def test_same_seed_same_schedule(self):
         self.assertEqual(self.plan("repeat me", seed=3), self.plan("repeat me", seed=3))
@@ -124,7 +130,7 @@ class TypistTests(SimpleTestCase):
         self.assertNotIn('TEST_TIME_SCALE', src.replace("_tx.TEST_TIME_SCALE", ""))
 
     def test_clamp_wpm_table(self):
-        table = [(5, 20), (20, 20), (50, 50), (160, 160), (500, 160), ("75", 75), (49.9, 49),
+        table = [(5, 20), (20, 20), (50, 50), (160, 160), (250, 250), (251, 250), (500, 250), ("75", 75), (49.9, 49),
                  (None, 50), ("abc", 50), ("", 50), (float("nan"), 50)]
         for value, expected in table:
             self.assertEqual(self.t.clamp_wpm(value), expected, value)

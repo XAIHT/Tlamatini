@@ -62,6 +62,9 @@ def main():
 
         class Window(VisibleWindow):
             def verify(self):
+                if win32gui.GetWindowPlacement(self.hwnd)[1] == win32con.SW_SHOWMAXIMIZED:
+                    win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
+                    self.page.wait_for_timeout(250)
                 self.work = win32api.GetMonitorInfo(win32api.MonitorFromWindow(self.hwnd))['Work']
                 return super().verify()
 
@@ -185,10 +188,30 @@ def main():
             assert page.locator('.cm-editor').evaluate('el => getComputedStyle(el).fontSize') == '18px'
             assert page.locator('.cm-content').evaluate('el => getComputedStyle(el).whiteSpace') in ('pre-wrap', 'break-spaces')
             check('real-editor-speed-pause-and-appearance', elapsed=round(elapsed, 2))
+            settings({'editor_wpm': 250, 'terminal_wpm': 250, 'link_speeds': True, 'segment_pause': 0})
+            page.reload(wait_until='load')
+            page.wait_for_function('window.TlamatiniInteractor?.clientId')
+            page.evaluate('TlamatiniInteractionSettings.ready')
+            settings(save=False)
+            for key in ('editor_wpm', 'terminal_wpm'):
+                field = page.locator('#interaction-' + key)
+                assert field.get_attribute('max') == '250'
+                assert field.input_value() == '250'
+            check('250-WPM-linked-settings-survive-reload')
+            page.locator('#interaction-settings-cancel').click()
+            turn()
+            assert edit('new', filename='typing-250.py')['ok']
+            start = time.monotonic()
+            reply = edit('type', text='# typing at 250 WPM', typing_wpm=250)
+            elapsed = time.monotonic() - start
+            assert reply['ok'] and reply['verified'], reply
+            assert page.evaluate('TlamatiniTextEditor.getText()') == '# typing at 250 WPM'
+            check('real-editor-types-at-250-WPM', elapsed=round(elapsed, 2))
+            settings({'link_speeds': False})
             guide = edit('guide', label='Example', hint='Choose a value', choices=[{'text': 'example', 'detail': 'test'}])
             assert guide['ok']
             check('guide-with-suggestions-disabled')
-            settings({'suggestions': True, 'suggestion_display': 'choices', 'segment_pause': 0, 'editor_wpm': 160})
+            settings({'suggestions': True, 'suggestion_display': 'choices', 'segment_pause': 0, 'editor_wpm': 250})
             turn()
             edit('guide', label='Example', hint='Choose a value', choices=[{'text': 'example', 'detail': 'test'}])
             page.locator('#editor-container .cm-content').click()
@@ -196,7 +219,7 @@ def main():
             page.keyboard.type('e')
             assert page.locator('.tlm-interactor-ghost').count() == 0
             check('choices-without-ghost-text')
-            settings({'terminal_wpm': 160, 'shell': 'cmd', 'execution': 'manual', 'advisor': False,
+            settings({'terminal_wpm': 250, 'shell': 'cmd', 'execution': 'manual', 'advisor': False,
                       'hang_seconds': 60, 'user_wait_seconds': 120, 'wait_seconds': 10,
                       'terminal_font': 17, 'cursor_style': 'bar', 'cursor_blink': False, 'terminal_layout': 'tile-v'})
             opened = call({'method': 'terminal', 'action': 'open', 'params': {'title': 'Settings acceptance', 'use_my_defaults': True}})
@@ -271,7 +294,15 @@ def main():
             page.keyboard.press('Enter')
             call({'method': 'terminal', 'action': 'wait', 'params': {'terminal': tid, 'wait_seconds': 10}})
             page.evaluate("TLM_VOICE.setSilent(true)")
-            settings({'editor_wpm': 999}, save=False)
+            for key, tab_name in (('editor_wpm', 'editor'), ('terminal_wpm', 'terminal')):
+                settings({key: 251}, save=False)
+                page.locator('#interaction-settings-save').click()
+                assert page.locator('#interaction-settings-overlay').is_visible()
+                assert page.locator('#interaction-tab-' + tab_name).get_attribute('aria-selected') == 'true'
+                assert not page.locator('#interaction-' + key).evaluate('el => el.checkValidity()')
+                page.locator('#interaction-settings-cancel').click()
+            check('both-speed-controls-reject-251-WPM')
+            settings({'editor_wpm': 251}, save=False)
             page.locator('#interaction-tab-voice').click()
             page.locator('#interaction-settings-save').click()
             assert page.locator('#interaction-tab-editor').get_attribute('aria-selected') == 'true'

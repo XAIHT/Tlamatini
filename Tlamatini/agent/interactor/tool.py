@@ -32,7 +32,7 @@ class Arguments(BaseModel):
     text: str = Field(default="", max_length=MAX_INSERT, description="For type: only the next small teaching segment. It is typed character by character, never executed or implicitly saved.")
     start: int = Field(default=-1, ge=-1, description="UTF-16 offset for type/guide/select. -1 uses the freshly read selection start.")
     end: int = Field(default=-1, ge=-1, description="UTF-16 exclusive end; -1 uses the freshly read selection end.")
-    typing_wpm: int = Field(default=100, ge=40, le=160)
+    typing_wpm: int = Field(default=100, ge=40, le=250)
     explanation: str = Field(default="", max_length=1000, description="Brief explanation of this teaching segment for optional narration. No private values.")
     secret: bool = Field(default=False, description="True when this segment contains private values; never read its text aloud.")
     label: str = Field(default="", max_length=160, description="For guide: name the one field the learner must supply.")

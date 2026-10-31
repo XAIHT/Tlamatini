@@ -134,7 +134,7 @@ class ValidatorTests(SimpleTestCase):
 
     def test_number_bounds(self):
         cases = {
-            "typing_wpm": (20, 160, 19, 161),
+            "typing_wpm": (20, 250, 19, 251),
             "wait_seconds": (1, 3600, 0.5, 3601),
             "hang_seconds": (3, 3600, 2.9, 3601),
             "user_wait_seconds": (5, 3600, 4, 3601),
@@ -284,8 +284,8 @@ class ValidatorTests(SimpleTestCase):
                 self.assertEqual(data[key], value, f"{key}: PFP default differs from agents/terminater/config.yaml")
 
     def test_number_ranges_agree_with_the_engine_clamps(self):
-        self.assertEqual(fm.TERMINATER_NUMBERS["typing_wpm"][:2], (20, 160))
-        self.assertEqual((kit.tx().MIN_WPM, kit.tx().MAX_WPM), (20, 160)) if hasattr(kit.tx(), "MIN_WPM") else None
+        self.assertEqual(fm.TERMINATER_NUMBERS["typing_wpm"][:2], (20, 250))
+        self.assertEqual((kit.tx().MIN_WPM, kit.tx().MAX_WPM), (20, 250)) if hasattr(kit.tx(), "MIN_WPM") else None
 
     def test_format_and_version_are_unchanged(self):
         self.assertEqual(fm.FORMAT, "tlamatini-prompting-flow")
@@ -329,7 +329,7 @@ def _parity_cases():
     for key in ("submit", "secret", "wait", "close_after", "load_profile", "advisor"):
         for value in (True, False, "yes", 1, None):
             add(f"bool {key}={value!r}", [node(**{key: value})])
-    numbers = {"typing_wpm": (19, 20, 50, 50.5, 160, 161, "50", True),
+    numbers = {"typing_wpm": (19, 20, 50, 50.5, 160, 161, 250, 251, "50", True),
                "wait_seconds": (0.5, 1, 120, 3600, 3601),
                "hang_seconds": (2.9, 3, 45, 3600, 3601),
                "user_wait_seconds": (4, 5, 300, 3601),

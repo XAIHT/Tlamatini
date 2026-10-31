@@ -25,7 +25,7 @@ Each one is a user requirement; none may be weakened.
 1. **Tlamatini types.** There is no code path that writes a command into a terminal
    in one go. `TerminalSession.type_text` feeds one key at a time through
    `terminater_text.plan_typing`: a log-normal rhythm around `typing_wpm`
-   (default **50**, allowed **20–160**), extra cost for shifted keys and word
+   (default **50**, allowed **20–250**), extra cost for shifted keys and word
    boundaries, an occasional short pause, and a hard floor of **30 ms** between keys.
    No paste, no "instant" switch. A 60-character command takes about 15 s on purpose.
    (`TEST_TIME_SCALE` exists only as a module global for the test suites; the API,
@@ -316,12 +316,12 @@ machine.
 * The advisor is a deterministic safety net, not a sandbox: it warns, it does not block.
 * Terminals belong to the Tlamatini process. They end when it exits.
 
-## Account configuration in v1.91.0
+## Account configuration
 
 Use **Config → Live Editor & Terminater → Terminater**, or the dock's Settings
-button. Speed defaults to 50 WPM (20–160), shell to PowerShell, advisor to enabled,
+button. Speed defaults to 50 WPM (20–250), shell to PowerShell, advisor to enabled,
 command wait to 120 s, no-output threshold to 45 s, and handoff wait to 300 s.
-Linked editor/terminal speeds use the shared 40–160 WPM range. Shell and advisor
+Linked editor/terminal speeds use the shared 40–250 WPM range. Shell and advisor
 defaults affect new terminals; typing actions receive a snapshot of the current waits.
 A wait timeout does not terminate the process.
 

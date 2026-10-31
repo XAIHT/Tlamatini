@@ -543,7 +543,7 @@ def _deadline(action: str, params: Dict[str, Any]) -> float:
             text = base64.b64decode(encoded, validate=True).decode('utf-8')
         except (ValueError, UnicodeError):
             text = encoded  # The hub will reject malformed input.
-    wpm = 20 if inherit else max(20, min(160, float(params.get('typing_wpm') or 50)))
+    wpm = _tx.MIN_WPM if inherit else _tx.clamp_wpm(params.get('typing_wpm', _tx.DEFAULT_WPM))
     typing = 12 / wpm * len(text) + 5 if action in ("run", "type", "handover") else 0
     handoffs = max(text.count('<<USER'), int(action == 'handover'))
     user = (3600 if inherit else float(params.get("user_wait_seconds") or 300)) * handoffs

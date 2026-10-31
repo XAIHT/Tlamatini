@@ -47,7 +47,7 @@ class SettingsTests(TestCase):
         self.assertEqual(self.client.post(self.url, 'x' * 17000, content_type='application/json').status_code, 413)
 
     def test_invalid_values_never_save(self):
-        for values in ({'editor_wpm': 0}, {'terminal_wpm': 161}, {'segment_pause': 4}, {'execution': 'auto'},
+        for values in ({'editor_wpm': 0}, {'editor_wpm': 251}, {'terminal_wpm': 251}, {'segment_pause': 4}, {'execution': 'auto'},
                        {'narrate_terminal': 'false'}, {'wait_seconds': float('nan')}, {'editor_wpm': True},
                        {'editor_wpm': 50.5}, {'shell': 'bash'}, {'editor_font': 18}, {'user': self.other.pk}):
             with self.subTest(values=values):
@@ -57,6 +57,33 @@ class SettingsTests(TestCase):
     def test_linked_speed_uses_supported_intersection(self):
         self.assertEqual(self.save({'link_speeds': True, 'editor_wpm': 40, 'terminal_wpm': 20}).status_code, 200)
         self.assertEqual(snapshot(self.user.pk)[0]['terminal_wpm'], 40)
+
+    def test_maximum_speed_persists_and_reaches_both_runtimes(self):
+        from .interactor.context import Request, current
+        from .interactor.tool import Arguments, perform
+        from .interaction_settings import chat_preferences
+        self.assertEqual(self.save({'editor_wpm': 250, 'terminal_wpm': 250}).status_code, 200)
+        saved = self.client.get(self.url).json()
+        for key in ('editor_wpm', 'terminal_wpm'):
+            self.assertEqual(saved['preferences'][key], 250)
+            self.assertEqual(saved['fields'][key]['max'], 250)
+        params = terminal_preferences('type', {'user': str(self.user.pk), 'use_my_defaults': True}, load_engine())
+        self.assertEqual(params['typing_wpm'], 250)
+        self.assertEqual(chat_preferences({}, {}, self.user.pk)['typing_wpm'], 250)
+        self.assertEqual(Arguments(action='type', typing_wpm=250).typing_wpm, 250)
+        with self.assertRaises(ValueError):
+            Arguments(action='type', typing_wpm=251)
+        request = Request((str(self.user.pk), 'session'), 'client', self.user.pk, 1, document_id='doc', revision=0)
+        token = current.set(request)
+        self.addCleanup(current.reset, token)
+        before = {'document_id': 'doc', 'revision': 0, 'text': '', 'active': True, 'selection': {'from': 0, 'to': 0}}
+        after = {**before, 'revision': 1, 'text': 'FROM '}
+        with patch('agent.interactor.tool.hub.call', side_effect=[{'snapshot': before}, {'snapshot': after, 'ok': True}]) as call:
+            result = json.loads(perform('type', text='FROM '))
+        self.assertTrue(result['verified'])
+        self.assertEqual(call.call_args.args[2]['typing_wpm'], 250)
+        self.assertEqual(self.save({'link_speeds': True, 'editor_wpm': 250, 'terminal_wpm': 20}, revision=1).status_code, 200)
+        self.assertEqual(snapshot(self.user.pk)[0]['terminal_wpm'], 250)
 
     def test_chat_preserves_explicit_shell_but_uses_saved_pacing(self):
         from .interaction_settings import chat_preferences

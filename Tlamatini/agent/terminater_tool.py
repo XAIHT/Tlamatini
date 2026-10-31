@@ -74,7 +74,7 @@ _FIELDS = (
     ("wait_seconds", float, 120.0, "Stop waiting after this many seconds."),
     ("hang_seconds", float, 45.0, "Flag the command as hung after this long without output."),
     ("user_wait_seconds", float, 300.0, "How long to wait for the user's part of a <<USER:...>> hand-over."),
-    ("typing_wpm", int, 50, "Typing speed, 20-160 words per minute. Never instant."),
+    ("typing_wpm", int, 50, "Typing speed, 20-250 words per minute. Never instant."),
     ("explanation", str, "", "Brief non-secret explanation for command narration. Never include passwords or private input."),
     ("secret", bool, False, "true = the typed text is a secret: never logged or returned."),
     ("keys", str, "", "send_key: key names, e.g. 'ctrl+c', 'enter', 'up up enter'."),
