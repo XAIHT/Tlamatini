@@ -367,6 +367,7 @@ _EXEC_REPORT_TOOLS: Dict[str, Tuple[str, str]] = {
     # Terminater types real commands into VISIBLE terminals the user supervises. The
     # generic wrapped-agent fallback already captures it; this entry only gives the
     # table its native "Phosphor Console" caption gradient defined in agent_page.css.
+    "chat_agent_torrenter":      ("torrenter",      "Torrenter"),
     "chat_agent_terminater":     ("terminater",     "Terminater"),
     # STM32er is state-changing: it drives the STM32 Template Project MCP server
     # to scaffold / write / build / flash / erase / reset firmware and to
@@ -512,6 +513,7 @@ _ASK_EXECS_REQUIRED_TOOLS: frozenset = frozenset({
     # cmd.exe / PowerShell. That it is VISIBLE does not make a command harmless (a visible
     # `Remove-Item -Recurse` still deletes), so it sits with Executer/Pythonxer/SSHer here
     # rather than in the desktop-UI tier C. Only users who ticked Ask Execs see the prompt.
+    "chat_agent_torrenter",     # Submits and changes durable downloads
     "chat_agent_terminater",    # Terminater    (types commands into a visible shell)
     # ----- Tier B: MESSAGING — DELIBERATELY *NOT* GATED (Angela, 2026-07-26) --
     # Emailer / Whatsapper / Telegrammer used to be gated here on the
@@ -593,6 +595,8 @@ def _infer_execution_shell(tool_name: str, tool_input: Any) -> str:
     if name == "chat_agent_ssher":
         host = tool_input.get("host") if isinstance(tool_input, dict) else None
         return f"Remote SSH shell{(' @ ' + str(host)) if host else ''}"
+    if name == "chat_agent_torrenter":
+        return "Tlachihuani Jobs authenticated local REST API"
     if name == "chat_agent_terminater":
         try:
             from .terminater_tool import shell_kind
@@ -1043,6 +1047,15 @@ class MultiTurnToolAgentExecutor:
         shows an empty cell. ``tool_name`` is optional only for backward
         compatibility with older callers; new code should always pass it.
         """
+        if tool_name == "chat_agent_torrenter":
+            from .agents.torrenter.contract import FIELDS, ID
+            action = tool_input.get("action") if isinstance(tool_input, dict) else None
+            args = tool_input.get("arguments", {}) if isinstance(tool_input, dict) else {}
+            if not isinstance(action, str) or action not in FIELDS or not isinstance(args, dict):
+                return "Torrenter (invalid arguments)"
+            targets = [k+"="+v for k,v in args.items() if k in ("job_id","operation_id","inspection_id","preview_id")
+                       and isinstance(v,str) and ID.fullmatch(v)]
+            return " ".join(["Torrenter", action, *targets])
         if tool_input is None:
             return ""
         if isinstance(tool_input, str):
@@ -1297,6 +1310,16 @@ class MultiTurnToolAgentExecutor:
         _runs_token = terminal_guard.enter_mode(self._user_runs_now())
         try:
             result = tool.invoke(tool_input)
+            # When Torrenter is bound, carry the search provider's full magnet into its
+            # account-scoped source store before logging, truncating or prompting the model.
+            supervisor_search = (tool_name == "external_mcp_call" and isinstance(tool_input, dict)
+                                 and tool_input.get("tool_name") == "get_torrent")
+            if "chat_agent_torrenter" in self.tool_map and (
+                supervisor_search or (tool_name.startswith("ext__") and tool_name.endswith("__get_torrent"))
+            ):
+                from .context_governor import current_user
+                from .torrenter_bridge import stage_search_magnet
+                result = stage_search_magnet(current_user(), result, supervisor=supervisor_search)
         except Exception as exc:
             logger.error("[MultiTurnExecutor._invoke_tool] Tool '%s' raised exception: %s", tool_name, exc, exc_info=True)
             display_name = _tool_name_to_agent_display(tool_name)
@@ -2443,6 +2466,24 @@ class MultiTurnToolAgentExecutor:
                 if self._run_cancelled():
                     return self._cancelled_result(messages)
                 tool_name = tool_call.get("name", "")
+                if tool_name.strip().lower() in {"torrenter", "chat_agent_torrenter"} and "chat_agent_torrenter" in self.tool_map:
+                    if tool_name != "chat_agent_torrenter":
+                        logger.info("--- [TOOL-ALIAS] %s resolved to chat_agent_torrenter", tool_name)
+                    tool_name = "chat_agent_torrenter"
+                    tool_call = dict(tool_call, name=tool_name)
+                    from .agents.torrenter.contract import TorrentError, validated
+                    args = tool_call.get("args")
+                    try:
+                        if not isinstance(args, dict) or set(args) - {"action", "arguments"}:
+                            raise TorrentError("Use the typed Torrenter action and arguments.")
+                        validated(args.get("action"), args.get("arguments", {}))
+                    except TorrentError as exc:
+                        # Never echo unvalidated input into permission prompts, reports or .flw exports.
+                        refusal = str(exc)
+                        self._record_refused_call(dict(tool_call, args={}), refusal)
+                        messages.append(ToolMessage(tool_call_id=tool_call.get("id", ""), name=tool_name,
+                                                    content=json.dumps({"status":"refused", "success":False, "message":refusal})))
+                        continue
                 # Mark that the model has attempted the requested completion
                 # notification so the notification-debt guard above stays quiet.
                 if tool_name in _NOTIFICATION_TOOLS:

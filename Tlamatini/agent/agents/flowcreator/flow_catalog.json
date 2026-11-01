@@ -4455,6 +4455,61 @@
       "never_starts_targets": false,
       "special": ""
     },
+    "torrenter": {
+      "display_name": "Torrenter",
+      "aliases": [
+        "torrenter"
+      ],
+      "purpose": "Controls persistent Tlachihuani Jobs downloads for the signed-in account. Review torrent metadata, select files, submit, pause, stop, resume, remove records and read verified manifests. File erasure requires approval in XT.",
+      "config_schema": {
+        "action": "str",
+        "arguments": "str",
+        "source_agents": "list",
+        "target_agents": "list"
+      },
+      "output_fields": [
+        "action",
+        "status",
+        "success",
+        "job_id",
+        "operation_id",
+        "operation_key",
+        "inspection_id",
+        "preview_id",
+        "phase",
+        "revision",
+        "verified_bytes",
+        "selected_bytes",
+        "verified",
+        "message",
+        "response_body"
+      ],
+      "output_slots": {
+        "0": "target_agents"
+      },
+      "input_slots": {
+        "0": "source_agents"
+      },
+      "connection_fields": [
+        "source_agents",
+        "target_agents",
+        "output_agents",
+        "source_agent",
+        "target_agent",
+        "source_agent_1",
+        "source_agent_2",
+        "target_agents_a",
+        "target_agents_b",
+        "target_agents_l",
+        "target_agents_g"
+      ],
+      "no_input": false,
+      "no_output": false,
+      "singleton": false,
+      "long_running": false,
+      "never_starts_targets": false,
+      "special": ""
+    },
     "unrealer": {
       "display_name": "Unrealer",
       "aliases": [

@@ -122,7 +122,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'tlamatini.middleware.EditionSessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -217,6 +217,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
+SESSION_COOKIE_NAME = 'tlm_session_' + LANGUAGE_CODE.replace('-', '_')
 
 TIME_ZONE = 'America/Mexico_City'
 
@@ -248,7 +249,7 @@ if getattr(sys, 'frozen', False):
 
 # Version stamp for cache-busting of static assets in templates
 # Override via env var STATIC_VERSION when deploying
-STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-3-canvas-edit-1-interactor-2-canvas-fit-1-interaction-settings-1-flow-title-1-typing-250-1'
+STATIC_VERSION = (os.environ.get('STATIC_VERSION') or str(int(time.time()))) + '-agent-catalog-1-quality-cleanup-1-usage-status-2-terminater-3-canvas-edit-1-interactor-2-canvas-fit-1-interaction-settings-1-flow-title-1-typing-250-1-torrenter-1'
 
 # WhiteNoise configuration: dev vs release.
 # NOTE (speed batch, 2026-07-02): the old per-branch STATICFILES_STORAGE lines

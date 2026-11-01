@@ -503,7 +503,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
         // That artifact is not a saved target list: the visible edge must still
         // restore its runtime wiring. Explicit saved lists remain authoritative.
         const sourceConfig = ACP.nodeConfigs.get(sourceId);
-        if (sourceConfig && (sourceAgentName !== 'parametrizer' || Object.prototype.hasOwnProperty.call(sourceConfig, 'target_agents'))) {
+        if (sourceConfig && (!['parametrizer', 'torrenter'].includes(sourceAgentName) || Object.prototype.hasOwnProperty.call(sourceConfig, 'target_agents'))) {
             console.log(`[Restore] ${sourceAgentName}(${sourceId}) has saved configData — skipping source-side update.`);
         } else {
             // Asker/Forker output slots (A/B)
@@ -590,6 +590,7 @@ async function restoreAgentConnection(sourceNode, targetNode, connData) {
                 case 'pptxer': await updatePptxerConnection(sourceId, targetId, 'add'); break;
                 case 'pdfer': await updatePdferConnection(sourceId, targetId, 'add'); break;
                 case 'terminater': await updateTerminaterConnection(sourceId, targetId, 'add'); break;
+                case 'torrenter': await updateTorrenterConnection(sourceId, targetId, 'add'); break;
                 case 'latexer': await updateLatexerConnection(sourceId, targetId, 'add'); break;
                 case 'kalier': await updateKalierConnection(sourceId, targetId, 'add'); break;
                 case 'stm32er': await updateStm32erConnection(sourceId, targetId, 'add'); break;

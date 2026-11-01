@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -227,6 +228,37 @@ class RemovalRenameRecoveryTests(unittest.TestCase):
         self.assert_content_unchanged()
         self.assertTrue((self.target / 'Temp/UpdateMedia/cache.bin').is_file())
 
+    @unittest.skipUnless(os.name == 'nt', 'literal NTFS directory names')
+    def test_browser_caches_remain_distinct_across_interruption_and_cleanup(self):
+        root = Path('\\\\?\\' + str(self.target))
+        # Ordinary Win32 path access can silently select the other sibling.
+        names = ('ms-playwright', 'ms-playwright ', 'ms-playwright.')
+        self.addCleanup(remove_tree, root)
+        identities = {}
+        for name in names:
+            cache = root / name
+            cache.mkdir()
+            (cache / 'revision').write_bytes(name.encode())
+            nested = cache / ('x' * 120) / ('y' * 120)
+            nested.mkdir(parents=True)
+            (nested / 'readonly. ').write_bytes(b'cache')
+            (nested / 'readonly. ').chmod(stat.S_IREAD)
+            identities[name] = cache.stat().st_ino
+        self.assertEqual(len(set(identities.values())), 3)
+        recovery = self.prepare()
+        for name in names:
+            recovery.stage_removal(name)
+        Recovery(self.target).recover_previous()
+        for name in names:
+            self.assertEqual((root / name).stat().st_ino, identities[name])
+            self.assertEqual((root / name / 'revision').read_bytes(), name.encode())
+        recovery = self.prepare()
+        self.stage_all(recovery)
+        self.assertEqual(recovery.commit(), '')
+        for name in names:
+            self.assertFalse((root / name).exists())
+        self.assert_content_unchanged()
+
     @unittest.skipUnless(os.name == 'nt', 'Windows file sharing semantics')
     def test_transient_journal_lock_retries_atomic_replacement(self):
         from setup_recovery import atomic_json
@@ -293,7 +325,7 @@ class RemovalRenameRecoveryTests(unittest.TestCase):
         recovery = self.prepare()
         recovery.stage_removal('Tlamatini.exe')
         self.executable.write_bytes(b'new content from another actor')
-        with self.assertRaisesRegex(RuntimeError, 'occupied'):
+        with self.assertRaisesRegex(RuntimeError, 'Restoration destination is occupied'):
             Recovery(self.target).recover_previous()
         self.assertEqual(self.executable.read_bytes(), b'new content from another actor')
         self.assertEqual((recovery.folder / 'quarantine/Tlamatini.exe').read_bytes(), b'application image')

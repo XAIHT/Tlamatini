@@ -382,6 +382,12 @@ PDFER SPECIAL NOTES:
     time; use progress and actual stage failures, not an assumption of a seconds-long
     whole run or a global command_timeout deadline that the renderer does not enforce.
 
+TORRENTER SPECIAL NOTES:
+  - One activation makes one Jobs request or a bounded wait, then emits INI_SECTION_TORRENTER.
+    An accepted operation is durable. A completed wrapper process can leave a transfer running.
+    Observe its job ID and verified manifest. Never synthesize a fresh submit to recover a lost receipt.
+    Missing enrollment and stale revisions require operator action or a fresh read.
+
 TERMINATER SPECIAL NOTES:
   - Terminater runs ONE action in a real ConPTY terminal (CMD or PowerShell) that the user can see in
     the Terminals area. It types like a person (never pastes), so slow typing is NORMAL, not a hang.

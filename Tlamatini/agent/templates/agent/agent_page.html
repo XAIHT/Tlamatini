@@ -144,6 +144,8 @@
                   id="agentic-control-panel" target="_blank" rel="noopener">Agentic Control Panel</a></li>
               <li><a class="dropdown-item menu-entry" href="{% url 'prompt_flow_panel' %}"
                   id="prompt-flow-panel" target="_blank" rel="noopener">Prompt Flow Panel</a></li>
+              <li><a class="dropdown-item menu-entry" href="{% url 'torrenter_sources' %}" target="_blank" rel="noopener">Torrenter Sources</a></li>
+              <li><a class="dropdown-item menu-entry" href="{% url 'torrenter_workspace' %}" target="_blank" rel="noopener">Torrenter Workspace</a></li>
               {% if request.user.is_staff %}
               <li><a class="dropdown-item menu-entry" href="{% url 'admin:index' %}" id="open-admin" target="_blank"
                   rel="noopener">Admin Panel</a></li>

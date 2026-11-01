@@ -2111,6 +2111,16 @@ system_prompt: |
   - `target_agents`: [] (downstream agents to start after the terminal action ends)
 - **Notes**: Needs Windows 10 1809+ (ConPTY). It is on the Ask Execs allowlist (a visible command can still delete). A quiet stretch while a person types, or a hand-over waits for a human, is normal for up to `wait_seconds` + `user_wait_seconds`. Full contract: `docs/terminater.md`.
 
+### 87. Torrenter
+
+Use the active `torrenter_<n>` node for one authenticated Jobs action. Configure `action` and
+`arguments` (a JSON object encoded as text). Use `list` with `{}` to discover owned jobs.
+Stage metadata in Torrenter Sources, then use `inspection` and `download` with explicit file IDs.
+Reattach with the job ID. Poll `operation` for an admission receipt or `manifest` for verified output.
+Route the `INI_SECTION_TORRENTER` fields `status`, `success`, `phase`, `job_id`, `operation_id`,
+`verified_bytes` and `response_body` to the next node. Stop preserves files. Content erasure requires XT approval.
+Use an enrolled account and keep credentials and private source links outside exported flows.
+
 ---
 
 ## Output Format

@@ -2524,6 +2524,8 @@ _PRE_LAUNCH_PREVIEW_SECRET_LEAF_PATTERNS = (
 )
 
 _PRE_LAUNCH_PREVIEW_BY_TEMPLATE = {
+    'torrenter': {'title': 'TORRENTER JOBS ACTION', 'body': ('action', 'action'),
+                  'params': ()},
     # --- document / presentation authoring ------------------------------
     # PPTXer gets a preview because a run has a real COST worth showing first:
     # it writes a .pptx plus a folder of rendered PNGs to a free-form path, and
@@ -3052,7 +3054,20 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True, config_over
     # BEFORE applying the LLM's assignments, so an explicit per-call value wins.
     runtime_config = _seed_global_agent_defaults(spec.template_dir, runtime_config)
 
-    if config_overrides is not None:
+    if spec.template_dir == "torrenter":
+        from .agents.torrenter.contract import validated
+        from .context_governor import current_user
+        from .torrenter_bridge import profile_for
+        try:
+            profile_for(current_user())
+            if not isinstance(config_overrides, dict) or set(config_overrides) != {"action", "arguments"}:
+                raise ValueError("Use the typed Torrenter tool.")
+            fields = validated(config_overrides["action"], config_overrides["arguments"])
+        except ValueError as exc:
+            return _tool_output({"status":"refused", "error_kind":"request", "message":str(exc)})
+        runtime_config.update(action=config_overrides["action"], arguments=fields, source_agents=[], target_agents=[])
+        assignment_error, assignment_notes = None, []
+    elif config_overrides is not None:
         runtime_config, assignment_error, assignment_notes = _apply_typed_overrides_to_config(
             runtime_config,
             config_overrides,
@@ -3355,7 +3370,11 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True, config_over
         except Exception:
             pass
 
-    if run.status == "running":
+    if spec.template_dir == "torrenter" and run.status in {"completed", "failed"}:
+        payload.setdefault("message", "Jobs accepted the operation. Read its receipt and job state."
+                           if payload.get("action_status") == "accepted" else "Torrenter returned the observed Jobs result.")
+        payload["retryable"] = False
+    elif run.status == "running":
         payload["message"] = (
             f"{spec.display_name} started in an isolated runtime copy and is still running. "
             "Use chat_agent_run_status, chat_agent_run_log, and chat_agent_run_stop with this run_id."
@@ -3423,6 +3442,12 @@ def _build_wrapped_chat_agent_tool(spec):
     cached = _WRAPPED_CHAT_AGENT_TOOLS.get(spec.tool_name)
     if cached is not None:
         return cached
+
+    if spec.template_dir == "torrenter":
+        from .torrenter_tool import build_tool
+        typed = build_tool(spec, _launch_wrapped_chat_agent, _tool_output)
+        _WRAPPED_CHAT_AGENT_TOOLS[spec.tool_name] = typed
+        return typed
 
     if spec.template_dir == "terminater":
         # Terminater takes one typed argument per setting, never a sentence torn apart by a

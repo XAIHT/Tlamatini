@@ -35,6 +35,7 @@ if (os.environ.get('TLAMATINI_TEMP') or '').strip():
         pass
 
 import time
+import re
 import yaml
 import logging
 import subprocess
@@ -539,6 +540,15 @@ def _report_forked_window(before, timeout_seconds=6.0):
         logging.warning("   🪟 Window check failed harmlessly: %s" % error)
 
 
+def quote_playwright_cache_assignment(script: str) -> str:
+    """CMD includes the whitespace before && in an unquoted SET value."""
+    return re.sub(
+        r'(?im)^([ \t]*@?set[ \t]+)(PLAYWRIGHT_BROWSERS_PATH='
+        r'(?:[^"\r\n&|<>^]*[\\/])?ms-playwright)([ \t]+)(?=[&|]|\r?$)',
+        r'\1"\2"\3', script,
+    )
+
+
 def execute_script(script_content: str, non_blocking: bool = False,
                     execute_forked_window: bool = False) -> bool:
     """
@@ -560,6 +570,8 @@ def execute_script(script_content: str, non_blocking: bool = False,
     try:
         # Determine file extension and execution command based on OS
         is_windows = sys.platform.startswith('win')
+        if is_windows:
+            script_content = quote_playwright_cache_assignment(script_content)
         ext = '.bat' if is_windows else '.sh'
         
         # For NON-BLOCKING mode: Save script to the Tlamatini Temp directory.

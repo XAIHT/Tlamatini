@@ -503,6 +503,14 @@ _FROZEN_TERMINATER_MODULES = (
     "agent.management.commands.check_terminater",
 )
 
+_FROZEN_TORRENTER_MODULES = (
+    "agent.management.commands.enroll_torrenter", "agent.torrenter_tool", "agent.torrenter_views",
+    "agent.torrenter_bridge", "agent.agents.torrenter.client", "agent.agents.torrenter.contract", "agent.agents.torrenter.sources",
+)
+
+# PyInstaller ships these Windows extensions as loose .pyd files outside the PYZ.
+_FROZEN_PYWIN32_EXTENSIONS = ("win32cred", "win32crypt") if os.name == "nt" else ()
+
 _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.interactor", "agent.interactor.context", "agent.interactor.protocol",
     "agent.interaction_settings", "agent.interaction_narration",
@@ -536,6 +544,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     *_FROZEN_PDF_MODULES,          # PDF extraction + optional Image-Interpreter
     *_FROZEN_PROMPT_FLOW_PANEL_MODULES,
     *_FROZEN_TERMINATER_MODULES,
+    *_FROZEN_TORRENTER_MODULES,
 )
 
 
@@ -595,7 +604,7 @@ def _read_pyz_module_names(dist_root):
 
 
 def verify_frozen_agent_modules(dist_root):
-    """Assert every module in _FROZEN_REQUIRED_AGENT_MODULES is IN the bundle.
+    """Verify Python modules in the PYZ and pywin32 extensions in the frozen runtime.
 
     Aborts for both absent modules and an unreadable archive. Update the reader
     for incompatible PyInstaller versions instead of publishing unproven output.
@@ -605,6 +614,11 @@ def verify_frozen_agent_modules(dist_root):
     if names is None:
         raise RuntimeError("Cannot inspect the frozen PYZ archive; runtime carriage is not proven")
     missing = [m for m in _FROZEN_REQUIRED_AGENT_MODULES if m not in names]
+    internal = Path(dist_root) / "_internal"
+    for module in _FROZEN_PYWIN32_EXTENSIONS:
+        filename = f"{module}.pyd"
+        if not any((path / filename).is_file() for path in (internal / "win32", internal)):
+            missing.append(filename)
     if missing:
         print("ERROR: the frozen bundle is MISSING required runtime modules: "
               + ", ".join(missing))
@@ -614,6 +628,8 @@ def verify_frozen_agent_modules(dist_root):
         sys.exit(1)
     print(f"  OK - all {len(_FROZEN_REQUIRED_AGENT_MODULES)} required runtime "
           f"module(s) present in the PYZ ({len(names)} modules total).")
+    if _FROZEN_PYWIN32_EXTENSIONS:
+        print(f"  OK - frozen native extensions present: {', '.join(_FROZEN_PYWIN32_EXTENSIONS)}.")
     return True
 
 
@@ -1521,6 +1537,8 @@ def main():
         *(f'--hidden-import={module}' for module in _FROZEN_PDF_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_PROMPT_FLOW_PANEL_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_TERMINATER_MODULES),
+        *(f'--hidden-import={module}' for module in _FROZEN_TORRENTER_MODULES),
+        *(f'--hidden-import={module}' for module in _FROZEN_PYWIN32_EXTENSIONS),
         # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
         # Every one of these is reached only through a FAIL-OPEN import:
         #   external_mcp_manager.py  `try: from . import runtime_provisioner
@@ -2129,6 +2147,13 @@ def main():
                 cmd_display = " ".join(args)
                 print(f"-> Running: {manage_exe.name} {cmd_display}")
                 return subprocess.run([str(manage_exe), *args], **kwargs)
+
+            if _FROZEN_PYWIN32_EXTENSIONS:
+                # Load both extensions in the shipped interpreter to catch missing DLL dependencies.
+                res = run_cmd(["shell", "-c", "from win32cred import CredRead, CredWrite; "
+                               "from win32crypt import CryptProtectData, CryptUnprotectData"], timeout=60)
+                if res.returncode != 0:
+                    raise RuntimeError("Frozen Torrenter credential imports failed; check the bundled pywin32 DLLs")
 
             # 8a) migrate
             res = run_cmd(["migrate"])

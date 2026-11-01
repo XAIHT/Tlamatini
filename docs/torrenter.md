@@ -1,0 +1,64 @@
+# Torrenter
+
+Torrenter is a Tlamatini workflow agent and the wrapped chat tool `chat_agent_torrenter`. It controls downloads in the separately installed Tlachihuani Jobs Windows service at `http://127.0.0.1:12064/api/v1`. Jobs owns the transfer, files and journal. You can close chat, the ACP or the browser and reconnect to the same job.
+
+## Connect an account
+
+1. Choose **Start Services** in the XT tray menu and sign in to Tlamatini.
+2. Open **Panels → Torrenter workspace** to see the same downloads as chat. The XT panel opens this workspace too. If both editions are running, choose one. Refresh keeps your signed-in account. Signing out ends browser access to its queue.
+3. Enable **Torrenter** in Configure Agents and **Chat-Agent-Torrenter** in Configure MCPs/Tools. Select them in Compact mode if enabled. Chat supports Multi-Turn, Ask Execs and Exec Report.
+
+The server maps each Django account to a stable Jobs profile. The authenticated Windows control pipe issues the server an account-scoped credential. The browser uses its existing Django session and CSRF token. Each edition has its own session cookie.
+
+## Start a transfer
+
+Open **Panels → Torrenter Sources**. Choose a `.torrent` file or paste a magnet and click **Inspect metadata**. Copy the inspection ID to chat. You can also paste a magnet into a regular chat request. Tlamatini replaces it with a short-lived encrypted source reference before writing chat history or sending it to the model.
+
+Example chat requests, in order:
+
+1. “Use Torrenter to review inspection `<inspection_id>`. Show the file IDs and sizes.”
+2. “Download file 0 from that inspection into downloads. Keep seeding off.”
+3. “Check job `<job_id>`. Show the desired state, observed phase, selected bytes and verified bytes.”
+4. “Show the verified manifest for that job, including the output location and SHA-256.”
+
+A resolving magnet may need peers before any files are available. Inspect again using the same inspection ID. A published manifest with `verified=true` identifies completed output. A shared piece can be larger than the selected file. If the service reports excess piece bytes, Torrenter preserves that count in `engine_verified_bytes` and reports selected verified bytes only after publication. A zero rate, an accepted operation and a finished chat agent each describe different events.
+
+## Actions
+
+On the Agentic Control Panel, **Wait for complete download** defaults to **No**. The node returns its receipt and starts its connected agents as soon as Jobs accepts the transfer. Choose **Yes** to keep it running until Jobs publishes a verified manifest for the selected files. Pausing preserves the wait. A stopped, cancelled or failed transfer ends the wait with an error. The YAML setting is `wait_for_completion: true` or `false`.
+
+Right-click the Torrenter node and open its log to see all available filenames, the selected files, sizes, full source magnet and the verified saved paths and hashes. Uploaded metadata has a generated magnet. The detailed activity file belongs to the account's flow. Chat results carry a separate machine-readable receipt.
+
+Pass an `action` and an `arguments` object to the chat tool. On a canvas node put the same JSON object in the **arguments** field. Each invocation makes one logical Jobs request. A bounded wait polls the current job for up to 30 seconds. Continue observing with its job ID.
+
+| Intent | Actions | Fields or behavior |
+|---|---|---|
+| Discover and inspect | `capabilities`, `list`, `inspect`, `inspection` | List supports filters, `limit` and `cursor`. Inspect accepts a public v1 `info_hash` or private `source_ref`. Inspection reads an `inspection_id`. |
+| Admit a download | `download` | Supply `inspection_id`, `metadata_revision`, explicit `selected_file_ids` and `destination_root_id` (`downloads` or `archive`). Optional priorities, resume and seed policies retain explicit false and zero values. |
+| Reconnect | `status`, `wait`, `operation`, `events` | Use a job ID for status or wait, an operation ID for the durable receipt, and an event cursor for events. Re-read the list on an expired cursor. |
+| Inspect a job | `files`, `peers`, `trackers`, `web_seeds`, `statistics`, `manifest` | Supply its job ID. Jobs returns only published verified paths in a ready manifest. |
+| Control | `pause`, `resume`, `stop`, `start`, `cancel`, `recheck`, `reseed`, `move` | Supply `job_id` and the latest `revision`. Pause pairs with resume. Stop retains partial data for start. Cancel ends an incomplete transfer permanently. Stop before moving to a different approved root. |
+| Edit | `select`, `update`, `set_trackers`, `set_web_seeds` | Change selected IDs/priorities on a stopped job. Update labels, queue position, rates or policies. Prepare private source lists in Torrenter Sources and pass the opaque reference to the stopped job. |
+| Account configuration | `categories`, `tags`, `label`, `settings`, `update_settings`, `totals` | Create, rename or remove a label by collection. Update defaults using their revision. Totals summarize this account. |
+| Multiple jobs | `batch` | Pass `transition` (pause, resume, stop or start) and `jobs`, an array of job IDs with individual revisions. Inspect each outcome. |
+| Remove a record | `remove_job` | Supply the ID and revision of a stopped, cancelled or completed job. Its files stay on disk. |
+| Erase owned files | `delete_preview`, `delete_content` | Review exact files for a stopped or finished job, approve the matching preview in XT, then pass `preview_id` and the original revision. Poll the operation. A chat confirmation alone cannot authorize erasure. |
+
+Durable writes accept an `operation_key` of 32 lowercase hex digits. Keep the key and arguments on an uncertain retry. Reusing them returns the original admission receipt. A changed request needs a fresh key and a stale revision needs a fresh read. The local chat `run_id` controls the short-lived client process. It is separate from the Jobs `job_id`, `inspection_id` and `operation_id`.
+
+## Flows and diagnostics
+
+Drop **Torrenter** on the Agentic Control Panel, open Configure and choose its action. For example, set **action** to `list` and **arguments** to `{"limit":10}`. Connect its output to a Parametrizer or Forker. Each activation writes one `INI_SECTION_TORRENTER` record with the action outcome and JSON response body. Fresh activations use fresh operation keys. Reanimation of an interrupted write reuses the saved key.
+
+A search result passes its complete magnet, including trackers, as a private source reference. Poll the inspection until its file list is ready before submitting. For HTTP 401, check the signed-in account. For 403 check scopes or XT approval, for 404 check the owned ID, and for 412 re-read the revision. When Jobs is unavailable, check the XT Services panel. A transfer waiting for a peer remains a live service job.
+
+
+## Repeat the development checks
+
+From a verified visible foreground PowerShell console, keep the server running in its own visible window. The live check opens headed Chrome, asks for the signed-in development account’s password, uploads a generated torrent, submits it through the real wrapped tool, replays its receipt and independently checks the SHA-256 of the published 13,936-byte fixture. It prints the completed job ID for inspection.
+
+```powershell
+Set-Location -LiteralPath 'C:\Development\XAIHT\Tlamatini\Tlamatini'
+python manage.py test agent.test_torrenter agent.test_ask_execs_allowlist agent.test_agent_display_names agent.tests.ExecReportCaptureTests
+python tests_e2e/torrenter_live.py --username YOUR_USERNAME --port 18084
+```

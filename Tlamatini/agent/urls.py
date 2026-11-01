@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from . import views, flow_file_views, model_brain_views, usage_views, terminal_views
-from . import canvas_file_views, interaction_settings
+from . import canvas_file_views, interaction_settings, torrenter_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -29,6 +29,11 @@ def secure_post(view_func):
 
 
 urlpatterns = [
+    path("torrenter/workspace/", torrenter_views.workspace, name="torrenter_workspace"),
+    path("torrenter/workspace/session/", torrenter_views.workspace_session),
+    path("torrenter/workspace/api/v1/<path:route>", torrenter_views.workspace_api),
+    path("torrenter/workspace/<str:asset>", torrenter_views.workspace_asset),
+    path("torrenter/sources/", torrenter_views.sources, name="torrenter_sources"),
     path('interaction-settings/', secure_get(csrf_protect(interaction_settings.settings_view)), name='interaction_settings'),
     path('canvas/save/', secure_post(canvas_file_views.save), name='canvas_save'),
     path('canvas/read/', secure_post(canvas_file_views.read), name='canvas_read'),
@@ -173,6 +178,7 @@ urlpatterns = [
     path('update_pdfer_connection/<str:agent_name>/', secure_post(views.update_pdfer_connection_view), name='update_pdfer_connection'),
     path('update_latexer_connection/<str:agent_name>/', secure_post(views.update_latexer_connection_view), name='update_latexer_connection'),
     path('update_pptxer_connection/<str:agent_name>/', secure_post(views.update_pptxer_connection_view), name='update_pptxer_connection'),
+    path('update_torrenter_connection/<str:agent_name>/', secure_post(views.update_terminater_connection_view), name='update_torrenter_connection'),
     path('update_terminater_connection/<str:agent_name>/', secure_post(views.update_terminater_connection_view), name='update_terminater_connection'),
     # Terminater: the loopback API is token-authenticated (no session, no CSRF cookie) and
     # deliberately NOT wrapped in secure_post; the state view is a normal login-protected GET.

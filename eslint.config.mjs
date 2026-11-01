@@ -456,6 +456,7 @@ export default [
                 updateNmapperConnection: "readonly",
                 updatePptxerConnection: "readonly",
         updatePdferConnection: "readonly",
+        updateTorrenterConnection: "readonly",
         updateTerminaterConnection: "readonly",
                 updateLatexerConnection: "readonly",
 

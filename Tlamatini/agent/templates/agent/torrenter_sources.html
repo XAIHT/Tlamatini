@@ -1,0 +1,25 @@
+{% load static %}<!doctype html>
+<!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Torrenter Sources · Tlamatini</title><style>
+:root{color-scheme:dark;font:16px/1.5 system-ui;background:#101522;color:#ecf2ff}body{max-width:48rem;margin:5vh auto;padding:0 1rem}header small{color:#78e1c7;letter-spacing:.12em}h1{font-size:clamp(2rem,6vw,3rem);margin:.35em 0}
+section,form{background:#192236;border:1px solid #354663;border-radius:1rem;padding:1.25rem;margin:1.2rem 0}label{display:block;font-weight:600;margin:.75rem 0}input,textarea,button{box-sizing:border-box;font:inherit}textarea,input{display:block;width:100%;padding:.6rem;background:#0f1728;color:#fff;border:1px solid #657998;border-radius:.4rem}button{padding:.65rem 1.2rem;border:0;border-radius:.5rem;background:#89efd3;color:#0d2923;font-weight:bold;margin-top:1rem}a{color:#98ccff}code{overflow-wrap:anywhere}.error{color:#ffbcaf}th,td{text-align:left;padding:.25em .5em;overflow-wrap:anywhere}table{width:100%}
+</style></head><body><header><small>TLAMATINI / DOWNLOADS</small><h1>Torrenter Sources</h1>
+<p>Inspect a magnet or a torrent file under your signed-in account. Give the inspection ID to Torrenter in chat or use it in a flow.</p></header>
+{% if error %}<section role="alert" class="error">{{ error }}</section>{% endif %}
+{% if inspection %}<section aria-label="Inspection"><h2>Inspection ready for review</h2><p>Inspection ID <code id="inspection-id">{{ inspection.inspection_id }}</code></p>
+<p>Phase <strong>{{ inspection.phase }}</strong> · Metadata revision {{ inspection.metadata_revision }}</p>
+{% if inspection.files %}<h3>{{ inspection.name }}</h3><table><thead><tr><th>ID</th><th>File</th><th>Bytes</th></tr></thead><tbody>{% for f in inspection.files %}<tr><td>{{ f.id }}</td><td>{{ f.path }}</td><td>{{ f.size }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+<p>Ask Torrenter to review this inspection and download the file IDs you choose. Inspections expire after 15 minutes.</p></section>{% endif %}
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+<label for="torrent">Torrent metadata file (up to 1 MiB)</label><input type="file" id="torrent" name="torrent" accept=".torrent">
+<label for="magnet">Or paste a magnet link</label><textarea id="magnet" name="magnet" rows="3" maxlength="8192" autocomplete="off" spellcheck="false"></textarea>
+<button type="submit">Inspect metadata</button></form>
+<details><summary>Prepare a private tracker or web-seed update</summary>
+<form method="post">{% csrf_token %}<label for="source_kind">Source list</label>
+<select name="source_kind" id="source_kind"><option value="trackers">Trackers</option><option value="web_seeds">Web seeds</option></select>
+<label for="endpoints">One endpoint per line. An empty list clears existing sources.</label>
+<textarea rows="3" id="endpoints" name="endpoints" maxlength="65568" autocomplete="off"></textarea>
+<button type="submit">Prepare source reference</button></form></details>
+{% if source_ref %}<section role="status">Use <code>{{ source_action }}</code> on a stopped job with its revision and source reference <code>{{ source_ref }}</code>. This reference expires in 15 minutes.</section>{% endif %}
+<p><a href="{% url 'torrenter_workspace' %}" target="_blank" rel="noopener noreferrer">Open the XT download workspace</a> · Your signed-in Tlamatini account opens the same queue.</p></body></html>

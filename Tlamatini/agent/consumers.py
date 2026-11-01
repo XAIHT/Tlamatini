@@ -1400,7 +1400,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):   # type: ignore
         if _WS_TRACE:
-            print(f">>> [RECEIVE] Got message: {text_data[:100]}...", flush=True)
+            print(f">>> [RECEIVE] Got frame ({len(text_data)} characters)", flush=True)
             sys.stdout.flush()
         try:
             text_data_json = json.loads(text_data)
@@ -1424,6 +1424,14 @@ class AgentConsumer(AsyncWebsocketConsumer):
             else:
                 type = None
             user = self.scope['user']
+            if type is None and isinstance(message, str) and "magnet:?" in message.lower():
+                from .torrenter_bridge import stage_chat_magnets
+                from .agents.torrenter.contract import TorrentError
+                try:
+                    message = await database_sync_to_async(stage_chat_magnets)(user.pk, message)
+                except TorrentError as exc:
+                    await self.agent_message({"username":"Tlamatini", "message":str(exc)})
+                    return
 
             # Per-line log attribution (Angela, 2026-08-13). An UNTYPED frame is
             # a real prompt, so it OPENS a new turn -- that turn number is what

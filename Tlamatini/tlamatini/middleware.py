@@ -13,6 +13,7 @@ import uuid
 from typing import Callable, Optional
 
 from django.conf import settings
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.exceptions import BadRequest, PermissionDenied, SuspiciousOperation
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 
@@ -20,6 +21,17 @@ from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 # everything logged here reaches BOTH the console and tlamatini.log (the tee
 # in manage.py flushes immediately on ERROR/Traceback markers).
 _request_error_logger = logging.getLogger('tlamatini.request')
+
+
+class EditionSessionMiddleware(SessionMiddleware):
+    """Ports share cookies. Keep each edition's login separate and adopt valid legacy sessions."""
+    def process_request(self, request):
+        super().process_request(request)
+        if settings.SESSION_COOKIE_NAME not in request.COOKIES and request.COOKIES.get("sessionid"):
+            legacy = self.SessionStore(request.COOKIES["sessionid"])
+            if legacy.get("_auth_user_id"):
+                request.session = legacy
+                request.session.modified = True
 
 
 class NoCacheHTMLMiddleware:

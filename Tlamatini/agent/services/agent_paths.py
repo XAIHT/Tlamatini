@@ -142,6 +142,7 @@ def display_name_from_agent_type(agent_type: str) -> str:
         # Pinned explicitly (str.title() would give the same word today, but the name is a
         # product identity: "Terminater" = Terminal + Tlamatini's "-er" agent suffix, never
         # "TerminaTer" / "TERMINATER" / "Terminator").
+        "torrenter": "Torrenter",
         "terminater": "Terminater",
         # --- case-only fixes: .title() lower-cases the second capital ---
         "audioplayer": "AudioPlayer",

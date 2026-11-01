@@ -1847,6 +1847,12 @@ body.resizing {
  * inset-pane token instead of its own near-black, so it sits inside
  * the card rather than punching a hole through it.
  */
+#log-viewer-dialog[data-agent-id^="torrenter-"] #log-viewer-content {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
+}
+
 #log-viewer-content {
     flex: 1;
     padding: 12px 16px;
@@ -2395,6 +2401,7 @@ body.resizing {
    next to the red/bronze document agents. Unique in this file - no other agent uses
    #07130E / #0B7A4B / #3DFF8F / #D9FFEA. The sidebar icon inherits this automatically
    through applyAgentToolIconStyle(); never re-type the gradient in JS. */
+.canvas-item.torrenter-agent,
 .canvas-item.terminater-agent {
     background-color: #07130E;
     background: linear-gradient(135deg, #07130E 0%, #0B7A4B 33%, #3DFF8F 66%, #D9FFEA 100%);
@@ -2402,6 +2409,7 @@ body.resizing {
     font-size: smaller;
 }
 
+.canvas-item.torrenter-agent:hover,
 .canvas-item.terminater-agent:hover {
     background: linear-gradient(135deg, #0F2A1E 0%, #12A064 33%, #7CFFB5 66%, #F0FFF7 100%);
     box-shadow: 0 6px 15px rgba(61, 255, 143, 0.45);

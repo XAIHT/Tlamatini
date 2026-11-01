@@ -103,6 +103,8 @@ ROOT_SOURCES = {
     "docs/prompting-flow-designer.md": "docs/prompting-flow-designer.md",
     # Terminater: the shipped self-knowledge and FlowCreator reference point at this contract.
     "docs/terminater.md": "docs/terminater.md",
+    "docs/torrenter.md": "docs/torrenter.md",
+    "Tlamatini/agent/templates/agent/torrenter_sources.html": "_internal/agent/templates/agent/torrenter_sources.html",
     "docs/examples/prompting-kickoff.fpmt": "docs/examples/prompting-kickoff.fpmt",
     "Tlamatini/agent/agents/model_settings.py": "agents/model_settings.py",
     "Tlamatini/agent/agents/visual_errors.py": "agents/visual_errors.py",

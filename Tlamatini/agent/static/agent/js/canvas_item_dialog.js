@@ -176,7 +176,13 @@ function preRenderCanvasItemDialog(itemInfo, callbackOnSave = null, callbackOnCa
                 input.style.cursor = "pointer";
 
                 const label = document.createElement('label');
-                label.innerText = key; // Use key as label
+                if (key === 'wait_for_completion') {
+                    const update = () => { label.textContent = input.checked ? 'Wait for complete download: Yes' : 'Wait for complete download: No'; };
+                    input.addEventListener('change', update);
+                    update();
+                } else {
+                    label.textContent = key;
+                }
                 label.htmlFor = 'prop-' + fieldKey;
                 label.style.cursor = "pointer";
                 label.style.color = "var(--tlm-dlg-title)";

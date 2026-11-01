@@ -594,6 +594,15 @@ async function openLogViewer(canvasItem) {
 
     // Store agent ID for polling
     logViewer.dataset.agentId = agentId;
+    delete logViewer.dataset.logVersion;
+    delete logViewer.dataset.torrenterJob;
+    if (agentId.startsWith('torrenter-')) {
+        const args = window.ACP?.nodeConfigs?.get(agentId)?.arguments;
+        try {
+            const job = (typeof args === 'string' ? JSON.parse(args) : args)?.job_id;
+            if (/^[0-9a-f]{32}$/.test(job)) logViewer.dataset.torrenterJob = job;
+        } catch { /* An unconfigured node has no known job. */ }
+    }
 
     // Reset user scroll tracking so the initial load scrolls to bottom
     logViewerUserScrolledUp = false;
@@ -654,18 +663,25 @@ function hideLogViewer() {
 async function fetchAndDisplayLog(agentId) {
     const logContent = document.getElementById('log-viewer-content');
     if (!logContent) return;
+    const viewer = document.getElementById('log-viewer-dialog');
+    const footer = document.getElementById('log-viewer-status');
 
     try {
-        const response = await fetch(`/agent/read_agent_log/${agentId}/`, {
-            headers: getHeaders(),
+        const query = viewer.dataset.torrenterJob ? '?job_id=' + viewer.dataset.torrenterJob : '';
+        const response = await fetch(`/agent/read_agent_log/${agentId}/` + query, {
+            headers: {...getHeaders(), ...(viewer.dataset.logVersion ? {'If-None-Match': viewer.dataset.logVersion} : {})},
             credentials: 'same-origin'
         });
+        if (response.status === 304 || viewer.dataset.agentId !== agentId) return;
         const result = await response.json();
+        if (viewer.dataset.agentId !== agentId) return;
+        viewer.dataset.logVersion = response.headers.get('ETag') || '';
+        footer.textContent = result.complete ? 'Complete activity log · ' + result.total_lines : 'Last 100 lines';
 
         if (result.success && result.lines && result.lines.length > 0) {
             logContent.textContent = result.lines.join('\n');
             // Only auto-scroll to bottom if the user hasn't scrolled up
-            if (!logViewerUserScrolledUp) {
+            if (!result.complete && !logViewerUserScrolledUp) {
                 logContent.scrollTop = logContent.scrollHeight;
             }
         } else if (result.success && (!result.lines || result.lines.length === 0)) {
@@ -674,6 +690,10 @@ async function fetchAndDisplayLog(agentId) {
             logContent.textContent = result.message || 'No log file found yet.\n\nThe log file will be created when the agent starts running.';
         }
     } catch (err) {
+        if (viewer.dataset.agentId !== agentId) return;
+        // The error message replaced the versioned text. Re-fetch the whole
+        // report after the server comes back, even if the file did not change.
+        delete viewer.dataset.logVersion;
         console.error('Error fetching log:', err);
         logContent.textContent = 'Error loading log: ' + err.message;
     }

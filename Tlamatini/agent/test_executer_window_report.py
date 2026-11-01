@@ -17,7 +17,11 @@ and truncates its log, so the pure helpers are lifted out of the source.
 """
 import ast
 import os
+import re
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXECUTER = os.path.join(HERE, "agents", "executer", "executer.py")
@@ -43,6 +47,28 @@ def _lift(names):
     namespace = {}
     exec(compile(module, EXECUTER, "exec"), namespace)
     return namespace
+
+
+@unittest.skipUnless(os.name == 'nt', 'Windows CMD assignment semantics')
+class PlaywrightCacheAssignmentTests(unittest.TestCase):
+    def test_cmd_gets_the_exact_cache_path_before_the_next_command(self):
+        namespace = _lift({'quote_playwright_cache_assignment'})
+        namespace['re'] = re
+        quote = namespace['quote_playwright_cache_assignment']
+        with tempfile.TemporaryDirectory() as tmp:
+            line = r'@set PLAYWRIGHT_BROWSERS_PATH=C:\Browser Data\ms-playwright && set PLAYWRIGHT_BROWSERS_PATH'
+            batch = Path(tmp, 'check.cmd')
+            def observed(script):
+                batch.write_text('@echo off\n' + script + '\n', encoding='ascii')
+                return subprocess.check_output(
+                    [os.environ['COMSPEC'], '/d', '/c', batch.name], cwd=tmp,
+                    text=True, encoding='ascii',
+                ).rstrip('\r\n')
+            expected = r'PLAYWRIGHT_BROWSERS_PATH=C:\Browser Data\ms-playwright'
+            self.assertEqual(observed(line), expected + ' ')
+            self.assertEqual(observed(quote(line)), expected)
+            for other in ('echo ' + line, 'set OTHER=ms-playwright && echo ok', quote(line)):
+                self.assertEqual(quote(other), other)
 
 
 class DescribeWindowCheckTests(unittest.TestCase):

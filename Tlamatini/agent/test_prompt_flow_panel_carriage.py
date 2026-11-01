@@ -35,7 +35,9 @@ class PromptFlowPanelCarriageTests(unittest.TestCase):
         ):
             with self.subTest(module=module):
                 self.assertIn(module, complete)
-                with patch.object(build, "_read_pyz_module_names", return_value=complete - {module}):
+                # Isolate the missing PYZ entry from checks for loose Windows extensions.
+                with (patch.object(build, "_FROZEN_PYWIN32_EXTENSIONS", ()),
+                      patch.object(build, "_read_pyz_module_names", return_value=complete - {module})):
                     with self.assertRaises(SystemExit) as failure:
                         build.verify_frozen_agent_modules(ROOT / "Temp")
                     self.assertEqual(failure.exception.code, 1)

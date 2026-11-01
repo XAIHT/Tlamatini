@@ -7,6 +7,7 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+import json
 import itertools
 import logging
 import os
@@ -352,7 +353,9 @@ def register_chat_agent_run(
     logger.info("[ChatRuntime.register_chat_agent_run]   log_path          = %s", log_path)
     logger.info("[ChatRuntime.register_chat_agent_run]   runtime_dir exists? %s", os.path.isdir(runtime_dir))
     logger.info("[ChatRuntime.register_chat_agent_run]   request_text      = %.200s", request_text)
+    from .context_governor import current_user
     return ChatAgentRun.objects.create(
+        owner_id=current_user() if template_dir == "torrenter" else None,
         runId=run_id,
         toolDescription=tool_description,
         templateAgentDir=template_dir,
@@ -373,6 +376,10 @@ def start_chat_agent_subprocess(run: ChatAgentRun, script_path: str):
     logger.info("[ChatRuntime.start_chat_agent_subprocess] cwd exists? %s", os.path.isdir(run.runtimeDir))
 
     child_env = _build_child_env()
+    if run.templateAgentDir == "torrenter":
+        from .agents.torrenter.client import scope_grant
+        from .torrenter_bridge import profile_for
+        child_env["TLAMATINI_TORRENTER_GRANT"] = scope_grant(profile_for(run.owner_id), run.runtimeDir)
     kwargs = {
         "cwd": run.runtimeDir,
         "env": child_env,
@@ -468,6 +475,15 @@ def wait_briefly_for_initial_state(run: ChatAgentRun, *, seconds: int) -> ChatAg
     return reconcile_chat_agent_run(run)
 
 
+def _visible_runs():
+    from django.db.models import Q
+    from .context_governor import current_user
+    visible = ~Q(templateAgentDir="torrenter")
+    if current_user():
+        visible |= Q(owner_id=current_user())
+    return ChatAgentRun.objects.filter(visible)
+
+
 def get_chat_agent_run(run_id: str) -> ChatAgentRun | None:
     """Look up a chat-agent run by exact or prefix match on *runId*.
 
@@ -480,17 +496,18 @@ def get_chat_agent_run(run_id: str) -> ChatAgentRun | None:
         return None
     # 1) Exact match (fast path)
     try:
-        return ChatAgentRun.objects.get(runId=run_id)
+        return _visible_runs().get(runId=run_id)
     except ChatAgentRun.DoesNotExist:
         pass
     # 2) Prefix match — only if the caller passed a plausible short ID
     run_id_stripped = run_id.strip()
     if len(run_id_stripped) >= 6:
-        candidates = ChatAgentRun.objects.filter(
+        candidates = _visible_runs().filter(
             runId__startswith=run_id_stripped,
         ).order_by("-startedAt")
-        if candidates.exists():
-            return candidates.first()
+        if candidates.filter(templateAgentDir="torrenter").exists() and candidates.count() > 1:
+            return None
+        return candidates.first()
     return None
 
 
@@ -510,7 +527,7 @@ def list_chat_agent_runs(*, limit: int | None = None) -> list[ChatAgentRun]:
             effective_limit = max(int(limit), 1)
         except (TypeError, ValueError):
             effective_limit = get_chat_agent_limit_runs()
-    runs = list(ChatAgentRun.objects.order_by("-startedAt")[:effective_limit])
+    runs = list(_visible_runs().order_by("-startedAt")[:effective_limit])
     return [reconcile_chat_agent_run(run) for run in runs]
 
 
@@ -591,6 +608,15 @@ def serialize_chat_agent_run(run: ChatAgentRun, *, include_log_excerpt: bool = F
         "started_at": run.startedAt.isoformat() if run.startedAt else None,
         "finished_at": run.finishedAt.isoformat() if run.finishedAt else None,
     }
+    if run.templateAgentDir == "torrenter" and run.status in FINAL_STATUSES:
+        try:
+            with open(os.path.join(run.runtimeDir, "torrenter-result.json"), encoding="utf-8") as result_file:
+                result = json.load(result_file)
+            payload["action_status"] = result.pop("status")
+            payload.update(result)
+        except (OSError, ValueError, KeyError):
+            payload["success"] = False
+            payload["action_status"] = "unavailable"
     if include_log_excerpt:
         payload["log_excerpt"] = tail_runtime_log(run.logPath)
     return payload

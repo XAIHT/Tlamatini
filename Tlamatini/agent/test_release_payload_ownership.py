@@ -23,6 +23,34 @@ finally:
 
 
 class PayloadOwnershipTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Windows frozen pywin32 layout")
+    def test_pywin32_extensions_must_ship_in_the_frozen_runtime(self):
+        modules = ("win32cred", "win32crypt")
+        pyz = set(build._FROZEN_REQUIRED_AGENT_MODULES)
+        self.assertTrue(pyz.isdisjoint(modules))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            frozen = root / "_internal/win32"
+            carried = root / "python/Lib/site-packages/win32"
+            frozen.mkdir(parents=True)
+            carried.mkdir(parents=True)
+            for module in modules:
+                (frozen / f"{module}.pyd").touch()
+            with patch.object(build, "_read_pyz_module_names", return_value=pyz):
+                self.assertTrue(build.verify_frozen_agent_modules(root))
+            for module in modules:
+                with self.subTest(module=module):
+                    filename = f"{module}.pyd"
+                    (frozen / filename).rename(carried / filename)
+                    with patch.object(build, "_read_pyz_module_names", return_value=pyz | {module}):
+                        with self.assertRaises(SystemExit) as missing:
+                            build.verify_frozen_agent_modules(root)
+                        self.assertEqual(missing.exception.code, 1)
+                    (carried / filename).rename(frozen / filename)
+            with patch.object(build, "_read_pyz_module_names", return_value=None):
+                with self.assertRaisesRegex(RuntimeError, "Cannot inspect the frozen PYZ"):
+                    build.verify_frozen_agent_modules(root)
+
     def test_caches_are_removed_only_when_source_is_present(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

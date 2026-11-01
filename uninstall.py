@@ -942,15 +942,6 @@ class FancyUninstaller:
         return run_powershell(dst, timeout=min(30, remaining - 30))
 
     # ─── File removal (preserve agents/) ─────────────────────────────
-    @staticmethod
-    def _on_rmtree_error(func, path, exc_info):
-        """Handle read-only / locked files during shutil.rmtree."""
-        try:
-            os.chmod(path, stat.S_IWUSR | stat.S_IREAD)
-            func(path)
-        except Exception:
-            raise
-
     def _remove_files(self, target: str, cumulative: float, weight: float, *, keep_support=False):
         """Remove everything in *target* except what has to survive.
 
@@ -1014,18 +1005,8 @@ class FancyUninstaller:
                     pass
                 elif getattr(self, "_recovery", None) and self._recovery.data.get("mode") == "removal":
                     self._recovery.stage_removal(item)
-                elif os.path.islink(item_path):
-                    os.unlink(item_path)
-                elif getattr(os.path, "isjunction", lambda _: False)(item_path):
-                    os.rmdir(item_path)
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path, onerror=self._on_rmtree_error)
                 else:
-                    try:
-                        os.chmod(item_path, stat.S_IWUSR | stat.S_IREAD)
-                    except Exception:
-                        pass
-                    os.remove(item_path)
+                    remove_tree(item_path)
             except OSError as exc:
                 failures.append(f"{item}: {exc}")
 

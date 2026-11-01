@@ -1,0 +1,9 @@
+# Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
+# One REST action per activation. Use Torrenter Sources to inspect a magnet or .torrent.
+action: list
+# JSON object of named action fields. The generic canvas editor treats this as editable text.
+arguments: "{}"
+# For download, hold this node until Jobs publishes its verified output.
+wait_for_completion: false
+source_agents: []
+target_agents: []

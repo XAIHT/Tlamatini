@@ -95,6 +95,7 @@ MESSAGING_UNGATED = [
 
 # ── Tier D — remote systems / the network ───────────────────────────────────
 TIER_D = [
+    "chat_agent_torrenter",
     "chat_agent_scper",
     "chat_agent_apirer",
     "chat_agent_nmapper",

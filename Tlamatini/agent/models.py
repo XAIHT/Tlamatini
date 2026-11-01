@@ -7,6 +7,7 @@
 #   Every line of this file was written by Angela López Mendoza.
 # ═══════════════════════════════════════════════════════════════════
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
+import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -114,7 +115,13 @@ class AgentProcess(models.Model):
         return f'{self.agentProcessDescription} {self.agentProcessPid}'
 
 
+class TorrenterProfile(models.Model):
+    user = models.OneToOneField(User, primary_key=True, on_delete=models.CASCADE)
+    account = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
+
 class ChatAgentRun(models.Model):
+    owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
     runId = models.CharField(primary_key=True, max_length=64)
     toolDescription = models.CharField(max_length=200)
     templateAgentDir = models.CharField(max_length=200)

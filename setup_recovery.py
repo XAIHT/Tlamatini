@@ -58,12 +58,39 @@ def checked_path(root, relative):
             or any(ord(c) < 32 for c in relative)):
         raise ValueError(f"Unsafe recovery path: {relative}")
     result = Path(root).joinpath(*path.parts)
+    return _check_redirects(Path(root), result)
+
+
+def _check_redirects(root, result):
     current = result
     while current != Path(root).parent:
         if current.is_symlink() or getattr(current, "is_junction", lambda: False)():
             raise RuntimeError(f"Redirected setup path is not supported: {current}")
         current = current.parent
     return result
+
+
+def _literal_path(path):
+    """Keep filenames from scandir exact (also past MAX_PATH) for Windows I/O."""
+    path = Path(path).absolute()
+    if ".." in path.parts:
+        raise ValueError(f"Unsafe removal path: {path}")
+    raw = str(path)
+    if os.name != "nt" or raw.startswith("\\\\?\\"):
+        return path
+    if raw.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + raw[2:])
+    return Path("\\\\?\\" + raw)
+
+
+def _removal_entry(root, name):
+    # Older CMD-generated browser installations can coexist with the legitimate
+    # cache under an NTFS name ending in spaces/dots. Only this known root
+    # entry gets literal-name access; package and general journal paths stay strict.
+    if os.name == "nt" and name.casefold() != "ms-playwright" and name.rstrip(" .").casefold() == "ms-playwright":
+        literal_root = _literal_path(root)
+        return _check_redirects(literal_root, literal_root / name)
+    return checked_path(root, name)
 
 
 def digest(path):
@@ -170,8 +197,8 @@ class Recovery:
             for name, record in data["moves"].items():
                 if len(PurePosixPath(name).parts) != 1 or name.casefold() in {"temp", "agents"}:
                     raise RuntimeError(f"Unsafe removal recovery entry: {name}")
-                checked_path(self.target, name)
-                checked_path(self.folder / "quarantine", name)
+                _removal_entry(self.target, name)
+                _removal_entry(self.folder / "quarantine", name)
                 if record.get("state") not in {"waiting", "moving", "staged", "restored"}:
                     raise RuntimeError("Unrecognized removal move state")
                 identity = record.get("identity")
@@ -294,7 +321,7 @@ class Recovery:
         for item in self.target.iterdir():
             if item.name.casefold() in kept:
                 continue
-            path = checked_path(self.target, item.name)
+            path = _removal_entry(self.target, item.name)
             info = path.stat(follow_symlinks=False)
             moves[item.name] = {"state": "waiting", "identity": [info.st_dev, info.st_ino]}
         metadata = ["Tlamatini.lnk"]
@@ -315,8 +342,8 @@ class Recovery:
         """Atomically set aside one validated root entry, retaining its identity."""
         if self.data.get("mode") != "removal" or name not in self.data["moves"]:
             raise RuntimeError(f"Removal entry was not prepared: {name}")
-        source = checked_path(self.target, name)
-        destination = checked_path(self.folder / "quarantine", name)
+        source = _removal_entry(self.target, name)
+        destination = _removal_entry(self.folder / "quarantine", name)
         record = self.data["moves"][name]
         if self._identity(source) != record["identity"]:
             raise RuntimeError(f"Installation entry changed during removal: {source}")
@@ -338,8 +365,8 @@ class Recovery:
         for index, (name, record) in enumerate(reversed(moves), 1):
             if record["state"] in {"moving", "staged"}:
                 try:
-                    source = checked_path(self.folder / "quarantine", name)
-                    destination = checked_path(self.target, name)
+                    source = _removal_entry(self.folder / "quarantine", name)
+                    destination = _removal_entry(self.target, name)
                     if source.exists():
                         if destination.exists():
                             raise RuntimeError("Restoration destination is occupied; existing content was kept")
@@ -467,7 +494,7 @@ def remove_tree(path, status=lambda _message: None, *, deadline=None):
     Count actual removals while traversing, without a preliminary content scan,
     copy or hash pass. Callers retain their journal on failure/interruption.
     """
-    path = Path(os.path.abspath(path))
+    path = _literal_path(path)
     stack = [(path, False)]
     removed = 0
     last = time.monotonic()

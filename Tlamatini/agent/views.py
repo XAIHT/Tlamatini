@@ -594,6 +594,9 @@ def _find_path(folder_name) -> Optional[str]:
     agent_dir_path = os.path.join(module_dir, 'agents', folder_name)
     return agent_dir_path
 
+from .torrenter_bridge import flow_env as torrenter_flow_env, protect_pool
+
+
 def get_pool_path(request):
     """
     Get the path to the agent pool for the current session.
@@ -607,11 +610,18 @@ def get_pool_path(request):
     
     if session_id:
         # Sanitize session_id to prevent path traversal
-        session_id = os.path.basename(session_id)
-        return os.path.join(pools_base, session_id)
+        if (session_id != os.path.basename(session_id) or ":" in session_id
+                or session_id.endswith((".", " ")) or session_id.lower() == "_chat_runs_"):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("Invalid canvas session.")
+        pool = os.path.join(pools_base, session_id)
+        protect_pool(request, pool)
+        return pool
     else:
         # Fallback for requests without session ID (e.g. legacy or direct browser access without JS)
-        return os.path.join(pools_base, 'default')
+        pool = os.path.join(pools_base, 'default')
+        protect_pool(request, pool)
+        return pool
 
 
 def _parse_canvas_agent_name(agent_name: str) -> tuple[str, str]:
@@ -923,6 +933,8 @@ def load_agent_config_view(request, agent_name):
         if os.path.exists(pool_config_path):
             with open(pool_config_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
+                if base_folder_name == 'torrenter' and isinstance(data, dict):
+                    data.setdefault('wait_for_completion', False)
                 return HttpResponse(json.dumps(data), content_type="application/json")
         
         # Fall back to template directory
@@ -980,6 +992,8 @@ def deploy_agent_template_view(request, agent_name):
         
         # Construct pool destination path
         pool_base_path = get_pool_path(request)
+        if base_folder_name == "torrenter":
+            protect_pool(request, pool_base_path, claim=True)
         pool_dir = os.path.join(pool_base_path, pool_folder_name)
         
         print(f"[DEPLOY] pool_dir: {pool_dir}")
@@ -1200,6 +1214,8 @@ def save_agent_config_view(request, agent_name):
         
         # Construct pool destination path
         pool_base_path = get_pool_path(request)
+        if base_folder_name == "torrenter":
+            protect_pool(request, pool_base_path, claim=True)
         pool_dir = os.path.join(pool_base_path, pool_folder_name)
         
         config_path = os.path.join(pool_dir, 'config.yaml')
@@ -1238,6 +1254,12 @@ def save_agent_config_view(request, agent_name):
         
         # Merge: existing config is base, user updates override
         merged_config = deep_merge(existing_config, config_data)
+        if base_folder_name == "torrenter":
+            from .torrenter_bridge import canvas_config
+            try:
+                merged_config = canvas_config(merged_config)
+            except ValueError as exc:
+                return HttpResponse(json.dumps({"success":False,"message":str(exc)}), status=400, content_type="application/json")
 
         # Sanitize Ender config: remove any unknown keys (e.g., corrupted "utput_agents")
         if base_folder_name == 'ender':
@@ -2628,7 +2650,7 @@ def execute_starter_agent_view(request, agent_name):
         
         # Execute the starter agent
         python_cmd = get_python_command()
-        agent_env = get_agent_env()
+        agent_env = torrenter_flow_env(request, pool_base_path, get_agent_env())
         
         if sys.platform.startswith('win'):
             # Windows: detached, no console — without CREATE_NO_WINDOW the
@@ -3293,7 +3315,10 @@ def check_chat_runtimes_status_view(request):
                 "runtimes": {}
             }), content_type='application/json')
 
+        # Torrenter has no Asker/Notifier popup. Its owned runs go through the scoped run tools.
         for entry_name in os.listdir(runtime_root):
+            if entry_name.startswith("torrenter_"):
+                continue
             entry_path = os.path.join(runtime_root, entry_name)
             if not os.path.isdir(entry_path):
                 continue
@@ -3408,6 +3433,33 @@ def read_agent_log_view(request, agent_name):
             log_file_name = f"{pool_folder_name}.log"
             
         log_file_path = os.path.join(pool_base_path, pool_folder_name, log_file_name)
+
+        if base_folder_name == 'torrenter':
+            from .agents.torrenter.activity import latest_record
+            from .torrenter_bridge import profile_for
+            profile = profile_for(request.user.pk)
+            activity = latest_record(profile, pool_base_path, pool_folder_name)
+            activity = str(activity) if activity else os.path.join(pool_base_path, pool_folder_name, pool_folder_name + '.activity.log')
+            if os.path.isfile(activity):
+                with open(activity, encoding='utf-8', errors='replace') as stream:
+                    stamp = os.fstat(stream.fileno())
+                    version = f'"{stamp.st_mtime_ns}-{stamp.st_size}"'
+                    if request.headers.get('If-None-Match') == version:
+                        return HttpResponse(status=304)
+                    lines = stream.read().splitlines()
+                response = JsonResponse({'success': True, 'complete': True, 'lines': lines,
+                                         'log_file': activity, 'total_lines': len(lines)})
+                response['ETag'] = version
+                response['Cache-Control'] = 'private, no-store'
+                return response
+            if not os.path.isfile(log_file_path):
+                job_id = request.GET.get('job_id', '')
+                if re.fullmatch(r'[0-9a-f]{32}', job_id):
+                    from .torrenter_views import recover_job_log
+                    return recover_job_log(profile, job_id)
+                return JsonResponse({'success':True, 'complete':True, 'lines':[
+                    'No recorded activity for this node yet. Run the flow to record its transfer.'
+                ], 'total_lines':0})
         
         if not os.path.exists(log_file_path):
             return HttpResponse(json.dumps({
@@ -3662,7 +3714,7 @@ def restart_agent_view(request, agent_name):
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
-                env=get_agent_env(),
+                env=torrenter_flow_env(request, pool_base_path, get_agent_env()),
                 creationflags=(
                     subprocess.CREATE_NEW_PROCESS_GROUP
                     | subprocess.CREATE_NO_WINDOW
@@ -3677,7 +3729,7 @@ def restart_agent_view(request, agent_name):
             process = subprocess.Popen(
                 python_cmd + [script_path],
                 cwd=agent_dir,
-                env=get_agent_env(),
+                env=torrenter_flow_env(request, pool_base_path, get_agent_env()),
                 start_new_session=True
             )
         
@@ -4023,6 +4075,7 @@ def restart_agents_view(request):
                     process = subprocess.Popen(
                         cmd,
                         cwd=agent_dir,
+                        env=torrenter_flow_env(request, pool_base_path, get_agent_env()),
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                         stdin=subprocess.DEVNULL,
@@ -4032,6 +4085,7 @@ def restart_agents_view(request):
                     process = subprocess.Popen(
                         cmd,
                         cwd=agent_dir,
+                        env=torrenter_flow_env(request, pool_base_path, get_agent_env()),
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL,
                         stdin=subprocess.DEVNULL,
@@ -4127,7 +4181,7 @@ def reanimate_agents_view(request):
                 print(f"[REANIMATE] Starting: {' '.join(cmd)}")
 
                 # Build env with AGENT_REANIMATED=1 so agent preserves logs & state
-                agent_env = os.environ.copy()
+                agent_env = torrenter_flow_env(request, pool_base_path, get_agent_env())
                 agent_env['AGENT_REANIMATED'] = '1'
 
                 if sys.platform.startswith('win'):
@@ -9079,7 +9133,7 @@ def update_terminater_connection_view(request, agent_name):
         if not os.path.exists(config_path):
             return HttpResponse(json.dumps({
                 "success": False,
-                "message": f"Terminater config not found: {config_path}"
+                "message": f"Agent config not found: {config_path}"
             }), content_type='application/json', status=404)
 
         with open(config_path, 'r', encoding='utf-8') as f:
