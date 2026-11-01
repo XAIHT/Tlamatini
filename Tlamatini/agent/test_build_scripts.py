@@ -102,6 +102,8 @@ _ALIAS = {
     "win32api": "pywin32", "win32gui": "pywin32", "win32con": "pywin32", "win32process": "pywin32",
     "win32com": "pywin32", "pythoncom": "pywin32", "pywintypes": "pywin32",
     "win32clipboard": "pywin32", "win32file": "pywin32", "win32event": "pywin32",
+    "win32cred": "pywin32", "win32crypt": "pywin32",
+    "piper": "piper-tts",
     "rank_bm25": "rank-bm25", "pyautogui": "pyautogui", "telethon": "telethon",
 }
 # Local modules / build-time-provided names that are NOT PyPI deps.

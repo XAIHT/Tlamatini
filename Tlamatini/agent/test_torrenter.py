@@ -237,6 +237,18 @@ class AccountTests(TestCase):
 
 
 class RecoveryTests(SimpleTestCase):
+    def test_workspace_uses_this_editions_files_without_jobs_installation(self):
+        from django.test import override_settings
+        from . import torrenter_views
+        with override_settings(DEBUG=False), patch.object(
+            torrenter_views.client, "known_folder", side_effect=AssertionError("External install lookup")
+        ):
+            for name in torrenter_views._ASSETS:
+                response = torrenter_views._asset(name)
+                self.assertEqual(response.status_code, 200, name)
+                self.assertGreater(len(response.content), 100)
+                self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
     def test_log_survives_pool_removal_and_is_private_to_its_owner(self):
         from pathlib import Path
         import uuid

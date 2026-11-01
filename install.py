@@ -345,7 +345,7 @@ class FancyInstaller:
     # copies is how they drifted: the updater preserved external_mcps.json
     # while the installer preserved nothing.
     _PRESERVE_FALLBACK = (
-        "config.json", "external_mcps.json", "contacts.json", "DB",
+        "config.json", "external_mcps.json", "contacts.json", "data.keys", "DB",
         "application", "applications", "content_generated", "Temp",
         "context_files", "doc_generated", "documentation", "Templates",
         "Uninstaller.exe",

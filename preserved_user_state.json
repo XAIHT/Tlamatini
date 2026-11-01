@@ -4,6 +4,7 @@
     "config.json",
     "external_mcps.json",
     "contacts.json",
+    "data.keys",
     "DB",
     "application",
     "applications",
@@ -22,6 +23,6 @@
     "DB": "chat history and the enable/disable toggles",
     "Temp": "scratch, but also pasted screenshots the user may still be referring to",
     "Templates": "scaffolded project trees - deliverables, not build output",
-    "Uninstaller.exe": "built separately, never inside pkg.zip; without this a reinstall deletes it"
+    "Uninstaller.exe": "keep the existing client until the verified packaged replacement is available"
   }
 }

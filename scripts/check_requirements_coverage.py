@@ -28,6 +28,7 @@ ALIASES = {
     "odf": "odfpy", "pptx": "python-pptx", "serial": "pyserial", "yaml": "pyyaml",
     "whisper": "openai-whisper", "faiss": "faiss-cpu", "sklearn": "scikit-learn",
     "git": "GitPython", "pythoncom": "pywin32", "pywintypes": "pywin32",
+    "piper": "piper-tts",
 }
 HOST_MODULES = {"bpy": "Blender's embedded Python", "unreal": "Unreal Editor's embedded Python"}
 MANAGED_MODULES = {"esphome": "requirements-esphome.txt"}
@@ -36,6 +37,7 @@ IMPORT_ROOTS = (
     "Tlamatini/agent/agents/pdfer", "Tlamatini/agent/agents/pptxer",
     "Tlamatini/agent/agents/latexer",
     ".claude/skills/tlamatini-daily-chat-test/harness",
+    "l10n/herramientas",  # Spanish edition's source-local porting tools.
 )
 # Computed local imports and generic package-location helpers reviewed explicitly.
 # New unresolved expressions fail, rather than silently disappearing from coverage.

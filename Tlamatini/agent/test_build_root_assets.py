@@ -4,6 +4,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,17 @@ class ActualCheckoutPreflightTests(unittest.TestCase):
 
 
 class RootCarrierTests(unittest.TestCase):
+    def test_runtime_copy_omits_transfer_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            (source / "_chat_runs_").mkdir(parents=True)
+            for name in ("_chat_runs_/run.json", ".torrenter-receipt", "torrenter-result.json", "template.py"):
+                (source / name).write_bytes(b"fixture")
+            stage = root / "stage"
+            shutil.copytree(source, stage, ignore=assets.ignore_runtime_state)
+            self.assertEqual([p.name for p in stage.iterdir()], ["template.py"])
+
     def test_new_inventory_entry_is_copied_without_another_build_list(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -72,7 +84,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
         # Synthetic runtime binaries: these tests exercise package/staging
         # integrity, not whether an executable can launch.
         required = {
-            "Tlamatini.exe", "python/python.exe", "jre/bin/java.exe", "git/cmd/git.exe",
+            "Uninstaller.exe", "Tlamatini.exe", "python/python.exe", "jre/bin/java.exe", "git/cmd/git.exe",
             "jd-cli/jd-cli.jar", "_internal/db.sqlite3", "_internal/pymupdf/_mupdf.pyd",
             "_internal/pymupdf/_extra.pyd", "_internal/pymupdf/mupdfcpp64.dll",
             "_internal/staticfiles/agent/vendor/frontend/manifest.json",
@@ -102,6 +114,18 @@ class ReleaseIntegrityTests(unittest.TestCase):
             assets.verify_package(archive, expected_version="1.90.0")
         self.assertEqual(archive.read_bytes(), original)
 
+    def test_outer_removal_client_matches_the_verified_inner_payload(self):
+        archive = self.package()
+        document = assets.verify_package(archive)
+        destination = self.root / "Uninstaller.exe"
+        assets.extract_release_uninstaller(archive, destination, document["files"]["Uninstaller.exe"])
+        self.assertEqual(destination.read_bytes(), (self.stage / "Uninstaller.exe").read_bytes())
+        original = destination.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "uninstaller differs"):
+            assets.extract_release_uninstaller(archive, destination, {"bytes": 1, "sha256": "0" * 64})
+        self.assertEqual(destination.read_bytes(), original)
+        self.assertFalse(destination.with_suffix(".exe.part").exists())
+
     def test_required_voice_helpers_survive_zip_and_extracted_update(self):
         archive = self.package()
         assets.verify_package(archive, expected_version="1.0.0")
@@ -109,7 +133,11 @@ class ReleaseIntegrityTests(unittest.TestCase):
         with zipfile.ZipFile(archive) as bundle:
             bundle.extractall(extracted)
         assets.verify_staged_payload(extracted, expected_version="1.0.0")
-        for name in ("chat_voice_settings.py", "agents/whisperer/chat_worker.py"):
+        for name in ("chat_voice_settings.py", "agents/whisperer/chat_worker.py",
+                     "_internal/agent/torrenter_workspace/workspace.html",
+                     "_internal/agent/torrenter_workspace/workspace.css",
+                     "_internal/agent/torrenter_workspace/workspace.js",
+                     "_internal/agent/torrenter_workspace/layout.js", "setup_recovery.py"):
             self.assertEqual(assets.file_record(extracted / name), self.expected[name])
 
     def test_packaged_worker_resolves_its_carried_settings_helper(self):

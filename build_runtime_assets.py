@@ -58,6 +58,7 @@ REQUIRED_STATIC = (
     "agent/js/model_capacity.js", "agent/css/model_capacity.css",
     "agent/js/compact_costs.js",
     "agent/js/self_modify_switch.js",
+    "agent/js/acp-file-io.js", "agent/js/canvas_item_dialog.js", "agent/js/contextual_menus.js",
     "agent/js/chat_table_contrast.js",
     "agent/js/shared-runtime-dialogs.js", "agent/css/dialog_theme.css",
     "agent/js/avatar.js", "agent/css/avatar.css",
@@ -78,6 +79,7 @@ SOURCE_TREES = (
     (STATIC_SOURCE, "_internal/agent/static"),
     ("Tlamatini/staticfiles", "_internal/staticfiles"),
     ("Tlamatini/agent/templates", "_internal/agent/templates"),
+    ("Tlamatini/agent/torrenter_workspace", "_internal/agent/torrenter_workspace"),
     ("Tlamatini/agent/agents", "agents"),
     ("Tlamatini/agent/skills_pkg", "agent/skills_pkg"),
     ("Tlamatini/agent/skills_pkg", "_internal/agent/skills_pkg"),
@@ -110,6 +112,11 @@ ROOT_SOURCES = {
     "Tlamatini/agent/agents/visual_errors.py": "agents/visual_errors.py",
     "docs/visual-analysis-errors.md": "docs/visual-analysis-errors.md",
     "build_runtime_assets.py": "build_runtime_assets.py",
+    "setup_recovery.py": "setup_recovery.py",
+    **{
+        "Tlamatini/agent/torrenter_workspace/" + name: "_internal/agent/torrenter_workspace/" + name
+        for name in ("workspace.html", "workspace.css", "layout.js", "workspace.js")
+    },
     "Tlamatini/agent/config.json": "config.json",
     "Tlamatini/agent/prompt.pmt": "prompt.pmt",
     "README.md": "README.md",
@@ -126,7 +133,8 @@ ROOT_SOURCES = {
     )},
 }
 RUNTIME_SKIP_NAMES = {
-    "__pycache__", "pools", ".tlamatini", ".git", "security_logs",
+    "__pycache__", "pools", "_chat_runs_", ".tlamatini", ".git", "security_logs",
+    ".torrenter-receipt", "torrenter-result.json",
     "_tlamatini_agents_manifest.json",  # generated anew with installed paths/version
 }
 STATIC_TAG = re.compile(r"\{%\s*static\s+(['\"])(.*?)\1", re.DOTALL)
@@ -332,7 +340,7 @@ def write_runtime_manifest(dist_root, expected, *, version, self_modify):
         target = root / name
         if not target.is_file() or file_record(target) != record:
             raise RuntimeError(f"Frozen release lost or changed a required source asset: {name}")
-    for name in ("Tlamatini.exe", "python/python.exe", "jre/bin/java.exe",
+    for name in ("Uninstaller.exe", "Tlamatini.exe", "python/python.exe", "jre/bin/java.exe",
                  "git/cmd/git.exe", "jd-cli/jd-cli.jar", "_internal/db.sqlite3",
                  "_internal/pymupdf/_mupdf.pyd", "_internal/pymupdf/_extra.pyd",
                  "_internal/pymupdf/mupdfcpp64.dll"):
@@ -448,6 +456,20 @@ def verify_package(package, *, expected_version=None):
                     raise RuntimeError(f"Runtime ZIP file differs from its SHA-256 receipt: {name}")
     print(f"Runtime ZIP verified: {len(files)} files, version {document['version']}.")
     return document
+
+
+def extract_release_uninstaller(package, destination, record):
+    """Fresh installs use the removal client from the verified update payload."""
+    target = Path(destination)
+    pending = target.with_suffix(".exe.part")
+    try:
+        with zipfile.ZipFile(package) as archive, archive.open("Uninstaller.exe") as src, pending.open("wb") as out:
+            shutil.copyfileobj(src, out)
+        if not record or file_record(pending) != record:
+            raise RuntimeError("Packaged uninstaller differs from its runtime receipt")
+        pending.replace(target)
+    finally:
+        pending.unlink(missing_ok=True)
 
 
 def verify_staged_payload(directory, *, expected_version=None):

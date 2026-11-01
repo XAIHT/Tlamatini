@@ -6,6 +6,7 @@ fixture files in TemporaryDirectory are mutated; no real release is built.
 """
 
 from contextlib import ExitStack, redirect_stdout
+import ast
 import io
 import os
 import re
@@ -24,13 +25,25 @@ import versioning  # noqa: E402
 
 
 class ReleaseVersionPinningTests(unittest.TestCase):
+    def test_nested_removal_build_uses_the_application_version(self):
+        tree = ast.parse((ROOT / "build.py").read_text(encoding="utf-8"))
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                 and ast.unparse(node.func) == "subprocess.run"
+                 and any(isinstance(child, ast.Constant) and child.value == "build_uninstaller.py"
+                         for child in ast.walk(node))]
+        self.assertEqual(len(calls), 1)
+        arguments = calls[0].args[0].elts
+        self.assertEqual(ast.literal_eval(arguments[-2]), "--version")
+        self.assertEqual(arguments[-1].id, "tlamatini_version")
+        self.assertTrue(ast.literal_eval(next(k.value for k in calls[0].keywords if k.arg == "check")))
+
     def run_release(self, builder, *, argv=(), ambient="", fail_stage=None):
         with tempfile.TemporaryDirectory() as temporary, ExitStack() as stack:
             root = Path(temporary)
             config = root / "config.json"
             original = b'{"fixture": "original"}\r\n'
             config.write_bytes(original)
-            stages = {builder.BUILD, builder.BUILD_UNINST, builder.BUILD_INST}
+            stages = {builder.BUILD, builder.BUILD_INST}
             dispatched = []
             git_version = ["1.89.0"]
             output = stack.enter_context(redirect_stdout(io.StringIO()))
@@ -98,9 +111,9 @@ class ReleaseVersionPinningTests(unittest.TestCase):
 
     def assert_versions(self, dispatched, expected):
         self.assertEqual([row[0] for row in dispatched],
-                         ["build.py", "build_uninstaller.py", "build_installer.py"])
-        self.assertEqual([row[1] for row in dispatched], [expected] * 3)
-        self.assertEqual([row[2] for row in dispatched], [expected] * 3,
+                         ["build.py", "build_installer.py"])
+        self.assertEqual([row[1] for row in dispatched], [expected] * 2)
+        self.assertEqual([row[2] for row in dispatched], [expected] * 2,
                          "every child must receive the parseable --version flag")
 
     def test_new_git_tag_during_build_cannot_split_artifact_versions(self):
@@ -138,7 +151,7 @@ class ReleaseVersionPinningTests(unittest.TestCase):
                     self.assertEqual(dispatched[0][3], [str(builder.BUILD), expected])
 
     def test_public_build_failure_restores_fixture_configuration_at_every_stage(self):
-        for stage in ("build.py", "build_uninstaller.py", "build_installer.py"):
+        for stage in ("build.py", "build_installer.py"):
             with self.subTest(stage=stage):
                 dispatched, _, output = self.run_release(public, fail_stage=stage)
                 self.assertEqual(dispatched[-1][0], stage)

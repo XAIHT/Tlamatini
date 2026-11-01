@@ -35,7 +35,7 @@ Pipeline
      the system prompt per request; pass --self-modify here to bundle both.
   5. VERIFY: extract pkg.zip and run check_private_data.py over it.
        any of YOUR personal data present -> ABORT, tree restored.
-  6. build_uninstaller.py + build_installer.py -> dist/Tlamatini_Release_v<ver>/.
+  6. build_installer.py (using the packaged Uninstaller.exe) -> dist/Tlamatini_Release_v<ver>/.
   7. zip -> dist/..._PUBLIC_CLEAN_win11x64.zip
   8. ALWAYS restore the working tree (finally).
 
@@ -112,7 +112,6 @@ VERIFY_EXTRACT = REPO_ROOT / "Temp" / "public_verify_extract"
 EXTERNAL_MCPS = REPO_ROOT / "Tlamatini" / "agent" / "external_mcps.json"  # user state
 REGEN = REPO_ROOT / "regen_secrets.py"
 BUILD = REPO_ROOT / "build.py"
-BUILD_UNINST = REPO_ROOT / "build_uninstaller.py"
 BUILD_INST = REPO_ROOT / "build_installer.py"
 CHECKER = REPO_ROOT / "check_private_data.py"
 
@@ -913,9 +912,7 @@ def main(argv=None) -> int:
         else:
             print("  VERIFIED CLEAN: 0 files with your personal data.")
 
-        banner("STEP 5/6  build_uninstaller.py + build_installer.py")
-        if run([py, str(BUILD_UNINST)] + version_args) != 0:
-            sys.exit("build_uninstaller.py failed.")
+        banner("STEP 5/6  build_installer.py (uses the removal client in pkg.zip)")
         if run([py, str(BUILD_INST)] + version_args) != 0:
             sys.exit("build_installer.py failed.")
 

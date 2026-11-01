@@ -279,6 +279,10 @@ shapes, but a novel config path needs the redaction rule extended).
   proves its stated source guards, NOT a successful frozen rebuild. Honor any
   no-tests/no-build restriction and do not silently expand this sweep.
 
+### Torrenter and removal tools
+
+Require the four local workspace assets, the wrapped agent and its helpers, migration 0221, the live tests, and the uninstaller build and recovery sources. Keep transfer receipts, logs and browser binaries outside the snapshot. A translated snapshot rebuilds its own edition. Editing the bilingual port also requires the matching English base checkout.
+
 ## Companion references
 - `tlamatini-self-update-inclusion` — the sibling skill guarding the **runnable release**
   (`build.py` carriers + the update swap). Run BOTH after any feature: one proves users can

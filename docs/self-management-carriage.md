@@ -163,7 +163,7 @@ execution are complementary checks; passing a file inventory alone is insufficie
   a self-modify build. The build no longer falls back to an older static source
   tree or continues with an incomplete snapshot.
 - Generated rebuild instructions require choosing `TLAMATINI_VERSION` for all
-  three build scripts. Git history and generated version modules are omitted
+  build commands. Git history and generated version modules are omitted
   from snapshots, so an implicit version could otherwise become `0.0.0+unknown`.
 
 ### Direct chat microphone carriage (source development, 2026-09-27)
@@ -193,24 +193,11 @@ the previously built installer or change the older dated evidence above.
 Release verification must separately exercise the actual rebuilt worker and
 static assets from a visible development session.
 
-### The uninstaller's keep-list (2026-10-09) — what reaches whom
+### Uninstaller delivery and the Torrenter workspace
 
-`uninstall.py` now keeps `Templates/` and `doc_generated/` (commit `0520dc97`). The
-uninstaller is NOT part of the self-update payload: it is built after `pkg.zip`
-(`build.py` → `build_uninstaller.py` → `build_installer.py`), the in-app updater
-extracts only `pkg.zip`, and `Uninstaller.exe` is in the `$Preserve` set. So:
+The application build freezes the removal client at the selected release version and records it in the inner package. The release assembler extracts the same verified client beside the installer. During an in-app update the old client stays in place until Windows atomically replaces it with the new one. The incoming swapper can repair legacy Playwright cache names before replacing the application.
 
-- **A fresh install, or a reinstall with the new Installer,** copies the new
-  `Uninstaller.exe` (`install.py::_copy_uninstaller` overwrites it) — fixed.
-- **An in-app update (About ▸ Check for updates)** keeps the `Uninstaller.exe`
-  already on disk — NOT fixed until that install is reinstalled, or the new
-  `Uninstaller.exe` from the release zip is copied over it.
-
-⚠️ Delivering a new uninstaller through self-update needs a deliberate design: the
-update code that runs is the OLD install's `self_update.py`, which deletes the
-extracted bundle (where the new `Uninstaller.exe` sits) before the swap. Any fix
-must also keep the guarantee the `$Preserve` entry gives today — an update must
-never leave an install without an uninstaller — and needs a real release test.
+Both editions serve their signed-in Torrenter page from four local files in `Tlamatini/agent/torrenter_workspace/`. The build and the self-modification snapshot carry these files. Synchronize them from `Tlachihuani/src/Tlachihuani.Jobs/wwwroot/` when changing the workspace protocol. The Jobs service, XT tray, account grants, and downloaded files have their own installation and lifecycle.
 
 ### Setup windows, the Markdown canvas and the shared theme (2026-10-11/12, `v1.80.0` / `v1.82.0`)
 
@@ -227,9 +214,9 @@ never leave an install without an uninstaller — and needs a real release test.
   `ui_splitters.js`, `entry_pages.css`, `admin_theme.css`, `templates/admin/base_site.html`)
   is in both inventories.
 - The published v1.82.0 zip (checked 2026-10-12) carries all of them, plus
-  `agents/video_analyzer/video_fetch.py`. ⚠️ As above, an in-app update keeps the OLD
-  `Uninstaller.exe`: the new setup window reaches an existing installation only through a fresh
-  install or a reinstall with the new Installer.
+  `agents/video_analyzer/video_fetch.py`. That historical updater retained the old
+  removal client. Current package delivery follows the verified replacement
+  described in the preceding section.
 
 ### The file-drop router (2026-10-14, `v1.83.0`)
 
@@ -554,9 +541,7 @@ The build refuses to package unless `check_terminater` passes inside the frozen 
 **The private (keyed) release adds one shipped file and one private input.** `<install>/data.keys` is copied by
 `build.py` only when `TLAMATINI_BUNDLE_DATA_KEYS` is set (private builder only; the public builder clears it and
 `build.py` aborts if it is set together with the PUBLIC MCP catalog). `external_mcps.private.json` is a gitignored
-*input* to that build, excluded from the self-modify snapshot. **Not carried by an update:** `apply_update.ps1`
-preserves `config.json`, `external_mcps.json` and `contacts.json`, but not `data.keys`; values with a consumer survive
-inside `config.json`, the vault file itself does not. See
+*input* to that build, excluded from the self-modify snapshot. Updates and reinstalls keep an existing `data.keys` alongside the account configuration. Public builds and self-modification snapshots exclude the vault. See
 [the record](changes/2026-10-19-private-release-data.md).
 
 ## v1.91.0 settings carriage

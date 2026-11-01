@@ -117,8 +117,9 @@ the swap" list (documented). A drift here means the docs lie about what survives
 ### Invariant 3 — PRESERVE CORRECTNESS: state preserved, code replaced
 `$Preserve` **==** the names in `preserved_user_state.json` **==** the installer fallback
 **==** the updater docstring list (case-insensitive sets). The top-level names from
-`build.py::empty_dirs` must be a subset; catalogs, contacts and the separately built
-uninstaller are also legitimate preserved entries. Add new state to all consumers.
+`build.py::empty_dirs` must be a subset; catalogs, contacts and the removal client are also preserved entries. The verified
+incoming removal client replaces the preserved copy atomically before the main
+file swap. Add new state to all consumers.
 `uninstall.py` intentionally has a different removal policy. Conversely an
 **app-code** top-level entry (anything under `optional_dir_copies` like `images`/`skills_pkg`,
 or `python`/`jre`/`git`) must **NOT** be preserved, or users get stuck on stale code forever.
@@ -394,7 +395,7 @@ Run checks only in a verified visible foreground console and explicitly headed C
 
 ### Uninstaller carriage gate (2026-10-09)
 
-`uninstall.py` gained `Templates` and `doc_generated` in its keep-list (commit `0520dc97`) after uninstalling `C:\Tlamatini` erased Angela's code in `Templates/`. ⚠️ **That fix does NOT travel through an in-app update.** `Uninstaller.exe` is built after `pkg.zip` (`build.py` → `build_uninstaller.py` → `build_installer.py`), `apply_update.ps1` keeps it through `$Preserve`, and the update that runs is the OLD install's `self_update.py`, which extracts only `pkg.zip` and deletes the extracted bundle (where the new `Uninstaller.exe` sits) before the swap. Fresh installs and reinstalls with the new Installer do get it (`install.py::_copy_uninstaller` overwrites). Check **[9] UNINSTALLER DELIVERY** in `sweep_self_update.py` prints an advisory note whenever `uninstall.py`, `uninstall_processes.py` or `build_uninstaller.py` changed since the last release tag — put that limit in the release notes. Do NOT simply drop `Uninstaller.exe` from `$Preserve`: the staged build has no uninstaller, so every update would delete it. A real delivery path needs the new `Uninstaller.exe` inside the staged payload and its receipts, a swap step that replaces it only when a new one is present, and a real release test. See `docs/self-management-carriage.md`.
+The release build freezes the version-matched removal client before writing the inner package receipt. The installer extracts the same bytes for fresh installs. The incoming swapper keeps the existing client until it can atomically replace it. Test both an incoming client and an absent client against an isolated installation. The update guard checks technical operations independently of translated log messages.
 
 ### Usage carrier gate (2026-10-10, `v1.78.0`)
 
@@ -402,7 +403,7 @@ Run checks only in a verified visible foreground console and explicitly headed C
 
 ### Setup and Markdown carrier gate (2026-10-12, `v1.82.0`)
 
-- `install.py` / `uninstall.py` import `setup_wizard`, `setup_recovery`, `setup_windows` (which imports `setup_recovery`) and `setup_logging`, so PyInstaller carries them into `Installer.exe` / `Uninstaller.exe` through the import graph; `build_installer.py` and `build_uninstaller.py` add `--icon` / `--add-data Tlamatini.ico`. The snapshot's generic walk carries the four modules and the `scripts/setup_*` harnesses. ⚠️ An in-app update still keeps the OLD `Uninstaller.exe` (see above): the new setup window reaches users only through a fresh install or a reinstall with the new Installer.
+- `install.py` / `uninstall.py` import `setup_wizard`, `setup_recovery`, `setup_windows` (which imports `setup_recovery`) and `setup_logging`, so PyInstaller carries them into `Installer.exe` / `Uninstaller.exe` through the import graph; `build_installer.py` and `build_uninstaller.py` add `--icon` / `--add-data Tlamatini.ico`. The snapshot's generic walk carries the four modules and the `scripts/setup_*` harnesses. The v1.82.0 updater kept the old `Uninstaller.exe`. Current builds carry a versioned removal client in the inner package and replace it through the verified swap described above.
 - The Markdown canvas's `agent_page_markdown.js`, `markdown_canvas.css`, `marked/lib/marked.umd.js`, `dompurify/dist/purify.min.js` and both LICENSE files are in `build_runtime_assets.py` `REQUIRED_STATIC` and `copy_source_assets.py` `REQUIRED_SNAPSHOT_FILES`; `dompurify/dist` is a `KEEP_DIR_PATHS` entry and is un-ignored in `.gitignore`. v1.80.0's `ui_tokens.css`, `ui_shell.css`, `ui_splitters.css`, `ui_splitters.js`, `entry_pages.css`, `admin_theme.css` and `templates/admin/base_site.html` are in both inventories.
 - Checked 2026-10-12 in the published v1.82.0 zip: its `pkg.zip` carries `agent_page_markdown.js`, `purify.min.js`, `ui_splitters.js`, `ui_tokens.css` and `markdown_canvas.css` (the served `_internal/staticfiles/` copies and the snapshot) and `agents/video_analyzer/video_fetch.py`; its frozen `agent.tools` lacks `_is_visual_start_failure`; `91ff8453` ships in `v1.83.0`.
 

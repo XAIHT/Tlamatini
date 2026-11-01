@@ -93,6 +93,20 @@ def _removal_entry(root, name):
     return checked_path(root, name)
 
 
+def clean_update_browser_caches(installation):
+    """Clean only malformed cache siblings beside the installation being updated."""
+    root = Path(installation)
+    if (os.name != "nt" or not root.is_absolute() or root == root.parent
+            or root.resolve(strict=True) != root
+            or Path(__file__).resolve().parent != root / "Temp" / "_update" / "staging"
+            or not (root / "Tlamatini.exe").is_file()):
+        raise ValueError("Invalid browser-cache update boundary")
+    for entry in root.iterdir():
+        name = entry.name
+        if name.casefold() != "ms-playwright" and name.rstrip(" .").casefold() == "ms-playwright":
+            remove_tree(_removal_entry(root, name))
+
+
 def digest(path):
     with open(path, "rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
@@ -564,3 +578,10 @@ def removal_directories(target, kept_names):
             checked_path(target, item)
             names.append(item)
     return names
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clean-update-browser-caches", required=True)
+    clean_update_browser_caches(parser.parse_args().clean_update_browser_caches)

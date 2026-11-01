@@ -350,10 +350,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Check 6: swap sanity ─────────────────────────────────────────────────
     print("\n[6] SWAP SANITY -- apply_update.ps1 validates the exe and swaps agents")
-    if re.search(r"Tlamatini\.exe", ps1_txt) and re.search(r"Test-Path", ps1_txt):
-        ok("apply_update.ps1 validates a staged Tlamatini.exe before touching the install")
-    else:
-        finding("apply_update.ps1 does not appear to validate a staged Tlamatini.exe first")
+    # Read the executable identity from the build, independently of localized log text.
+    match = re.search(r'original_filename="([^"]+\.exe)"', build_txt)
+    executable = match.group(1) if match else None
+    check = f'$newExe = Join-Path $StagingDir "{executable}"'
+    validation = ps1_txt.find("Test-Path -LiteralPath $newExe", ps1_txt.find(check))
+    (ok if check in ps1_txt and validation >= 0 else finding)(
+        "swapper checks the staged edition executable before replacing files")
     if re.search(r"agents_backup", ps1_txt):
         ok("apply_update.ps1 performs the agents -> agents_backup swap")
     else:
@@ -363,7 +366,8 @@ def main(argv: list[str] | None = None) -> int:
                           ("verify_staged_payload(staging", "extracted staging verification")):
         (ok if needle in su_txt else finding)(label + " is wired in self_update.py")
     verify_at = ps1_txt.find("& $backupPython -I -B -S $integrityHelper --verify-tree")
-    close_at = ps1_txt.find('Write-Log "Closing Tlamatini')
+    shutdown = re.search(r"\$procs\s*=\s*Get-CimInstance Win32_Process", ps1_txt)
+    close_at = shutdown.start() if shutdown else -1
     (ok if 0 <= verify_at < close_at else finding)("swapper integrity gate precedes shutdown")
 
     # ── Check 7: DB delivery coherence ───────────────────────────────────────
@@ -424,27 +428,12 @@ def main(argv: list[str] | None = None) -> int:
         if not unclaimed:
             ok("no unclaimed top-level tree -- every shipped directory has a carrier")
 
-    # ── Check 9: uninstaller delivery ─────────────────────────────────────────
-    # Uninstaller.exe is built AFTER pkg.zip and kept by $Preserve, and the
-    # update that runs is the OLD install's self_update.py, which extracts only
-    # pkg.zip. So a change to the uninstaller reaches fresh installs and
-    # reinstalls, never an in-app update (2026-10-09: the Templates keep-list).
-    print("\n[9] UNINSTALLER DELIVERY -- an in-app update keeps the old Uninstaller.exe")
-    keeps_old = any(str(n).lower() == "uninstaller.exe" for n in (ps1_preserve or ()))
-    changed = None if args.no_git else _changed_since_last_tag(
-        root, ["uninstall.py", "uninstall_processes.py", "build_uninstaller.py"])
-    if not keeps_old:
-        note("Uninstaller.exe is not in $Preserve -- confirm the staged build carries a new "
-             "Uninstaller.exe, or every update deletes the uninstaller")
-    elif changed is None:
-        note("could not compare the uninstaller sources with the last release tag (no git / no tag)")
-    elif changed:
-        note(f"uninstaller sources changed since the last release tag: {changed} -- an in-app "
-             "update KEEPS the Uninstaller.exe already installed ($Preserve; it is never in "
-             "pkg.zip), so these changes reach only fresh installs and reinstalls with the new "
-             "Installer. Say so in the release notes (docs/self-management-carriage.md).")
-    else:
-        ok("uninstaller sources unchanged since the last release tag")
+    print("\n[9] UNINSTALLER DELIVERY -- fresh installs and updates use the same client")
+    package_at = build_txt.find("write_runtime_manifest(", build_txt.find("def main("))
+    copy_at = build_txt.find('shutil.copy2(repo_root / "Uninstaller.exe", dist_manage / "Uninstaller.exe")')
+    (ok if 0 <= copy_at < package_at else finding)("uninstaller enters the payload before its SHA-256 receipt")
+    (ok if "uninstaller.exe" in {name.casefold() for name in (ps1_preserve or ())} and "[IO.File]::Replace($incomingRemoval" in ps1_txt
+     else finding)("swapper preserves the old client until a verified replacement is staged")
 
     # ── Summary ──────────────────────────────────────────────────────────────
     print("\n" + "=" * 70)
@@ -498,26 +487,6 @@ def _db_capture_and_migrate(root: Path, ps1_txt: str) -> bool:
     return ps1_ok and manage_ok
 
 
-def _changed_since_last_tag(root: Path, paths: list[str]) -> list[str] | None:
-    """The *paths* that differ from the last release tag (None without git or a tag)."""
-    try:
-        tag = subprocess.run(
-            ["git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"],
-            cwd=root, capture_output=True, text=True, timeout=10,
-        )
-        if tag.returncode != 0 or not tag.stdout.strip():
-            return None
-        diff = subprocess.run(
-            ["git", "diff", "--name-only", tag.stdout.strip(), "--", *paths],
-            cwd=root, capture_output=True, text=True, timeout=10,
-        )
-        if diff.returncode != 0:
-            return None
-        return sorted(set(diff.stdout.split()))
-    except (OSError, subprocess.SubprocessError):
-        return None
-
-
 def _migrations_since_last_tag(root: Path, mig_dir: Path) -> list[str] | None:
     try:
         tag = subprocess.run(
@@ -553,6 +522,7 @@ def _migrations_since_last_tag(root: Path, mig_dir: Path) -> list[str] | None:
 # adding a name here silences the census for it forever, so it must be a real
 # decision, not a way to make a finding go away.
 _DEV_ONLY_TOPLEVEL = {
+    "l10n",  # Spanish porting tools belong to the rebuild snapshot, outside the runnable app.
     ".claude",      # assistant skills/hooks/memory -- tooling for working ON Tlamatini
     ".codex",       # ditto (Codex)
     ".gemini",      # ditto (Gemini)

@@ -60,19 +60,19 @@ def _asset(name):
         raise Http404
     try:
         # Do not execute JavaScript supplied by whichever process happens to bind
-        # port 12064 on the Django origin. Load the administrator-installed assets.
+        # port 12064 on the Django origin. Use the assets verified with this edition.
         # Source-mode integration tests can render the exact frontend under
         # development. The setting is server-side and never read from requests.
         root = getattr(settings, "TORRENTER_WORKSPACE_ROOT", None) if settings.DEBUG else None
         if root is None:
-            root = client.known_folder(38) / "XAIHT/Tlachihuani/Jobs/wwwroot"
+            root = Path(__file__).resolve().parent / "torrenter_workspace"
         path = Path(root) / name
         with path.open("rb") as stream:
             data = stream.read(512 * 1024 + 1)
         if len(data) > 512 * 1024:
             raise OSError
     except OSError:
-        return HttpResponse("Install or update the Tlachihuani Jobs workspace.", status=503)
+        return HttpResponse("The Torrenter workspace files are missing from this Tlamatini installation.", status=503)
     response = HttpResponse(data, content_type=_ASSETS[name])
     response["Content-Security-Policy"] = ("default-src 'self'; object-src 'none'; base-uri 'none'; "
                                           "frame-ancestors 'none'; form-action 'none'")

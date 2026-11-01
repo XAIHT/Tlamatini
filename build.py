@@ -377,6 +377,7 @@ _AGENT_RUNTIME_IMPORTS = (
     "psutil",                               # process/PID liveness in the SHARED pool-agent boilerplate (every pool agent) + OOB kill-tree
     "pyautogui", "playwright", "telethon",  # desktop / browser / telegram agents
     "pymongo", "pyodbc", "win32gui", "win32con",  # db / windows agents (pywin32)
+    "win32cred", "win32crypt",  # Torrenter account-scoped credentials in the carried agent
     "sounddevice",                          # microphone capture (Recorder) — native PortAudio
     "soundfile",                            # audio playback (AudioPlayer) — native libsndfile
     "ffpyplayer",                           # video+audio playback (VideoPlayer) — bundled ffmpeg+SDL
@@ -506,6 +507,7 @@ _FROZEN_TERMINATER_MODULES = (
 _FROZEN_TORRENTER_MODULES = (
     "agent.management.commands.enroll_torrenter", "agent.torrenter_tool", "agent.torrenter_views",
     "agent.torrenter_bridge", "agent.agents.torrenter.client", "agent.agents.torrenter.contract", "agent.agents.torrenter.sources",
+    "agent.agents.torrenter.activity", "agent.agents.torrenter.torrenter", "agent.migrations.0221_torrenter",
 )
 
 # PyInstaller ships these Windows extensions as loose .pyd files outside the PYZ.
@@ -1516,6 +1518,7 @@ def main():
         *icon_args,
         *dll_args,
         f'--add-data=Tlamatini/agent/templates{separator}agent/templates',
+        f'--add-data=Tlamatini/agent/torrenter_workspace{separator}agent/torrenter_workspace',
         f'--add-data=Tlamatini/agent/static{separator}agent/static',
         f'--add-data=Tlamatini/staticfiles{separator}staticfiles',
         f'--add-data=Tlamatini/agent/config.json{separator}agent',
@@ -2239,6 +2242,11 @@ def main():
             try:
                 pkg_zip_path = Path("pkg.zip")
                 pending_zip = pkg_zip_path.with_suffix(".zip.part")
+                # Installed updaters extract only pkg.zip. Build the removal client
+                # at this exact release version before capturing the payload receipt.
+                subprocess.run([sys.executable, str(repo_root / "build_uninstaller.py"),
+                                "--version", tlamatini_version], cwd=repo_root, check=True)
+                shutil.copy2(repo_root / "Uninstaller.exe", dist_manage / "Uninstaller.exe")
                 prune_regenerable_bytecode(dist_manage)
                 write_runtime_manifest(
                     dist_manage, expected_runtime_assets,

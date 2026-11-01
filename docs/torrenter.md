@@ -2,6 +2,12 @@
 
 Torrenter is a Tlamatini workflow agent and the wrapped chat tool `chat_agent_torrenter`. It controls downloads in the separately installed Tlachihuani Jobs Windows service at `http://127.0.0.1:12064/api/v1`. Jobs owns the transfer, files and journal. You can close chat, the ACP or the browser and reconnect to the same job.
 
+The signed-in page is carried with Tlamatini in `agent/torrenter_workspace/`.
+Self-update replaces its HTML, JavaScript and CSS together with the controller.
+A self-modification snapshot includes the same files for rebuilding. Jobs and XT
+remain separately installed. Changes to their API must remain compatible with the
+workspace protocol or provide a coordinated service update.
+
 ## Connect an account
 
 1. Choose **Start Services** in the XT tray menu and sign in to Tlamatini.

@@ -43,7 +43,7 @@ _SHARED = os.path.join(_REPO_ROOT, "preserved_user_state.json")
 # The items whose loss the user would actually feel. A future edit may ADD to
 # the preserved set; removing one of these is a data-loss regression.
 MUST_PRESERVE = {
-    "config.json", "external_mcps.json", "contacts.json", "DB",
+    "config.json", "external_mcps.json", "contacts.json", "data.keys", "DB",
     "Temp", "Templates", "Uninstaller.exe",
 }
 

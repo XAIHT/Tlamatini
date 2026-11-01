@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 import shutil
 
-from build_runtime_assets import verify_package
+from build_runtime_assets import extract_release_uninstaller, verify_package
 
 # Versioning: SemVer 2.0.0 with git-tag-derived version.  See VERSIONING.md.
 from build_env import run_in_sealed_env
@@ -288,7 +288,7 @@ def main():
     print(f"Found pkg.zip ({size_mb:.1f} MB)")
     # Shared with build.py. A stale/incomplete ZIP cannot become an installer,
     # including when this script is invoked without either release wrapper.
-    run_step("Verifying runtime package completeness", verify_package, pkg_zip,
+    receipt = run_step("Verifying runtime package completeness", verify_package, pkg_zip,
              expected_version=tlamatini_version)
 
     install_script = root / "install.py"
@@ -297,13 +297,8 @@ def main():
         sys.exit(1)
     print("Found install.py")
 
-    uninstaller_exe_src = root / "Uninstaller.exe"
-    if uninstaller_exe_src.exists():
-        un_mb = uninstaller_exe_src.stat().st_size / (1024 * 1024)
-        print(f"Found Uninstaller.exe ({un_mb:.1f} MB)")
-    else:
-        print("WARNING: Uninstaller.exe not found at project root.")
-        print("         Run build_uninstaller.py first to include it in the release.")
+    if "Uninstaller.exe" not in receipt["files"]:
+        sys.exit("Rebuild pkg.zip with the current build.py to include the versioned uninstaller.")
 
     # ── 1) Clean previous Installer build artifacts ───────────────────
     run_step("Cleaning previous Installer build artifacts", lambda: [
@@ -480,13 +475,8 @@ def main():
     print("\n--- Moving pkg.zip to release folder ---")
     _verified_move(pkg_zip, release_dir / "pkg.zip")
 
-    # ── 8b) Move Uninstaller.exe into the release folder ─────────────
-    if uninstaller_exe_src.exists():
-        print("\n--- Moving Uninstaller.exe to release folder ---")
-        dst_uninstaller = release_dir / "Uninstaller.exe"
-        shutil.move(str(uninstaller_exe_src), str(dst_uninstaller))
-        un_mb = dst_uninstaller.stat().st_size / (1024 * 1024)
-        print(f"Moved Uninstaller.exe ({un_mb:.1f} MB)")
+    extract_release_uninstaller(release_dir / "pkg.zip", release_dir / "Uninstaller.exe",
+                               receipt["files"]["Uninstaller.exe"])
 
     print(f"\nREADY: Release folder at {release_dir}\n")
     print("*" * 60)
@@ -495,9 +485,7 @@ def main():
     print("When users double-click Installer.exe, it will launch instantly")
     print("with NO temp extraction or DLL locking issues.")
     print()
-    print("NOTE: pkg.zip and Uninstaller.exe were MOVED (not copied) into")
-    print("the release folder to save disk space. Originals are no longer")
-    print("at the project root.")
+    print("The release folder contains pkg.zip and its matching Uninstaller.exe.")
     print("*" * 60)
 
     elapsed = time.time() - build_start

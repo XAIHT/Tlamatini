@@ -56,6 +56,19 @@ class DependencyCoverageTests(unittest.TestCase):
         self.assertEqual(result["missing"], {})
         self.assertEqual(result["host_modules"][0]["provided_by"], "Blender's embedded Python")
 
+    def test_spanish_porting_helpers_are_local_when_present(self):
+        self.write("l10n/herramientas/memoria.py", "")
+        self.write("l10n/portar.py", "import memoria\n")
+        self.assertEqual(self.run_audit()["missing"], {})
+        (self.root / "l10n/herramientas/memoria.py").unlink()
+        self.files.remove(Path("l10n/herramientas/memoria.py"))
+        self.assertIn("memoria", self.run_audit()["missing"])
+
+    def test_spanish_voice_engine_requires_its_distribution(self):
+        self.write("worker.py", "import piper\n")
+        self.assertIn("piper-tts", self.run_audit()["missing"])
+        self.assertEqual(self.run_audit("piper-tts==1.8.0\n")["missing"], {})
+
     def test_unknown_computed_import_needs_review(self):
         self.write("worker.py", "import importlib\ndef load(name):\n    return importlib.import_module(name)\n")
         self.assertEqual(len(self.run_audit()["unreviewed_dynamic_imports"]), 1)

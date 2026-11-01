@@ -30,12 +30,12 @@ for this process to die, swaps the files, and relaunches Tlamatini.
 
 Preserved across the swap (everything else is replaced)::
 
-    config.json  external_mcps.json  contacts.json  DB  application  applications  content_generated
+    config.json  external_mcps.json  contacts.json  data.keys  DB  application  applications  content_generated
     Temp  context_files  doc_generated  documentation  Templates
     Uninstaller.exe
 
-    (Uninstaller.exe is built separately and is never inside pkg.zip, so the
-    update swap keeps the user's existing one instead of deleting it.)
+    (The existing Uninstaller.exe survives deletion. The incoming swapper
+    replaces it atomically when pkg.zip provides a verified successor.)
 
 ``agents`` is the one exception: it is renamed to ``agents_backup`` (one
 generation kept) and then replaced by the new version's ``agents``.

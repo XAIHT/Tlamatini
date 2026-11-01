@@ -31,9 +31,8 @@ try { $Host.UI.RawUI.WindowTitle = "Tlamatini Updater" } catch {}
 # Top-level names in the install root that must NEVER be deleted or
 # overwritten. 'agents' is intentionally NOT here: it is renamed to
 # 'agents_backup' (step 3) and then replaced by the new version (step 5).
-# Uninstaller.exe is built separately and is NOT carried inside pkg.zip, so the
-# staged build never contains it. Without preserving it, every self-update would
-# delete the uninstaller already on disk. Keep the existing one.
+# Keep the installed removal client until the incoming, verified client can replace it.
+
 #
 # The comment sits ABOVE the array on purpose. agent/test_preserved_user_state.py
 # parses this block with a quoted-string regex, so an apostrophe INSIDE it - the
@@ -41,7 +40,7 @@ try { $Host.UI.RawUI.WindowTitle = "Tlamatini Updater" } catch {}
 # the 'Uninstaller.exe' entry, and the guard reported it missing from a file that
 # was perfectly correct. Keep apostrophes out of this block.
 $Preserve = @(
-    'config.json', 'external_mcps.json', 'contacts.json', 'DB', 'application', 'applications', 'content_generated',
+    'config.json', 'external_mcps.json', 'contacts.json', 'data.keys', 'DB', 'application', 'applications', 'content_generated',
     'Temp', 'context_files', 'doc_generated', 'documentation', 'Templates',
     'Uninstaller.exe'
 )
@@ -70,6 +69,21 @@ function Test-Preserved {
     param([string]$Name)
     foreach ($p in $Preserve) { if ($Name -ieq $p) { return $true } }
     return $false
+}
+
+function Install-UpdateUninstaller {
+    param([string]$InstallDir, [string]$StagingDir, [string]$UpdateRoot)
+    $incomingRemoval = Join-Path $StagingDir "Uninstaller.exe"
+    if (Test-Path -LiteralPath $incomingRemoval -PathType Leaf) {
+        $installedRemoval = Join-Path $InstallDir "Uninstaller.exe"
+        Assert-NoReparseAncestors $installedRemoval
+        if (Test-Path -LiteralPath $installedRemoval) {
+            $previousRemoval = Join-Path $UpdateRoot ("previous-uninstaller-" + [guid]::NewGuid() + ".exe")
+            Invoke-WithRetry { [IO.File]::Replace($incomingRemoval, $installedRemoval, $previousRemoval) }
+        } else {
+            Invoke-WithRetry { [IO.File]::Move($incomingRemoval, $installedRemoval) }
+        }
+    }
 }
 
 function Assert-NoReparseAncestors {
@@ -113,6 +127,11 @@ try {
         throw "Install directory does not contain the existing Tlamatini.exe. Aborting."
     }
     if ($ParentPid -le 0 -or $ParentPid -eq $PID) { throw "Invalid application PID." }
+    $applicationProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$ParentPid" -ErrorAction Stop
+    $installedExe = Join-Path $InstallDir "Tlamatini.exe"
+    if ($applicationProcess -and $applicationProcess.ExecutablePath -ine $installedExe) {
+        throw "The supplied PID does not belong to this installation. Nothing was replaced."
+    }
     $newExe = Join-Path $StagingDir "Tlamatini.exe"
     if (-not (Test-Path -LiteralPath $newExe)) {
         throw "Staged update is invalid -- Tlamatini.exe not found at '$newExe'. Aborting; nothing was changed."
@@ -155,6 +174,12 @@ try {
     Start-Sleep -Seconds 2
     try {
         $procs   = Get-CimInstance Win32_Process -ErrorAction Stop
+        $parentNow = $procs | Where-Object { [int]$_.ProcessId -eq $ParentPid }
+        if ($parentNow -and (!$applicationProcess -or
+            $parentNow.CreationDate -ne $applicationProcess.CreationDate -or
+            $parentNow.ExecutablePath -ine $installedExe)) {
+            throw "The application PID was reused. Update stopped before terminating any process."
+        }
         $toKill  = New-Object System.Collections.Generic.List[int]
         $queue   = New-Object System.Collections.Generic.Queue[int]
         $seen    = New-Object System.Collections.Generic.HashSet[int]
@@ -257,6 +282,15 @@ try {
     catch {
         throw "Could not preserve security evidence; application deletion aborted: $($_.Exception.Message)"
     }
+
+    # Fix literal NTFS cache aliases while the verified staged Python is still in place.
+    $recoveryHelper = Join-Path $StagingDir "setup_recovery.py"
+    & $backupPython -I -B -S $recoveryHelper --clean-update-browser-caches $InstallDir
+    if ($LASTEXITCODE -ne 0) { throw "Could not clear a legacy browser cache. Update stopped." }
+
+    # Older clients stage only the inner ZIP. Replace its receipted uninstaller
+    # atomically; when a compatible older payload lacks it, keep the installed copy.
+    Install-UpdateUninstaller -InstallDir $InstallDir -StagingDir $StagingDir -UpdateRoot $updateRoot
 
     # 4) Delete the old install -- everything except the preserved set and
     #    the agents_backup we just created.

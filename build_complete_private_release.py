@@ -31,7 +31,7 @@ Pipeline
   2. build.py --no-self-modify      -> freeze app + pkg.zip (DEFAULT: NO source
      tree and NO Tlamatini.md, so the system prompt stays ~15.7k tokens smaller
      per request; pass --self-modify to this script to bundle both instead).
-  3. build_uninstaller.py            -> Uninstaller.exe.
+     build.py freezes the versioned Uninstaller.exe before sealing pkg.zip.
   4. build_installer.py              -> dist/Tlamatini_Release_v<ver>/.
   5. zip -> dist/Tlamatini_Release_v<ver>_PRIVATE_KEYED_win11x64.zip
 """
@@ -55,7 +55,6 @@ REPO_ROOT = Path(__file__).resolve().parent
 DIST = REPO_ROOT / "dist"
 REGEN = REPO_ROOT / "regen_secrets.py"
 BUILD = REPO_ROOT / "build.py"
-BUILD_UNINST = REPO_ROOT / "build_uninstaller.py"
 BUILD_INST = REPO_ROOT / "build_installer.py"
 PKG_ZIP = REPO_ROOT / "pkg.zip"            # build.py's real artifact (it deletes dist/)
 # Gitignored PRIVATE contacts book. When present, the keyed build bundles it as
@@ -505,7 +504,7 @@ def main(argv=None) -> int:
     _synced_contacts = _load_contacts_from_file(CONTACTS_PRIVATE)
     print(f"contacts    : {len(_synced_contacts)} contact(s) ready for bundling")
 
-    banner("STEP 1/5  regen_secrets.py --mode keyed")
+    banner("STEP 1/4  regen_secrets.py --mode keyed")
     if run([py, str(REGEN), "--mode", "keyed", "--keys-file", args.keys_file]) != 0:
         sys.exit("regen_secrets keyed failed.")
 
@@ -514,7 +513,7 @@ def main(argv=None) -> int:
     sync_external_mcps_private()
     choose_data_keys(args.keys_file)
 
-    banner("STEP 2/5  build.py")
+    banner("STEP 2/4  build.py")
     build_cmd = [py, str(BUILD)]
     # Pass the decision EXPLICITLY either way, so the intent is recorded in the
     # build log and a stray "--self-modify" in the ambient argv cannot flip it.
@@ -524,11 +523,7 @@ def main(argv=None) -> int:
         sys.exit("build.py failed.")
     assert_self_modify_payload(self_modify)
 
-    banner("STEP 3/5  build_uninstaller.py")
-    if run([py, str(BUILD_UNINST)] + version_args) != 0:
-        sys.exit("build_uninstaller.py failed.")
-
-    banner("STEP 4/5  build_installer.py")
+    banner("STEP 3/4  build_installer.py")
     if run([py, str(BUILD_INST)] + version_args) != 0:
         sys.exit("build_installer.py failed.")
 
@@ -536,7 +531,7 @@ def main(argv=None) -> int:
     if rel is None:
         sys.exit("ERROR: no dist/Tlamatini_Release_v* folder was produced.")
 
-    banner("STEP 5/5  packaging PRIVATE KEYED zip")
+    banner("STEP 4/4  packaging PRIVATE KEYED zip")
     ts = time.strftime("%Y%m%d_%H%M%S")
     out_base = DIST / f"{rel.name}_PRIVATE_KEYED_win11x64_{ts}"
     archive = create_release_archive(out_base, root_dir=DIST, base_dir=rel.name)
