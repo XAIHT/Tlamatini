@@ -1,8 +1,53 @@
-*{box-sizing:border-box}html{color-scheme:dark}body{margin:0;background:#101e27;color:#e5f2ed;font:15px/1.45 "Segoe UI",sans-serif}header,nav,footer,.tabs{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}header{padding:1rem 1.5rem;background:#132d36;border-bottom:1px solid #36515a}.mark{border:1px solid #77cfb6;border-radius:.5rem;font-weight:700;color:#91e9cd;padding:.6rem}h1,h2,p{margin:.3rem 0}h1{font-size:1.55rem}h2{font-size:1.12rem}small,aside label,footer{color:#abc5c1}#connection{margin-left:auto}button,select,input{font:inherit;border:1px solid #526b73;border-radius:5px;color:#edf6ef;background:#234049;padding:.38rem .64rem}button{cursor:pointer}button:hover,button[aria-pressed=true]{background:#315b60}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #fac47c;outline-offset:2px}button:disabled{opacity:.5;cursor:default}#add,#submit{background:#23654f;border-color:#67af94}dialog{margin:3rem auto;max-width:34rem;padding:1.6rem;background:#1a323d;border:1px solid #416269;border-radius:12px}nav,footer{padding:.7rem 1rem;background:#182e37}.layout{display:grid;grid-template-columns:12rem minmax(0,1fr);min-height:65vh}aside,.inspect{padding:1rem}aside{border-right:1px solid #39515b}.work{min-width:0}label{display:grid;gap:.25rem;margin:.7rem 0}input,select{min-width:0;width:100%}input[type=checkbox]{width:auto}.table{overflow:auto;min-height:34vh}table{border-collapse:collapse;width:100%;white-space:nowrap}td,th{text-align:left;border-bottom:1px solid #314650;padding:.5rem .65rem}th{font-size:.85rem}th button{padding:.1rem .25rem;border:0;background:transparent}tr[aria-selected=true]{background:#25483f}tbody tr{cursor:pointer}progress{accent-color:#7adcb6;width:5rem;height:.6rem}.inspect{border-top:1px solid #53676d}.tabs{margin:.55rem 0}.tabs button{font-size:.85rem}dl{display:grid;grid-template-columns:minmax(7rem,auto) 1fr;gap:.28rem .8rem}dt{color:#a0c8bd}dd{margin:0;overflow-wrap:anywhere}footer{justify-content:space-between}dialog{color:inherit;width:min(95vw,36rem);max-height:85vh}dialog::backdrop{background:#061317b8}.choice{display:flex;align-items:center;gap:.5rem}.listing{max-height:13rem;overflow:auto}.error{color:#ffb69f}@media(max-width:720px){.layout{display:block}aside{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;border:0}aside label{max-width:11rem}.table{min-height:0}}
+*{box-sizing:border-box}html{color-scheme:dark}body{margin:0;background:#101e27;color:#e5f2ed;font:15px/1.45 "Segoe UI",sans-serif}header,nav,footer,.tabs{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}header{padding:1rem 1.5rem;background:#132d36;border-bottom:1px solid #36515a}.mark{border:1px solid #77cfb6;border-radius:.5rem;font-weight:700;color:#91e9cd;padding:.6rem}h1,h2,p{margin:.3rem 0}h1{font-size:1.55rem}h2{font-size:1.12rem}small,aside label,footer{color:#abc5c1}#connection{margin-left:auto}button,select,input{font:inherit;border:1px solid #526b73;border-radius:5px;color:#edf6ef;background:#234049;padding:.38rem .64rem}button{cursor:pointer}button:hover,button[aria-pressed=true]{background:#315b60}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #fac47c;outline-offset:2px}button:disabled{opacity:.5;cursor:default}#add,#submit{background:#23654f;border-color:#67af94}dialog{margin:3rem auto;max-width:34rem;padding:1.6rem;background:#1a323d;border:1px solid #416269;border-radius:12px}nav,footer{padding:.7rem 1rem;background:#182e37}.layout{display:grid;grid-template-columns:12rem minmax(0,1fr);min-height:0}aside,.inspect{padding:1rem}aside{border-right:1px solid #39515b}.work{min-width:0}label{display:grid;gap:.25rem;margin:.7rem 0}input,select{min-width:0;width:100%}input[type=checkbox]{width:auto}.table{overflow:auto;min-height:0}table{border-collapse:collapse;width:100%;white-space:nowrap}td,th{text-align:left;border-bottom:1px solid #314650;padding:.5rem .65rem}th{font-size:.85rem}th button{padding:.1rem .25rem;border:0;background:transparent}tr[aria-selected=true]{background:#25483f}tbody tr{cursor:pointer}progress{accent-color:#7adcb6;width:5rem;height:.6rem}.inspect{border-top:1px solid #53676d}.tabs{margin:.55rem 0}.tabs button{font-size:.85rem}dl{display:grid;grid-template-columns:minmax(7rem,auto) 1fr;gap:.28rem .8rem}dt{color:#a0c8bd}dd{margin:0;overflow-wrap:anywhere}footer{justify-content:space-between}dialog{color:inherit;width:min(95vw,36rem);max-height:85vh}dialog::backdrop{background:#061317b8}.choice{display:flex;align-items:center;gap:.5rem}.listing{max-height:13rem;overflow:auto}.error{color:#ffb69f}@media(max-width:720px){.layout{display:block}aside{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;border:0}aside label{max-width:11rem}.table{min-height:0}}
 
-.choice select{width:auto;margin-left:auto} #transfer-grid{min-height:10rem;max-height:72vh} th{position:sticky;top:0;background:#192f38;z-index:1} fieldset{border:1px solid #48616a;border-radius:.5rem} dialog{overflow:auto} #rates{font-variant-numeric:tabular-nums}
+.choice select{width:auto;margin-left:auto} #transfer-grid{min-height:8rem} th{position:sticky;top:0;background:#192f38;z-index:1} fieldset{border:1px solid #48616a;border-radius:.5rem} dialog{overflow:auto} #rates{font-variant-numeric:tabular-nums}
 .workspace-title { min-width: 0; flex: 1 1 16rem; }
 .product-name { font-size: 1rem; font-weight: 600; color: #c2d8d6; }
 .account-heading:not([hidden]) { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .8rem; }
 #owner-label { color: #a6cec9; font-size: .9rem; }
 #workspace-owner { font-size: clamp(1.75rem, 3vw, 2.65rem); line-height: 1.15; margin: .15rem 0; overflow-wrap: anywhere; }
+
+/* Fill the actual viewport. Only panes whose content does not fit may scroll. */
+html { height:100%; }
+body { height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+body > header, body > footer { flex:0 0 auto; }
+#workspace:not([hidden]) { display:flex; flex-direction:column; flex:1 1 0; min-height:0; }
+#workspace > nav { flex:0 0 auto; }
+.layout { flex:1 1 0; min-height:0; }
+.layout > aside { overflow:auto; min-height:0; }
+.work { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+#transfer-grid { flex:1 1 0; height:auto; max-height:none; }
+.inspect { flex:0 0 auto; min-height:0; max-height:45%; overflow:auto; }
+.detail-open .inspect { flex-basis:var(--details-share,30%); max-height:60%; }
+.inspect h2 { overflow-wrap:anywhere; margin:.35rem 0 .6rem; }
+body:not(.detail-open) .inspect { display:flex; align-items:baseline; flex-wrap:wrap; gap:.3rem 1rem; padding:.6rem 1rem; }
+body:not(.detail-open) .inspect h2 { margin:0; }
+body:not(.detail-open) .inspect .tabs { display:none; }
+footer { border-top:1px solid #39515b; min-width:0; margin-top:auto; }
+footer output { min-width:0; overflow-wrap:anywhere; }
+footer #rates { margin-left:auto; flex-shrink:0; }
+.saved-location { margin:0; padding:.45rem 1rem; background:#172b34; overflow-wrap:anywhere; font-size:.9rem; }
+.saved-location:empty { display:none; }
+.listing p, dd { overflow-wrap:anywhere; }
+.inspect .listing { max-height:none; overflow:visible; }
+td[data-column="1"] button { display:block; width:clamp(16rem,30vw,40rem); max-width:40rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
+@media (min-width:1000px) and (max-width:1900px) {
+  #transfer-grid :is(td,th) { padding:.4rem .4rem; }
+  td[data-column="1"] button { width:clamp(12rem,16vw,20rem); }
+  td[data-column="4"] { white-space:normal; max-width:10rem; }
+}
+@media(max-width:720px) {
+  #workspace:not([hidden]) { overflow:auto; }
+  .layout { display:flex; flex-direction:column; flex:1 0 auto; }
+  .layout > aside { flex:0 0 auto; max-height:26vh; padding:.5rem; }
+  .layout > aside h2 { width:100%; margin:.15rem 0; }
+  .layout > aside label { flex:1 1 8rem; margin:.2rem 0; }
+  .work { flex:1 0 24rem; min-height:24rem; }
+  .inspect { padding:.5rem; max-height:45%; }
+  header { padding:.6rem; }
+  footer { padding:.5rem; font-size:.85rem; }
+}
+@media(min-width:721px) and (max-height:620px) {
+  #workspace:not([hidden]) { overflow:auto; }
+  .layout { flex:1 0 30rem; min-height:30rem; }
+}

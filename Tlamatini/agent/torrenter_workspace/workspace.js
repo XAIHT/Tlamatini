@@ -62,13 +62,13 @@ function grid() {
     box.onchange=()=>{if(box.checked) checked.add(job.job_id); else checked.delete(job.job_id);};
     box.onclick=e=>e.stopPropagation();
     row.append(make('td')); row.cells[0].append(box);
-    const title=make('button',job.name); title.onclick=()=>{selected=job.job_id;grid(); reportDetails();};
+    const title=make('button',job.name); title.title=job.name; title.onclick=()=>{selected=job.job_id;grid(); reportDetails();};
     row.append(make('td')); row.cells[1].append(title);
     row.append(make('td',bytes(job.selected_bytes)));
     const pct=job.selected_bytes?Math.min(100,100*job.verified_bytes/job.selected_bytes):0;
     const meter=make('progress');meter.max=100;meter.value=pct;
     const progress=make('td');progress.append(meter,' '+pct.toFixed(1)+'%');row.append(progress);
-    for (const value of [job.phase,job.seeds+' / '+job.peers,bytes(job.download_rate_bps)+'/s',bytes(job.upload_rate_bps)+'/s',job.eta_seconds==null?'—':Math.ceil(job.eta_seconds/60)+' min',job.ratio==null?'—':job.ratio.toFixed(2),job.availability==null?'—':job.availability.toFixed(2),job.queue_position+1,job.completed_at?new Date(job.completed_at*1000).toLocaleString():'—']) row.append(make('td',value));
+    for (const value of [(job.completed_at && (!job.delivery_state || job.delivery_state==='service_store') ? 'Service update required' : job.completed_at && job.delivery_state==='failed' ? 'Download verified · saving failed' : job.completed_at && job.delivery_state==='pending' ? 'Saving to Downloads…' : job.phase),job.seeds+' / '+job.peers,bytes(job.download_rate_bps)+'/s',bytes(job.upload_rate_bps)+'/s',job.eta_seconds==null?'—':Math.ceil(job.eta_seconds/60)+' min',job.ratio==null?'—':job.ratio.toFixed(2),job.availability==null?'—':job.availability.toFixed(2),job.queue_position+1,job.completed_at?new Date(job.completed_at*1000).toLocaleString():'—']) row.append(make('td',value));
     row.setAttribute('aria-selected',String(selected===job.job_id));list.append(row);
   }
   if (!rows.length) { const td=make('td',jobs.length?'No matching downloads.':'No downloads yet. Use Add torrent to inspect a file or magnet.');td.colSpan=13;const tr=make('tr');tr.append(td);list.append(tr); }
@@ -81,7 +81,12 @@ async function refresh() {
   try { const page=await api('torrents?limit=250'); jobs=page.items;
     const waiting = Number(page.resolving_metadata) || 0;
     el('pending-metadata').hidden = !waiting;
-    el('pending-metadata').textContent = waiting ? waiting + ' magnet inspection(s) waiting for peers to provide the file list.' : '';
+    el('pending-metadata').textContent = waiting ? waiting + ' magnet inspection(s) awaiting a file list.' : '';
+    const roots = new Set(jobs.filter(j=>j.saved_to && j.delivery_state==='saved').map(j=>
+      (j.delivery_location==='content_generated' ? 'content_generated · ' : 'Windows Downloads · ')+
+      j.saved_to.replace(/[\\/][^\\/]+$/, '')));
+    el('save-location').textContent=roots.size ? [...roots].join(' | ') :
+      (jobs.find(j=>j.delivery_error)?.delivery_error || (jobs.some(j=>!j.delivery_state || j.delivery_state==='service_store') ? 'Update Tlachihuani Jobs to save verified files in Windows Downloads.' : ''));
     if (!jobs.some(j=>j.job_id===selected)) selected='';
     const version=JSON.stringify(jobs);
     if(version!==renderedJobs){grid();renderedJobs=version;}
@@ -142,11 +147,12 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.
 async function details(){
   const area=el('details'), id=selected, view=tab, job=jobs.find(j=>j.job_id===id);
   document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===view)));
+  document.body.classList.toggle('detail-open',Boolean(job));
   el('selected').textContent=job?job.name:'Transfer details';
   if(!job){area.textContent='Select a transfer.';return;}
   if(view==='general'){
     const dl=make('dl');
-    for(const [label,value] of Object.entries({'Job ID':id,'Desired':job.desired_state,'Observed':job.phase,'Verified':bytes(job.verified_bytes)+' / '+bytes(job.selected_bytes),'Queue position':job.queue_position+1,'Location':job.destination_root_id,'Revision':job.revision,'Category':job.category||'Uncategorized','Tags':job.tags.join(', ')||'Untagged','Reason':job.error||'—'})){dl.append(make('dt',label),make('dd',value));}
+    for(const [label,value] of Object.entries({'Job ID':id,'Desired':job.desired_state,'Observed':job.phase,'Verified':bytes(job.verified_bytes)+' / '+bytes(job.selected_bytes),'Queue position':job.queue_position+1,'Saved to':job.saved_to || job.destination_root_id,'Delivery':job.delivery_state || 'service_store','Delivery error':job.delivery_error || '—','Revision':job.revision,'Category':job.category||'Uncategorized','Tags':job.tags.join(', ')||'Untagged','Reason':job.error||'—'})){dl.append(make('dt',label),make('dd',value));}
     const edit=make('button','Edit labels and limits');
     handle(edit,async()=>{const cat=prompt('Category',job.category);if(cat===null)return;const tags=prompt('Comma-separated tags',job.tags.join(', '));if(tags===null)return;const limit=prompt('Download limit in bytes/second (0 = unlimited)',String(job.download_limit));if(limit===null)return;const up=prompt('Upload limit in bytes/second (0 = unlimited)',String(job.upload_limit));if(up===null)return;const position=prompt('Queue position (1 = first)',String(job.queue_position+1));if(position===null)return;await api('torrents/'+id,'PATCH',{category:cat,tags:tags.split(',').map(x=>x.trim()).filter(Boolean),download_limit:Number(limit),upload_limit:Number(up),queue_position:Number(position)-1},job,crypto.randomUUID());await refresh();});
     area.replaceChildren(dl,edit);return;
@@ -154,7 +160,9 @@ async function details(){
   const data=await api('torrents/'+id+'/'+view);if(id!==selected||view!==tab)return;
   const list=make('div');list.className='listing';
   if(view==='manifest'){
-    list.append(make('p',data.verified?data.output_root:'Available after the selected files have been verified.'));
+    list.append(make('p',data.verified?'Saved to: '+data.output_root:data.delivery_error || (data.download_verified?'Download verified. Saving to Windows Downloads…':'Available after the selected files have been verified.')));
+    if(data.verified && data.delivery_location==='content_generated')
+      list.append(make('p','Saved in content_generated because Windows Downloads was unavailable: '+(data.downloads_error || '—')));
     for(const file of data.files) list.append(make('p',file.path+' · '+file.sha256));
   } else if(view==='files'){
     for(const file of data.items){const label=make('label');label.className='choice';const box=make('input');box.type='checkbox';box.checked=file.selected;box.value=file.id;box.disabled=job.phase!=='stopped';label.append(box,file.path+' · '+bytes(file.size));label.append(filePriority(file.id,file.priority,job.phase!=='stopped'));list.append(label);}
@@ -169,7 +177,10 @@ handle(el('inspect'),async()=>{
   inspection=null;el('submit').disabled=true;const file=el('torrent').files[0];let body;
   if(file){body=new FormData();body.append('file',file);}else{body={magnet:el('magnet').value.trim()};}
   let result=await api('inspections','POST',body);
-  while(result.phase==='resolving_metadata' && el('admit').open){el('admit-message').textContent='Waiting for magnet metadata…';await wait(1500);result=await api('inspections/'+result.inspection_id);}
+  while(result.phase==='resolving_metadata' && el('admit').open){
+    el('admit-message').textContent=result.lookup_state==='queued' ? 'Magnet queued. Waiting for a metadata slot…' : 'Waiting for magnet metadata…';
+    await wait(1500);result=await api('inspections/'+result.inspection_id);
+  }
   if(!el('admit').open)return;if(result.phase!=='ready')throw new Error('Metadata lookup expired.');
   inspection=result;const list=el('files');list.replaceChildren(make('h2',result.name));list.className='listing';
   for(const file of result.files){const row=make('label');row.className='choice';const box=make('input');box.type='checkbox';box.checked=true;box.value=file.id;row.append(box,file.path+' · '+bytes(file.size),filePriority(file.id,4,false));list.append(row);}

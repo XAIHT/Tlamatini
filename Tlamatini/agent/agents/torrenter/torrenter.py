@@ -158,6 +158,7 @@ def execute(action, params, profile):
         "preview_id",
         "revision",
         "phase",
+        "lookup_state",
         "verified",
         "selected_bytes",
         "verified_bytes",
@@ -243,6 +244,9 @@ def wait_for_publication(profile, result, log):
             last = progress
         if state.get("completed_at"):
             _, manifest = request("GET", path + "/manifest", bearer=token)
+            if manifest.get("delivery_state") in ("failed", "unavailable"):
+                raise TorrentError("The download is verified, but saving to Windows Downloads failed: "
+                                   + str(manifest.get("delivery_error", "Unknown delivery error.")))
             if manifest.get("verified"):
                 log.publication(manifest)
                 result.update(status="completed", phase=state["phase"], verified=True)

@@ -24,6 +24,9 @@ script: "echo Hello World"
 # Use this for long-running services like GlassFish, databases, etc.
 non_blocking: false
 
+# Blocking deadline in seconds. Leave unset to use TLAMATINI_COMMAND_TIMEOUT.
+command_timeout_seconds: null
+
 # Execute in a forked window
 # When true, the script is executed in a new visible console window so
 # that stdout and stderr are shown in real time.

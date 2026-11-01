@@ -1036,7 +1036,9 @@ def remove_pid_file():
 
 
 def main():
+    global _TIMEOUT
     config = load_config()
+    _TIMEOUT = _resolve_command_timeout(config)
     
     # Write PID file immediately
     write_pid_file()

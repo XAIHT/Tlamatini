@@ -6,7 +6,6 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
@@ -44,11 +43,19 @@ def recover_job_log(profile, job_id):
             _, manifest = client.request("GET", route + "/manifest", bearer=client.session(profile))
         except TorrentError as exc:
             return JsonResponse({"success": False, "message": str(exc)}, status=getattr(exc, "status", 503))
-        with TemporaryDirectory() as temp:
-            log = ActivityLog(Path(temp), "manifest", False)
-            describe_assets(profile, route, log, manifest)
-            lines = ["Current report from Jobs. The original run log is unavailable.",
-                     *log.path.read_text(encoding="utf-8").splitlines()[4:]]
+        # Reconstruction is a read-only view. Do not stage private metadata in
+        # Windows TEMP (or anywhere else on disk) just to return it to the owner.
+        class Report(ActivityLog):
+            def __init__(self):
+                self.lines = ["Current report from Jobs. The original run log is unavailable."]
+
+            def write(self, *entries):
+                for entry in entries:
+                    self.lines.extend(str(entry).split("\n"))
+
+        log = Report()
+        describe_assets(profile, route, log, manifest)
+        lines = log.lines
         cache.set(key, lines, 15)
     response = JsonResponse({"success": True, "complete": True, "lines": lines, "total_lines": len(lines)})
     response["Cache-Control"] = "private, no-store"

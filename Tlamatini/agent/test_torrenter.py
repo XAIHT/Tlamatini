@@ -21,6 +21,13 @@ SPEC = next(s for s in WRAPPED_CHAT_AGENT_SPECS if s.key == "torrenter")
 ID = "a" * 32
 
 
+def _scratch():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2] / "Temp" / "torrenter-tests"
+    root.mkdir(parents=True, exist_ok=True)
+    return tempfile.TemporaryDirectory(dir=root)
+
+
 class ActionContractTests(SimpleTestCase):
     def test_closed_schema_and_service_authority(self):
         for action, args in [
@@ -101,7 +108,7 @@ class ActionContractTests(SimpleTestCase):
         def account(pk):
             return SimpleNamespace(user=SimpleNamespace(pk=pk, is_authenticated=True))
 
-        with tempfile.TemporaryDirectory() as d:
+        with _scratch() as d:
             protect_pool(account(5), d, claim=True)
             protect_pool(account(5), d)
             with self.assertRaises(PermissionDenied):
@@ -253,13 +260,13 @@ class RecoveryTests(SimpleTestCase):
         from pathlib import Path
         import uuid
         from .agents.torrenter.activity import ActivityLog, latest_record
-        with tempfile.TemporaryDirectory() as root:
+        with _scratch() as root:
             parent = Path(root)
             pool = parent / "disposable-canvas"
             node = pool / "torrenter_1"
             node.mkdir(parents=True)
             owner, other = str(uuid.uuid4()), str(uuid.uuid4())
-            with patch("agent.agents.torrenter.client.known_folder", return_value=parent):
+            with patch("agent.agents.torrenter.client.content_root", return_value=str(parent / "content_generated")):
                 report = ActivityLog(node, "manifest", False, owner)
                 report.write("fixture.pdf")
                 node.rmdir()
@@ -281,7 +288,7 @@ class RecoveryTests(SimpleTestCase):
             if path.endswith(ID):
                 return 200, {"name":"book", "seeds":7, "peers":12, "known_seeds":None}
             return 200, {"items":[]}
-        with tempfile.TemporaryDirectory() as folder:
+        with _scratch() as folder:
             audit = worker.ActivityLog(Path(folder), "manifest", False)
             with patch.object(worker, "session", return_value="local"), patch.object(worker, "request", side_effect=legacy):
                 worker.describe_assets("profile", "torrents/" + ID, audit, manifest)
@@ -293,7 +300,7 @@ class RecoveryTests(SimpleTestCase):
         from .agents.torrenter import torrenter as worker
         state = {"phase":"completed", "completed_at":1, "verified_bytes":32, "selected_bytes":32}
         manifest = {"verified":True, "output_root":"C:/downloads", "files":[]}
-        with tempfile.TemporaryDirectory() as d:
+        with _scratch() as d:
             from pathlib import Path
             audit = worker.ActivityLog(Path(d), "download", True)
             receipt = {"job_id": ID, "response_body":{"operation_id": ID}}
@@ -335,7 +342,7 @@ class RecoveryTests(SimpleTestCase):
         fields = {"job_id": ID, "revision": 1}
         response = {"operation_id": "b" * 32, "job_id": ID, "phase": "accepted"}
         with (
-            tempfile.TemporaryDirectory() as d,
+            _scratch() as d,
             patch.object(worker, "HERE", Path(d)),
             patch.object(worker, "installation", return_value="test-installation"),
             patch.object(worker, "session", return_value="test-session"),

@@ -6,10 +6,10 @@ const DeskLayout = (() => {
   const identity = cells.map((_, i) => i);
   const picker = byId('column');
   cells.forEach((cell, i) => picker.add(new Option(cell.textContent, i)));
-  let key = '', order = [...identity], widths = {}, height = 40, sort = 'name', direction = 1;
+  let key = '', order = [...identity], widths = {}, height = 30, sort = 'name', direction = 1;
 
   function save() {
-    if (key) try { localStorage.setItem(key, JSON.stringify({order,widths,height,sort,direction})); } catch {}
+    if (key) try { localStorage.setItem(key, JSON.stringify({version:2,order,widths,height,sort,direction})); } catch {}
   }
   function bounded(value, min, max, fallback) {
     return Number.isFinite(value) && value >= min && value <= max ? value : fallback;
@@ -17,11 +17,13 @@ const DeskLayout = (() => {
   function arrange() {
     for (const id of order) {
       const cell = cells[id];
-      cell.style.minWidth = bounded(widths[id],60,500,88) + 'px';
+      // Let the table fit its data unless the user explicitly widened a column.
+      const width = bounded(widths[id],60,500,0);
+      cell.style.minWidth = width ? width + 'px' : '';
       header.append(cell);
     }
     byId('grid-height').value = height;
-    byId('transfer-grid').style.height = height + 'vh';
+    document.documentElement.style.setProperty('--details-share', height + '%');
     byId('column-width').value = bounded(widths[picker.value],60,500,88);
     for (const row of byId('rows').rows) {
       const columns = Array.from(row.cells);
@@ -48,7 +50,8 @@ const DeskLayout = (() => {
       let data={}; try { data=JSON.parse(localStorage.getItem(key)) || {}; } catch {}
       order = Array.isArray(data.order) && data.order.length===identity.length && identity.every(i=>data.order.includes(i)) ? data.order : [...identity];
       widths = data.widths && typeof data.widths === 'object' ? data.widths : {};
-      height = bounded(data.height,20,72,40);
+      // Legacy grid heights left unused viewport space. Keep columns/sort, migrate sizing.
+      height = data.version === 2 ? bounded(data.height,20,60,30) : 30;
       sort = [...document.querySelectorAll('[data-sort]')].some(b=>b.dataset.sort===data.sort) ? data.sort : 'name';
       direction = data.direction===-1 ? -1 : 1;
       arrange();return {sort,direction};

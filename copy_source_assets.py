@@ -348,6 +348,8 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/agents/torrenter/sources.py",
     "Tlamatini/agent/agents/torrenter/activity.py",
     "Tlamatini/agent/test_torrenter.py",
+    "Tlamatini/agent/test_torrenter_delivery.py",
+    "Tlamatini/tests_e2e/torrenter_console_windows.py",
     "Tlamatini/tests_e2e/torrenter_books.py",
     "Tlamatini/tests_e2e/torrenter_live.py",
     "Tlamatini/tests_e2e/torrenter_panel.py",

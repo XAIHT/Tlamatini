@@ -9,13 +9,13 @@ import uuid
 
 def record_directory(profile, pool, node):
     if __package__:
-        from .client import known_folder
+        from .client import private_directory
     else:
-        from client import known_folder
+        from client import private_directory
     # Pool folders are disposable. Their identity, scoped by the Django account,
     # identifies the canvas node without accepting a browser-supplied file path.
     key = hashlib.sha256((Path(pool).name + "/" + node).encode()).hexdigest()
-    return known_folder(28) / "XAIHT/Tlamatini/Torrenter/activity" / str(uuid.UUID(profile)) / key
+    return private_directory(profile) / "activity" / key
 
 
 def latest_record(profile, pool, node):
@@ -56,13 +56,22 @@ class ActivityLog:
         self.write("", "TORRENT", details.get("name") or "Waiting for metadata")
         files = details.get("files") or []
         published = details.get("publication", {})
+        if published.get("delivery_state"):
+            self.write("Delivery: " + published["delivery_state"])
+            if published.get("saved_to"):
+                label = "content_generated: " if published.get("delivery_location") == "content_generated" else "Windows Downloads destination: "
+                self.write(label + published["saved_to"])
+            if published.get("downloads_error"):
+                self.write("Windows Downloads: " + published["downloads_error"])
+            if published.get("delivery_error"):
+                self.write("Delivery error: " + published["delivery_error"])
         verified = {f["id"]: f for f in published.get("files", [])}
         self.write("FILES", f"Files in metadata: {len(files)}")
         for item in files:
             state = ("selected" if item["selected"] else "excluded") if "selected" in item else "available for selection"
             self.write(f'[{item["id"]}] {item["path"]}', f'    {item["size"]:,} bytes · {state}')
             verified_file = verified.get(item["id"])
-            if verified_file and published.get("output_root"):
+            if verified_file and published.get("output_root") and published.get("verified"):
                 self.write("    Saved file: " + str(Path(published["output_root"]) / verified_file["path"]),
                            "    SHA-256: " + verified_file["sha256"])
         if details.get("magnet"):
@@ -71,6 +80,9 @@ class ActivityLog:
         self.write("")
 
     def publication(self, manifest):
+        if not manifest.get("verified"):
+            self.write("", "OUTPUT NOT YET SAVED", manifest.get("delivery_error") or "Waiting for verified delivery.")
+            return
         self.write("", "VERIFIED OUTPUT")
         for item in manifest["files"]:
             self.write(str(Path(manifest["output_root"]) / item["path"]),
@@ -104,7 +116,7 @@ class ActivityLog:
 
     def receipt(self, result):
         self.write("", "RESULT", "Status: " + str(result["status"]))
-        for key in ("job_id", "operation_id", "inspection_id", "operation_key", "phase", "message"):
+        for key in ("job_id", "operation_id", "inspection_id", "operation_key", "phase", "lookup_state", "message"):
             if key in result:
                 self.write(f"{key}: {result[key]}")
         self.write("Finished (UTC): " + self.now())

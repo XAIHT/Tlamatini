@@ -16,6 +16,40 @@ workspace protocol or provide a coordinated service update.
 
 The server maps each Django account to a stable Jobs profile. The authenticated Windows control pipe issues the server an account-scoped credential. The browser uses its existing Django session and CSRF token. Each edition has its own session cookie.
 
+## Files in Windows Downloads
+
+The updated Jobs service publishes a hash-verified copy to the Windows operator's
+actual Downloads folder under `Torrenter/<account UUID>/<job ID>/`. The account
+heading identifies the signed-in Tlamatini user; the location above the queue and
+**Verified output** show the destination. Windows folder redirection is respected.
+The private service copy remains available for resume and recheck.
+
+The ordinary local controller prepares only that account's output directory and
+grants the Jobs service write access there. Neither edition needs administrator
+rights for routine delivery. The private journal remains protected. An existing
+completed job is copied on reconnect after the service update, without downloading
+it again. Copies survive service shutdown, browser closure and record removal.
+Explicit **Erase files** approval lists both the private and delivered copies.
+
+`verified=true` in a delivered manifest means the copy was checked and published.
+If Windows refuses Downloads, Jobs tries this edition’s
+`content_generated/Torrenter/<account>/<job>/`. The workspace and agent log show
+the actual destination. If both locations fail, the completion wait reports the
+error and the private verified original remains available. A changed or missing user
+copy is reported rather than silently overwritten or recreated. An older Jobs
+version produces **Service update required**, not a claim that a private service
+file was saved to Downloads.
+
+The workspace fills the browser viewport and keeps its footer at the bottom. The
+queue receives the unused height; selecting a transfer opens the details pane.
+**Preferences → Details pane height** adjusts that pane. Scrolling is retained
+where the content actually exceeds the available pane or viewport.
+
+Native credential calls are internal IPC and do not allocate console windows.
+Development verification still runs in a visible foreground console and headed
+Chrome. Full Tlamatini executables must be rebuilt to deliver frozen Python
+changes; updating Jobs alone does not replace either Tlamatini executable.
+
 ## Start a transfer
 
 Open **Panels → Torrenter Sources**. Choose a `.torrent` file or paste a magnet and click **Inspect metadata**. Copy the inspection ID to chat. You can also paste a magnet into a regular chat request. Tlamatini replaces it with a short-lived encrypted source reference before writing chat history or sending it to the model.
@@ -61,10 +95,16 @@ A search result passes its complete magnet, including trackers, as a private sou
 
 ## Repeat the development checks
 
+Source references and activity logs belong in the edition’s private
+`TorrenterData` directory. Jobs stages incomplete downloads in its own state
+directory. Do not use Windows user profiles or `%TEMP%` as scratch space.
+The final destination may contain a short-lived sibling file for an atomic write.
+
 From a verified visible foreground PowerShell console, keep the server running in its own visible window. The live check opens headed Chrome, asks for the signed-in development account’s password, uploads a generated torrent, submits it through the real wrapped tool, replays its receipt and independently checks the SHA-256 of the published 13,936-byte fixture. It prints the completed job ID for inspection.
 
 ```powershell
 Set-Location -LiteralPath 'C:\Development\XAIHT\Tlamatini\Tlamatini'
 python manage.py test agent.test_torrenter agent.test_ask_execs_allowlist agent.test_agent_display_names agent.tests.ExecReportCaptureTests
+python tests_e2e/torrenter_console_windows.py
 python tests_e2e/torrenter_live.py --username YOUR_USERNAME --port 18084
 ```

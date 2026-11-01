@@ -7,20 +7,15 @@ import uuid
 from urllib.parse import urlsplit
 
 if __package__:
-    from .client import installation, known_folder
+    from .client import installation, private_directory
     from .contract import ID, TorrentError
 else:
-    from client import installation, known_folder
+    from client import installation, private_directory
     from contract import ID, TorrentError
 
 
 def directory(profile):
-    return (
-        known_folder(28)
-        / "XAIHT/Tlamatini/Torrenter"
-        / installation()
-        / str(uuid.UUID(profile))
-    )
+    return private_directory(profile) / "sources" / installation()
 
 
 def stage(profile, kind, text):

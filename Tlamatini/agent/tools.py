@@ -2128,7 +2128,29 @@ def _maybe_parse_requested_assignments(request_text):
     return _parse_requested_assignments(request_text)
 
 
-def _apply_requested_assignments_to_config(config, request_text):
+def _apply_executer_request(config, request_text):
+    # A shell assignment is script content. Some model calls repeat the same
+    # command in prose and then provide explicit wrapper options in parentheses.
+    text = request_text.strip()
+    command = re.match(
+        r'(?is)^(?:run|execute|ejecuta|ejecutar)\s+(?:(?:this|the|este|el)\s+)?'
+        r'(?:command|script|comando)\b[^:\n=]*:\s*(.+)$', text,
+    )
+    if command:
+        body = command[1]
+        options = re.search(r"""(?is)\s+\((?:use|usa|usar|utiliza)\s+(script\s*=\s*['"].*)\)\s*$""", body)
+        if options:
+            text = options[1]
+        elif re.match(r'(?i)^script\s*=', body):
+            text = body
+        else:
+            return _apply_typed_overrides_to_config(config, {'script': body})
+    elif re.match(r'(?i)^@?set\s+"?[A-Za-z_][A-Za-z0-9_]*=', text):
+        return _apply_typed_overrides_to_config(config, {'script': text})
+    return _apply_requested_assignments_to_config(config, text, aliases={'timeout': 'command_timeout_seconds'})
+
+
+def _apply_requested_assignments_to_config(config, request_text, *, aliases=None):
     parse_result, parse_error = _maybe_parse_requested_assignments(request_text)
     if parse_error:
         return None, parse_error, []
@@ -2144,6 +2166,8 @@ def _apply_requested_assignments_to_config(config, request_text):
     if all_paths:
         for assignment in parse_result.get('assignments', []):
             requested_key = assignment['requested_key']
+            if aliases:
+                requested_key = aliases.get(requested_key.lower(), requested_key)
             resolution = _resolve_config_path(requested_key, all_paths, leaf_paths)
             if resolution.get('ignored'):
                 ignored_params.append(requested_key)
@@ -3072,6 +3096,8 @@ def _launch_wrapped_chat_agent(spec, request, *, auto_diagnose=True, config_over
             runtime_config,
             config_overrides,
         )
+    elif spec.template_dir == "executer":
+        runtime_config, assignment_error, assignment_notes = _apply_executer_request(runtime_config, str(request))
     else:
         runtime_config, assignment_error, assignment_notes = _apply_requested_assignments_to_config(
             runtime_config,

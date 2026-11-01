@@ -106,6 +106,13 @@ ROOT_SOURCES = {
     # Terminater: the shipped self-knowledge and FlowCreator reference point at this contract.
     "docs/terminater.md": "docs/terminater.md",
     "docs/torrenter.md": "docs/torrenter.md",
+    # ACP pools and wrapped chat launchers use the loose agent tree. Pin its
+    # transport and completion logic in the package/update integrity manifest
+    # as well as in the frozen interpreter's hidden imports.
+    **{
+        "Tlamatini/agent/agents/torrenter/" + name: "agents/torrenter/" + name
+        for name in ("client.py", "contract.py", "sources.py", "activity.py", "torrenter.py")
+    },
     "Tlamatini/agent/templates/agent/torrenter_sources.html": "_internal/agent/templates/agent/torrenter_sources.html",
     "docs/examples/prompting-kickoff.fpmt": "docs/examples/prompting-kickoff.fpmt",
     "Tlamatini/agent/agents/model_settings.py": "agents/model_settings.py",
