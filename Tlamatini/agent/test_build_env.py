@@ -64,6 +64,8 @@ class ReRunTests(unittest.TestCase):
         with patch.dict(build_env.os.environ, {build_env.INSIDE_VAR: ""}), \
                 patch.object(build_env, "inside_sealed_env", return_value=False), \
                 patch.object(build_env, "ensure_sealed_env", return_value=python), \
+                patch.object(build_env, "environment_lock"), \
+                patch.object(build_env, "healthy", return_value=True), \
                 patch.object(build_env.subprocess, "run") as run:
             run.return_value.returncode = 7
             with self.assertRaises(SystemExit) as stopped:

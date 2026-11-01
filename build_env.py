@@ -24,7 +24,11 @@ inside ONE dedicated virtual environment:
   editing requirements.txt builds a fresh one, and an unchanged one is reused
   in seconds;
 * it is published only after it installed AND imported cleanly - a half-made
-  environment is never used.
+  environment is never used;
+* environments for different requirement fingerprints coexist. Creating the
+  Spanish environment must never delete the Python running an English build;
+* preparation and the complete build hold an OS lock for their environment.
+  Another process waits instead of clearing an environment in use.
 
 If the sealed environment cannot be made (for instance, no internet the very
 first time), the build does NOT stop: it uses the newest sealed environment
@@ -35,13 +39,16 @@ Stdlib only; nothing here imports Tlamatini.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import datetime
+import errno
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -54,6 +61,7 @@ MARKER_NAME = "tlamatini-build-env.json"
 #: Imports that prove the environment can freeze Tlamatini.
 HEALTH_IMPORTS = ("PyInstaller", "django", "numpy")
 PIP_ATTEMPTS = 3
+ENV_LOCK_TIMEOUT_SECONDS = 3600
 
 #: Variables that would let the machine's own Python leak back into the build.
 _LEAKY_VARS = (
@@ -123,11 +131,65 @@ def _run(command, env, timeout=None) -> subprocess.CompletedProcess:
     return subprocess.run([str(part) for part in command], env=env, timeout=timeout)
 
 
+@contextmanager
+def environment_lock(env_dir: Path, timeout: float = ENV_LOCK_TIMEOUT_SECONDS):
+    """Lease this cache entry across processes; the OS releases it on a crash.
+
+    Keep the lock outside the environment that create() may need to repair.
+    Never unlink lock files: another process may already hold the same inode.
+    Nested build scripts inherit INSIDE_VAR and run under their parent's lease.
+    """
+    env_dir = Path(env_dir).resolve()
+    lock_dir = env_dir.parent / ".locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = lock_dir / (env_dir.name + ".lock")
+    with lock_path.open("a+b") as handle:
+        handle.seek(0, os.SEEK_END)
+        if handle.tell() == 0:
+            handle.write(b"0")
+            handle.flush()
+        deadline = time.monotonic() + timeout
+        next_notice = 0.0
+        acquired = False
+        try:
+            while not acquired:
+                handle.seek(0)
+                try:
+                    if os.name == "nt":
+                        import msvcrt
+                        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    acquired = True
+                except OSError as exc:
+                    if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                        raise
+                    now = time.monotonic()
+                    if now >= deadline:
+                        raise TimeoutError(f"Build Python is still in use: {env_dir}") from exc
+                    if now >= next_notice:
+                        say(f"waiting for another build using {env_dir}")
+                        next_notice = now + 10
+                    time.sleep(min(0.2, max(0, deadline - now)))
+            yield
+        finally:
+            if acquired:
+                handle.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def healthy(env_dir: Path) -> bool:
     python = env_python_in(env_dir)
-    if not python.is_file() or not (Path(env_dir) / MARKER_NAME).is_file():
+    if (not python.is_file() or not (Path(env_dir) / "pyvenv.cfg").is_file()
+            or not (Path(env_dir) / MARKER_NAME).is_file()):
         return False
-    probe = "import " + ", ".join(HEALTH_IMPORTS)
+    probe = "import sys; assert sys.prefix != sys.base_prefix; import " + ", ".join(HEALTH_IMPORTS)
     try:
         result = subprocess.run(
             [str(python), "-c", probe], env=sealed_environ(python),
@@ -152,11 +214,13 @@ def _remove(path: Path) -> None:
 
 
 def create(env_dir: Path, requirements: Path = REQUIREMENTS) -> Path:
-    """Make the environment from scratch; publish it only when it imports cleanly."""
+    """Prepare under environment_lock(); publish only after imports succeed."""
     env_dir = Path(env_dir)
     marker = env_dir / MARKER_NAME
     if env_dir.exists():
         _remove(env_dir)
+        if env_dir.exists():
+            raise RuntimeError(f"Cannot repair build Python while files remain locked: {env_dir}")
     env_dir.parent.mkdir(parents=True, exist_ok=True)
     plain = dict(os.environ)
     for name in _LEAKY_VARS:
@@ -203,32 +267,25 @@ def _previous_healthy(exclude: Path, root: Path | None = None) -> Path | None:
     return None
 
 
-def _forget_old(keep: Path) -> None:
-    root = keep.parent
-    tag = keep.name.split("-", 1)[0] + "-"
-    for path in root.iterdir():
-        if path.is_dir() and path != keep and path.name.startswith(tag):
-            _remove(path)  # best effort: a locked old one is simply left behind
-
-
 def ensure_sealed_env(requirements: Path = REQUIREMENTS) -> Path | None:
-    """The sealed Python to build with, or None when there is none at all."""
+    """Prepare one fingerprint without removing any other edition's cache."""
     env_dir = env_dir_for(fingerprint(requirements))
-    if healthy(env_dir):
-        say(f"reusing the sealed build Python: {env_dir}")
-        return env_python_in(env_dir)
-    try:
-        python = create(env_dir, requirements)
-    except Exception as exc:
-        say(f"WARNING: could not make the sealed build Python: {exc}")
-        older = _previous_healthy(env_dir)
-        if older is not None:
-            say(f"WARNING: building with the PREVIOUS sealed Python {older} "
-                "(requirements.txt changed since it was made)")
-            return env_python_in(older)
-        return None
-    _forget_old(env_dir)
-    return python
+    with environment_lock(env_dir):
+        # Recheck only after acquiring the lease: another builder may have just
+        # finished preparing it, or may still be using its Python and packages.
+        if healthy(env_dir):
+            say(f"reusing the sealed build Python: {env_dir}")
+            return env_python_in(env_dir)
+        try:
+            return create(env_dir, requirements)
+        except Exception as exc:
+            say(f"WARNING: could not make the sealed build Python: {exc}")
+            older = _previous_healthy(env_dir)
+            if older is not None:
+                say(f"WARNING: building with the PREVIOUS sealed Python {older} "
+                    "(requirements.txt changed since it was made)")
+                return env_python_in(older)
+            return None
 
 
 def run_in_sealed_env(script: str, argv=None) -> None:
@@ -242,6 +299,8 @@ def run_in_sealed_env(script: str, argv=None) -> None:
     python = None
     try:
         python = ensure_sealed_env()
+    except TimeoutError as exc:
+        raise SystemExit(str(exc)) from exc
     except Exception as exc:
         say(f"WARNING: sealed build Python unavailable: {exc}")
     if python is None:
@@ -254,8 +313,13 @@ def run_in_sealed_env(script: str, argv=None) -> None:
     args = list(sys.argv[1:] if argv is None else argv)
     say(f"re-running {Path(script).name} inside the sealed build Python: {python}")
     try:
-        code = subprocess.run([str(python), "-s", str(Path(script).resolve()), *args],
-                              env=sealed_environ(python)).returncode
+        with environment_lock(python.parent.parent):
+            # Cover the gap between preparation and launch. The lease stays
+            # alive until the build and its nested uninstaller have finished.
+            if not healthy(python.parent.parent):
+                raise SystemExit(f"Build Python became unavailable before launch: {python}")
+            code = subprocess.run([str(python), "-s", str(Path(script).resolve()), *args],
+                                  env=sealed_environ(python)).returncode
     except KeyboardInterrupt:
         code = 130
     sys.exit(code)
