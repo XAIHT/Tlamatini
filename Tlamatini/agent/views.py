@@ -31,6 +31,7 @@ import queue as _queue
 import time
 import re
 
+from .torrenter_bridge import flow_env as torrenter_flow_env, protect_pool
 from .chat_agent_runtime import CHAT_RUNTIME_ROOT_NAME
 from .config_loader import load_config, save_config_updates
 from .agents.model_settings import FIELDS as MODEL_FIELDS, values_for_dialog, validate_values
@@ -594,7 +595,6 @@ def _find_path(folder_name) -> Optional[str]:
     agent_dir_path = os.path.join(module_dir, 'agents', folder_name)
     return agent_dir_path
 
-from .torrenter_bridge import flow_env as torrenter_flow_env, protect_pool
 
 
 def get_pool_path(request):
@@ -10571,8 +10571,8 @@ def version_view(request):
     Response shape::
 
         {
-          "version": "1.91.1",                       # public SemVer (clean, no suffix)
-          "build":   "1.91.1",                       # build descriptor (same as version)
+          "version": "1.92.3",                       # public SemVer (clean, no suffix)
+          "build":   "1.92.3",                       # build descriptor (same as version)
           "commit":  "abc1234",
           "date":    "2026-05-15T18:42:11Z",
           "source":  "generated" | "git" | "unknown"

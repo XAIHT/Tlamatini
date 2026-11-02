@@ -1,6 +1,6 @@
 # PDF canvas and document context
 
-> Current release: **[v1.91.1](changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
 
 
 **Views → Canvas** keeps this document and its viewer alive while hiding the pane. Opening a document shows the pane again. **Views → Reset layout** restores both panes and their sizes without clearing the document or context. See [v1.85.0](changes/2026-10-16-v1.85.0.md).

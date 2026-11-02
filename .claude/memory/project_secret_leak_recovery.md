@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 The user occasionally commits real secrets because `config.json` and several agent `config.yaml` files (emailer/recmailer/telegramer/telegramrx/teletlamatini, plus acpx codex/gemini env keys) carry **injected live keys** during local dev. `regen_secrets.py` must be run to swap them back to push-able placeholders BEFORE committing — when skipped, the commit ships `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `OPENAI_API_KEY` etc. in cleartext.

@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Windows flow files — 2026-10-04 source implementation
 
-> Current release: **[v1.91.1](2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](2026-11-01-v1.92.3.md)**.
 
 
 The existing format is .flw (agent flows), not .fmt. Prompting flows use .fpmt.

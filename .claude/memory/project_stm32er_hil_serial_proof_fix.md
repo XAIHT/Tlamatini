@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 2026-05-27: Live frozen run (C:\Tlamatini) of catalog prompt **#65 "STM32 HIL OBSERVATORY"** (the last STM32er demo, seeded by migration 0103) thrashed: the LLM made **21 chat_agent_stm32er calls**, 8 of them serial retries (serial_session ×6 with escalating 5/6/8/10/12s timeouts + injected `data='\n'`, plus serial_connect/serial_read + a stray reset), every read returning `bytes=0`.

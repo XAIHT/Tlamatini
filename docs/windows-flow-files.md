@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Windows flow files
 
-> Current release: **[v1.91.1](changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
 
 
 Implemented 2026-10-04; shipped in `v1.76.0`. The established agent-flow extension is **.flw**;

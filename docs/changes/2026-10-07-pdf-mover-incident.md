@@ -1,6 +1,6 @@
 # 2026-10-07: installed PDF delivery and Desktop deletion incident
 
-> Current release: **[v1.91.1](2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](2026-11-01-v1.92.3.md)**.
 
 
 ## Evidence

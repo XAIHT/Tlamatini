@@ -12,7 +12,7 @@ originSessionId: 9c2429cb-a648-4a50-bb58-be921153b678
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 User asked for a thorough re-audit of CLAUDE.md and README.md vs actual code state on 2026-05-08, after a sequence of surgical changes landed across the last 2 weeks. Findings + fixes:

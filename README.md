@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/tree/v1.91.1"><img src="https://img.shields.io/badge/SOURCE-v1.91.1-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.91.1" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/tree/v1.92.3"><img src="https://img.shields.io/badge/SOURCE-v1.92.3-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.92.3" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/OPEN%20SOURCE-MIT-E9C46A?style=for-the-badge&labelColor=101827" alt="MIT open source" /></a>
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-818CF8?style=for-the-badge&labelColor=101827&logo=discord&logoColor=white" alt="Join the community on Discord" /></a>
@@ -31,7 +31,7 @@
   <a href="https://xaiht.org">Website</a> ·
   <a href="BookOfTlamatini.md">Full guide</a> ·
   <a href="Tlamatini-Architecture.pdf">Architecture atlas</a> ·
-  <a href="docs/changes/2026-10-27-v1.91.1.md">What's new</a>
+  <a href="docs/changes/2026-11-01-v1.92.3.md">What's new</a>
 </p>
 
 > [!IMPORTANT]
@@ -106,9 +106,7 @@ teaching segment, choose what she says and when, and let speech finish before
 typing. **Standard** and **Guided learning** presets give you a starting point;
 Preview lets you try the draft before saving. [Explore the settings →](docs/interaction-settings.md)
 
-**New in [v1.91.1](docs/changes/2026-10-27-v1.91.1.md):** Prompt Flow runs keep their own
-history, YES/NO Decisions accept an answer that opens with the verdict, and an agent
-called by its short name still runs. v1.91.1 is the Latest published release.
+**New in the [1.92 series](docs/changes/2026-11-01-v1.92.3.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
 
 **Since [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
 dialog controls the real editor and terminal behavior across chat and both control
@@ -142,7 +140,7 @@ Direct dictation uses the microphone on the **computer running Tlamatini**. It k
 Both formats open in their own editors. Drop a `.flw` or `.fpmt` file onto a supported page, or use the registered Windows file association. [Prompt Flow guide →](docs/prompting-flow-designer.md) · [Windows flow files →](docs/windows-flow-files.md)
 
 **Torrenter** connects chat and the Agentic Control Panel to persistent downloads in Tlachihuani Jobs.
-Open **Panels → Torrenter Sources** to review a torrent file or magnet. Use the same enrolled account
+Open **Panels → Torrenter Sources** to review a torrent file or magnet. Use the same signed-in account
 to select files, control jobs and inspect verified output. [Torrenter setup and actions](docs/torrenter.md).
 
 ## One workspace, many ways to build
@@ -279,7 +277,7 @@ Use **Step-by-Step** when you want a guided pace. Open **About ▸ Usage** to ke
 <summary><b>Port conflicts, updates and everyday file handling</b></summary>
 
 - **Port 8000 unavailable?** Set `django_port` to an available port in `config.json`, then restart. The file sits beside `Tlamatini.exe` in an installation, or at `Tlamatini/agent/config.json` in a source checkout. A source command-line port overrides the setting.
-- **Updating?** Use **About ▸ Check for updates**. See the [carriage guide](docs/self-management-carriage.md) for preserved state and release behavior. The separate **`data.keys` vault is not currently preserved by in-app update**; retain a secure backup if you use it.
+- **Updating?** Use **About ▸ Check for updates**. See the [carriage guide](docs/self-management-carriage.md) for preserved state and release behavior. Updates preserve an existing `data.keys` vault.
 - **Dropping files?** Text, code, Markdown and PDFs open in the chat canvas; images attach to chat; `.flw` and `.fpmt` open in their designers. An MCP JSON configuration asks for confirmation before import.
 - **Need more room?** Use **Views**, drag the dividers, or reset the layout. Refresh rereads an accessible source and asks before discarding unsaved changes; it does not merge edits.
 
@@ -293,7 +291,7 @@ Pick a doorway and go as deep as your project needs.
 | :--- | :--- |
 | [Book of Tlamatini](BookOfTlamatini.md) | The full guide, architecture, workflows and development history. |
 | [Every agent](agents_descriptions.md) | The specialist catalog and each agent's role. |
-| [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md) | The current patch release: what it fixes and where. |
+| [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md) | The current patch release: what it fixes and where. |
 | [v1.91.0 release record](docs/changes/2026-10-23-v1.91.0.md) | Recent developments, source inventory and dated verification evidence. |
 | [Canvas editing](docs/canvas-editing.md) · [Interactor](docs/interactor.md) · [Terminater](docs/terminater.md) | Edit, learn and run with direct control. |
 | [Live Editor & Terminater settings](docs/interaction-settings.md) | Typing, teaching, narration, terminal behavior, presets and appearance. |

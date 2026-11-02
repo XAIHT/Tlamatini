@@ -2996,7 +2996,7 @@ Answer:
 # ---------------------------------------------------------------------------
 # Tool-surface token budgeting (Angela, 2026-06-19)
 # ---------------------------------------------------------------------------
-# Binding the FULL enabled surface (86 agents + active External-MCP tools) can
+# Binding the FULL enabled surface (all enabled agents + active External-MCP tools) can
 # overflow the model context window. Observed live: "prompt too long 273284 >
 # 262144", which crashed Multi-Turn into a basic-LLM fallback ("tool backend
 # unavailable"). Instead of blindly binding everything OR starving the operator
@@ -3926,7 +3926,7 @@ class CapabilityAwareToolAgentExecutor:
         # === MANDATE (Angela, 2026-06-16, refined 2026-06-19) ===
         # Multi-Turn must let Tlamatini SEE the tools she needs — binding a tiny
         # planner subset once starved the operator ("no file/shell tool bound").
-        # But blindly binding the FULL surface (86 agents + active External-MCP
+        # But blindly binding the FULL surface (all enabled agents + active External-MCP
         # tools) overflowed the model window live ("prompt too long 273284 >
         # 262144") and crashed the turn into a basic-LLM fallback. So we
         # RANK-AND-BUDGET (_budget_select_tools, inside fit_request): when the

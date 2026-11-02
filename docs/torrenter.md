@@ -63,6 +63,8 @@ Example chat requests, in order:
 
 A resolving magnet may need peers before any files are available. Inspect again using the same inspection ID. A published manifest with `verified=true` identifies completed output. A shared piece can be larger than the selected file. If the service reports excess piece bytes, Torrenter preserves that count in `engine_verified_bytes` and reports selected verified bytes only after publication. A zero rate, an accepted operation and a finished chat agent each describe different events.
 
+When all four metadata lookup slots are occupied, Jobs can return `lookup_state: queued`. Keep polling the same inspection ID. File selection becomes available once the metadata resolves. The inspection queue is separate from a verified file delivery.
+
 ## Actions
 
 On the Agentic Control Panel, **Wait for complete download** defaults to **No**. The node returns its receipt and starts its connected agents as soon as Jobs accepts the transfer. Choose **Yes** to keep it running until Jobs publishes a verified manifest for the selected files. Pausing preserves the wait. A stopped, cancelled or failed transfer ends the wait with an error. The YAML setting is `wait_for_completion: true` or `false`.

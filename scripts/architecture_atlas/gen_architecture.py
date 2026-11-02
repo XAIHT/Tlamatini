@@ -893,6 +893,8 @@ def assign(p):
         return "proc"
     if p.startswith("Tlamatini/tlamatini/"):
         return "django"
+    if p.startswith(A + "torrenter_workspace/"):
+        return "torrent_ui"
     if p.startswith(A + "templates/"):
         return "templates"
     if p.startswith(A + "management/"):
@@ -1008,6 +1010,7 @@ CHAPTERS = collections.OrderedDict([
 ])
 
 META = {
+    "torrent_ui": ("front", "Torrenter workspace", "Signed-in queue, inspection and verified output views", "presentation"),
     "vendor_canvas-editor": ("vendor", "vendor/canvas-editor - offline CodeMirror", "editable text and tutoring extension; manifest and licenses carried locally", "vendor"),
     "interactor": ("core", "agent/interactor/ - live editor module", "authenticated tab bridge, fresh buffer reads, typed teaching segments and learner handoffs", "intelligence"),
     "interactor_front": ("front", "static/agent/interactor/ - tutor controls", "browser bridge, local field completion and learner-first interruption", "presentation"),
@@ -1122,7 +1125,7 @@ for _k, _c in CLUSTERS.items():
 ORDER = {
     "core": ["proc", "django", "transport", "templates", "mgmt", "intel", "interactor", "rag", "chains", "services", "imaging", "opus", "monitors", "docgen", "agent_other"],
     "integ": ["integ", "acpx", "skills", "skillspkg", "platform", "persist", "jdcli", "images", "selfsrc", "fixtures"],
-    "front": ["interactor_front", "js_chat", "js_acp", "js_pfp", "js_shared", "js_other", "css_chat", "css_acp", "css_pfp", "css_shared", "css_other", "static_media"],
+    "front": ["torrent_ui", "interactor_front", "js_chat", "js_acp", "js_pfp", "js_shared", "js_other", "css_chat", "css_acp", "css_pfp", "css_shared", "css_other", "static_media"],
     "verify": ["unit", "tests_root", "auxtests", "e2e", "roottests", "scripts", "harness_claude", "harness_gemini"],
     "build": ["build", "install", "mcpserver", "security", "ci", "demo", "rootmedia"],
     "know": ["rootdocs", "docs", "docs_claude", "docs_changes", "guides", "atlas", "claude_cfg", "memory", "gemini_skills", "codex_skills"],
@@ -1983,7 +1986,7 @@ def sheet_build():
             ("h4", "Secrets", ["[[regen_secrets.py]] toggles placeholders and keys from the gitignored `data.keys`; [[uncommit-keys.bat]]; [[private_targets.example.json]]"])]),
         ("What ships and what survives", "Lpersistence", [
             ("w1", "Install layout", ["`Tlamatini.exe` + `_internal/` (frozen Django app and collected statics), carried `python/`, `jre/` and `git/`, the `agents/` templates, `DB/`, `Temp/`, `Templates/`"]),
-            ("w2", "Kept by self-update", ["`config.json`, `DB`, `Temp`, `Templates`, `application(s)`, the `*_generated` and `context_files` folders and `Uninstaller.exe`; uninstall keeps what [[preserved_user_state.json]] lists"]),
+            ("w2", "Kept by self-update", ["`config.json`, `DB`, `Temp`, `Templates`, `application(s)`, the `*_generated` and `context_files` folders and `data.keys`; the package delivers its verified uninstaller"]),
             ("w3", "Self-modify snapshot", ["`TlamatiniSourceCode/` with a manifest and rebuild instructions; secrets redacted and heavy media omitted by [[copy_source_assets.py]]"]),
             ("w4", "Inclusion sweeps", ["[[.claude/skills/tlamatini-self-update-inclusion/scripts/sweep_self_update.py|sweep_self_update.py]] and [[.claude/skills/tlamatini-self-modify-inclusion/scripts/sweep_self_modify.py|sweep_self_modify.py]] prove both pipelines carry every new asset"])], False),
     ]
@@ -2135,7 +2138,7 @@ def sheet_dsm():
 
 
 def sheet_live_editor():
-    sh = new_sheet("Live canvas editor and Interactor - v1.91.1",
+    sh = new_sheet("Live canvas editor and Interactor",
                    "Editable source, native persistence and tutoring share one document authority. Interactor is a module/tool, not a workflow agent.",
                    "presentation")
     o = sh.body
@@ -2170,15 +2173,45 @@ def sheet_live_editor():
             "Migration 0218 registers the Tool and catalog example, not an Agent. tool_gate_table drives binding, Compact and costs.",
             "Ask Execs gates new/save. New unnamed-path work uses a unique Temp/interactor directory; manual files need user-granted write access.",
             "Password input is not command ownership; an email field or DONE reply does not authorize outbound notification.",
-            "Current tag and source 9915938a (v1.91.1). Source checks do not certify a newly built installed package."]),
+            "Live Editor accepts 40-250 WPM and Terminater accepts 20-250 WPM. Linked speeds use 40-250."]),
     ]
     stack(o, 12, TOP, 193, left, size=12.0)
     stack(o, 215, TOP, 193, right, size=12.0)
     return sh
 
 
+def sheet_torrenter():
+    sh = new_sheet('Torrenter and release delivery',
+                   'v1.92.3 and the subsequent queue update', "integration")
+    box(sh.body, 12, TOP, 193, "Ltransport", "1. Sign in and choose the account", [
+        "Chat, the Agentic Control Panel and XT open the same account queue. Migration 0221 registers Torrenter.",
+        "Django authenticates the browser. The controller obtains a scoped credential from Tlachihuani Jobs.",
+    ], h=72, size=15, tsize=14)
+    box(sh.body, 215, TOP, 193, "Lintegration", "2. Inspect the source and select files", [
+        "Inspect the magnet or torrent. Keep its inspection ID until the metadata and file IDs are ready.",
+        "After the tag, a fifth magnet can queue behind four active metadata lookups. Poll the same ID.",
+    ], h=72, size=15, tsize=14)
+    box(sh.body, 12, TOP - 82, 193, "Lintelligence", "3. Submit and follow the job", [
+        "Submit selected IDs and the metadata revision. Reuse the operation key on an uncertain retry.",
+        "An ACP node can continue on admission or wait for verified publication. Pausing preserves the wait.",
+    ], h=72, size=15, tsize=14)
+    box(sh.body, 215, TOP - 82, 193, "Lpersistence", "4. Verify the delivered copy", [
+        "Read the path and SHA-256 from the published manifest. The destination is Windows Downloads or the edition’s content_generated folder.",
+        "Private references and activity belong in TorrenterData. Erasing files requires the matching preview approval in XT.",
+    ], h=72, size=15, tsize=14)
+    box(sh.body, 12, TOP - 164, 193, "Lbuild", "Distribute an update", [
+        "The runtime receipt identifies Uninstaller.exe. The swapper installs the verified replacement and preserves an existing data.keys.",
+        "Ship the workspace HTML, JavaScript and CSS with the controller. Include them in the self-modify snapshot.",
+    ], h=72, size=15, tsize=14)
+    box(sh.body, 215, TOP - 164, 193, "Lplatform", "Build and run on Windows", [
+        "Version 1.92.3 isolates build environments by requirements fingerprint. The OS lock covers preparation and use.",
+        "After the tag, Executer preserves shell assignments such as PLAYWRIGHT_BROWSERS_PATH and applies the configured command timeout.",
+    ], h=72, size=15, tsize=14)
+    return sh
+
+
 def sheet_interaction_settings():
-    sh = new_sheet("Live Editor and Terminater configuration - v1.91.1",
+    sh = new_sheet("Live Editor and Terminater configuration",
                    "One account schema controls real actions; local appearance and a shared speech queue complete the user experience.",
                    "presentation")
     o = sh.body
@@ -2405,6 +2438,7 @@ autofit(sheet_topology, BOTTOM + 1.5)
 sheet_lifecycle()
 sheet_live_editor()
 sheet_interaction_settings()
+sheet_torrenter()
 autofit(sheet_intelligence, BOTTOM + 1.5)
 sheet_agents()
 autofit(sheet_integration, BOTTOM + 4.5)

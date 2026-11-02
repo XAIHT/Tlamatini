@@ -4,10 +4,19 @@
 
 def editor_sections(section):
     return [
+        section("torrent_workspace", "TORRENTER", "From a magnet to verified files",
+                "Chat, the Agentic Control Panel and XT share the account’s Jobs queue.",
+                body=["Inspect the metadata and select file IDs. A job receipt lets you reconnect. Enable Wait for complete download in a flow when downstream nodes need the files.",
+                      "After the tag (74e06a6c), a fifth magnet can wait for a metadata slot. Reuse its inspection ID. The verified manifest identifies the delivered copy in Downloads or the edition’s fallback folder."], deck_points=[
+                    ('Inspect', 'Keep the inspection ID while queued.'),
+                    ('Select', 'Choose the file IDs from the resolved metadata.'),
+                    ('Follow', 'Reconnect with the Jobs job ID.'),
+                    ('Verify', 'Read the delivered path and SHA-256 from the manifest.'),
+                ]),
         section("interaction_settings", "CONFIGURATION · v1.91.0", "Choose how she types and teaches",
                 "Config → Live Editor & Terminater opens one shared dialog on the chat and control panels.",
                 body=[
-                    "Live Editor controls 40–160 WPM, a 0–3 second pause after each segment, teaching detail, "
+                    "Live Editor controls 40–250 WPM, a 0–3 second pause after each segment, teaching detail, "
                     "field suggestions, ghost text versus choices, and following the typed cursor. Manual "
                     "scrolling suspends following for that segment. Font, line numbers and wrapping affect "
                     "the real editor. Teaching detail instructs the model; exact wording still varies.",
@@ -15,7 +24,7 @@ def editor_sections(section):
                     "sample without editing files or executing commands. Save applies behavior to the next action. "
                     "Cancel, Escape and Close discard the draft. Stop, mute and current-tab editor access are immediate.",
                 ], points=[
-                    ("Pace", "Separate speeds or a linked 40–160 WPM setting; no instant typing."),
+                    ("Pace", "Separate speeds or a linked 40–250 WPM setting; no instant typing."),
                     ("Teaching", "Brief, balanced or detailed guidance with optional local suggestions."),
                     ("Appearance", "Editor and terminal presentation saved per account/browser."),
                     ("Account", "Behavior persists on the server; concurrent saves detect revision conflicts."),
@@ -23,7 +32,7 @@ def editor_sections(section):
         section("terminal_settings", "TERMINATER SETTINGS", "A command follows the learner's controls",
                 "One TerminalHub resolves account preferences across chat, ACP, Prompt Flow and browser actions.",
                 body=[
-                    "Choose 20–160 WPM, an available default shell, advisor for new terminals, a command wait "
+                    "Choose 20–250 WPM, an available default shell, advisor for new terminals, a command wait "
                     "window, a no-output threshold and a user handoff wait. Shell and advisor defaults affect "
                     "new terminals. A wait timeout does not kill the process. Layout, font and cursor changes "
                     "apply to existing views; resized prompts retain honest screen-based read-back.",
@@ -32,7 +41,7 @@ def editor_sections(section):
                     "Older flow files retain explicit values. Manual Enter and narration remain account choices, "
                     "and typed chat preserves a shell explicitly requested by the task.",
                 ], points=[
-                    ("Type", "One key at a time, 20–160 WPM; no paste or instant mode."),
+                    ("Type", "One key at a time, 20–250 WPM; no paste or instant mode."),
                     ("Submit", "Task-controlled execution or user-only Enter enforced by the hub."),
                     ("Wait", "Command, no-output and handoff windows have separate meanings."),
                     ("Inherit", "use_my_defaults applies account preferences without rewriting older flows."),
@@ -173,7 +182,16 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
-        section("release1911", "CURRENT VERSION · v1.91.1", "Prompt Flow fixes and short tool names",
+        section("release1923", "CURRENT VERSION · v1.92.3", "What changed in 1.92",
+                "Tag b99ea506 · November 1, 2026",
+                body=["Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.",
+                      "Builds with different requirement fingerprints coexist. An OS lock protects preparation and the full build. The 1.92.2 update package includes the verified uninstaller and preserves existing data.keys."], deck_points=[
+                    ('Typing', 'Live Editor 40–250 WPM. Terminater 20–250 WPM.'),
+                    ('Downloads', 'Torrenter shares the signed-in Jobs queue across chat, ACP and XT.'),
+                    ('Updates', 'Install the verified uninstaller and preserve the existing vault.'),
+                    ('Builds', 'Lease the environment matching the requirements fingerprint.'),
+                ]),
+        section("release1911", "OCTOBER 2026 · v1.91.1", "Prompt Flow fixes and short tool names",
                 "Tag 9915938a, dated October 27, 2026; published as the Latest release.",
                 body=[
                     "A patch on v1.91.0. Every chain loads the history of its own conversation, so a Prompt "

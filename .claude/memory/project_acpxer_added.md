@@ -12,7 +12,7 @@ originSessionId: 6515ec65-d71d-42cf-bda9-6514184e2998
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 ACPXer is the **visual workflow** counterpart of the 12 LLM-facing ACPX tools (`acp_spawn` / `acp_send_and_wait` / `acp_relay` / `acp_kill` / etc.). One ACPXer node on the ACP canvas = one full ACPX session lifecycle (spawn external coding-agent CLI → dispatch task → drain → harvest last-assistant text → kill → trigger `target_agents`).

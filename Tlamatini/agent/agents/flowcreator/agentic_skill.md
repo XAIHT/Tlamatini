@@ -8,7 +8,7 @@
 -->
 # Tlamatini Flow Creation Skill
 
-> Current release: **[v1.91.1](../../../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 You are an expert flow designer for the Tlamatini platform. Your task is to design an agent flow (a directed graph of connected agents) that accomplishes a user-specified objective.
@@ -1810,7 +1810,7 @@ system_prompt: |
 - **Purpose**: Generate a canvas-loadable `.flw` from a natural-language objective using current installed-agent contracts.
 - **Pool name**: `flowcreator` (singleton, no inputs or outputs); also available through `chat_agent_flowcreator`.
 - **Config**: `prompt`, `flow_filename`, `output_dir`, `llm.host`, `llm.model`, `llm.num_ctx` (65536 requested context), `llm.max_prompt_chars` (180000 character guard), `llm.repair_attempts` (2, range 0–3).
-- Select capabilities from the full installed catalog, then design with global rules plus selected detailed references and schemas. The shipped catalog covers all 86 current agents. Deployment refreshes it from canonical contracts and config schemas without copying local configuration values or credentials. GUI-Manager is not installed.
+- Select capabilities from the full installed catalog, then design with global rules plus selected detailed references and schemas. The shipped catalog covers all 87 current agents. Deployment refreshes it from canonical contracts and config schemas without copying local configuration values or credentials. GUI-Manager is not installed.
 - Validate all generated types/fields/references, Counter/Asker/Forker slots, AND/OR inputs, singleton/system wiring and Parametrizer mappings. Invalid plans receive bounded repair; final failures are reported rather than silently dropping edges. Explicitly wire Ender inputs; never auto-connect every leaf to every Ender.
 - **Outputs**: `flow_creation_script.txt`, `flow_result.json`, `.flw`, and `INI_SECTION_FLOWCREATOR` with `model`, `status`, `flw_path`, `flow_filename`, `agent_count`, `connection_count`, `response_body`. Only publish success after the file was written; errors exit nonzero.
 - Coverage guarantees catalog/reference/config-field availability, not successful execution of every external integration. Context limits depend on the configured provider; the character guard is not an exact tokenizer.
@@ -2093,7 +2093,7 @@ system_prompt: |
 ### 86. Terminater
 - **Purpose**: Raise and drive REAL `cmd.exe` / PowerShell terminals that the USER can watch, interrupt, answer and take over. The visible sibling of Executer: Executer runs a command and returns text; Terminater types it into a terminal shown in Tlamatini's Terminals area (Views ▸ Terminals) and then reads the answer back.
 - **Used for**: Anything the user should SEE or supervise — walk-throughs, demos, Step-by-Step setup, installers or tools that ask questions (`ssh`, a Python REPL, `winget`, `npm init`), CMD beside PowerShell (tiled), and commands that need a parameter or secret only the user can supply (`<<USER:hint>>` hand-over).
-- **Aimed at**: Flows with a person in the loop. Prefer Executer when nobody needs to watch and only the text matters. Tlamatini TYPES every key like a person (default 50 wpm, 20–160), never pastes, so a long command is slow ON PURPOSE — do not split or shorten commands to save time.
+- **Aimed at**: Flows with a person in the loop. Prefer Executer when nobody needs to watch and only the text matters. Tlamatini TYPES every key like a person (default 50 wpm, 20–250), never pastes, so a long command is slow ON PURPOSE — do not split or shorten commands to save time.
 - **Application example**: Starter → Terminater (`action: run`, `kind: powershell`, `text: "Get-ChildItem | Select-Object -First 5 Name"`) → Forker (branch on `{status}` / `{exit_code}`) → Ender. For a hand-over: `text: "ping <<USER:host to ping>> -n 2"` — Tlamatini types `ping `, the user types the host and presses Enter, Tlamatini finishes the line.
 - **Pool name pattern**: `terminater_<n>`
 - **Parametrizer source**: emits `INI_SECTION_TERMINATER` with fields `action`, `status`, `success`, `terminal_id`, `kind`, `title`, `terminal_state`, `command`, `exit_code`, `duration_seconds`, `output_chars`, `truncated`, `hung`, `aborted_by`, `typed`, `user_part`, `user_line`, `user_keys`, `cursor`, `watch_reason`, `wait_reason`, `layout`, `area`, `terminals`, `hub`, `message`, `response_body` (the command's output).
@@ -2103,7 +2103,7 @@ system_prompt: |
   - `action`: "run" (run | open | type | send_key | wait | read | commands | abort | kill | force_kill | kill_all | list | status | focus | rename | layout | clear | watch_user | warn_user | handover); ONE action per run — terminals persist in the hub between runs, so one step can open a terminal, the next type into it and a third close it
   - `terminal`: "" (an id such as "t1", a title, or empty = the active one) / `kind`: "powershell" (cmd | powershell | pwsh) / `title`: "" / `cwd`: ""
   - `text`: "" (what to type; `text_b64` for byte-exact; `<<USER:hint>>` hands the keyboard to the user) / `submit`: true (false = leave the line typed for the user to review) / `secret`: false (the typed or handed-over part is never logged or returned)
-  - `typing_wpm`: 50 (20–160; there is NO instant or paste mode) / `wait`: true / `wait_seconds`: 120 / `hang_seconds`: 45 / `user_wait_seconds`: 300 / `until`: "" (prompt | pattern | idle for wait; idle | submit | key for watch_user) / `pattern`: "" / `idle_seconds`: 2
+  - `typing_wpm`: 50 (20–250; there is NO instant or paste mode) / `wait`: true / `wait_seconds`: 120 / `hang_seconds`: 45 / `user_wait_seconds`: 300 / `until`: "" (prompt | pattern | idle for wait; idle | submit | key for watch_user) / `pattern`: "" / `idle_seconds`: 2
   - `which`: "last" (read: last | a command number | screen | all) / `read_chars`: 20000 / `offset`: 0 / `keys`: "" (send_key, e.g. "ctrl+c", "up up enter") / `message`, `severity` (info | hint | warning | danger), `suggestion`, `hint`: "" (warn_user / handover)
   - `layout`: "" (tabs | tile | tile-h | tile-v | grid) / `area`: "" (dock | full) / `close_after`: false / `load_profile`: true / `advisor`: true (warn about dangerous or mistyped commands)
   - `mode`: "auto" (auto = the hub when reachable, else standalone | hub | standalone) / `hub_url`: "" / `user`: ""
@@ -2119,7 +2119,7 @@ Stage metadata in Torrenter Sources, then use `inspection` and `download` with e
 Reattach with the job ID. Poll `operation` for an admission receipt or `manifest` for verified output.
 Route the `INI_SECTION_TORRENTER` fields `status`, `success`, `phase`, `job_id`, `operation_id`,
 `verified_bytes` and `response_body` to the next node. Stop preserves files. Content erasure requires XT approval.
-Use an enrolled account and keep credentials and private source links outside exported flows.
+Use the signed-in account. Keep credentials and private source links outside exported flows.
 
 ---
 

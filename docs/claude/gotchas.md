@@ -8,12 +8,16 @@
 -->
 # Tlamatini — Gotchas, Build/Lint, Roadmap, Work Style
 
-> Current release: **[v1.91.1](../changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](../changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -374,7 +378,7 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 34. **Tlamatini's fixed chat lines are recognised BY THEIR WORDS, and they are first person since 2026-10-09.** `agent/constants.py` holds every fixed line (*"I'm ready, Angela! …"*, *"I'm working on your request, Angela. …"*), filled by `say(template, display_name(user))`. `agent_page_ui.js`, `agent_page_chat.js`, `avatar.js`, `teletlamatini.py` and the harness markers find them by substrings, so a reworded line silently breaks the busy spinner, the avatar or the Telegram bridge unless its matchers change in the same pass. Keep the old third-person phrases in the matchers, and fill a user-supplied value only AFTER `say()`.
 
-35. **An in-app update keeps the OLD `Uninstaller.exe` (2026-10-09).** The uninstaller is built after `pkg.zip`, the updater extracts only `pkg.zip`, and `Uninstaller.exe` is in `$Preserve`, so a fix to `uninstall.py` (for example the 2026-10-09 Templates keep-list) reaches only fresh installs and reinstalls with the new Installer. The updater that runs is the OLD install's `self_update.py`, which deletes the extracted bundle before the swap — do not assume a change to `self_update.py` reaches the very next update. See `docs/self-management-carriage.md`.
+35. Since v1.92.2, keep the installed uninstaller until the swapper installs the receipt-verified replacement. With no incoming replacement, retain the installed copy. [Update carriage](../self-management-carriage.md).
 
 36. **The `v1.78.0` tag sits ONE commit before the Usage commit (2026-10-10), and its GitHub title says v1.77.0.** The tag points to `0e6fc72d` (Image-Interpreter's comma-separated list); `7460a147` (About ▸ Usage, migration 0213) and `113eddc4` (message-box resize + Usage outage recovery) follow it on `main` — the same shape as `v1.76.0` (item 32). Never move the pushed tag; the published release was built from `main` (its zip matches `113eddc4`). The release TITLE on GitHub still reads "Tlamatini Release v1.77.0 Win11x64": trust the tag and the asset name (`Tlamatini_Release_v1.78.0_Win11x64.zip`), never the title, before calling a version published.
 
@@ -386,7 +390,7 @@ Image/video model failures accumulate in one shared, themed, non-modal fatal-err
 
 40. **Terminater's terminals belong to the Django process and to Windows (2026-10-19, `main`).** One `TerminalHub` per process owns every shell; ConPTY needs Windows 10 1809+; an install that is not Windows reports the feature unavailable instead of failing. The engine is loaded **by path** from the agents tree, so it must stay stdlib-only flat siblings (a package would break the pool copy and the frozen layout); the reapers must keep calling `terminal_hub.live_pids()` (never create the hub from a reaper); the hub token is exported before any pool agent starts. Prompt Flow Panel: the shipped kickoff example holds only the seven prompting operations, and `check_prompt_flow_panel` validates a Terminater step on its own — adding Terminater to the example would also change the palette-count assertions in the older visible scripts. The canvas tooltip text for any agent comes from its **`agents_descriptions.md` row**; a missing row is a visible defect. See [docs/terminater.md](../terminater.md).
 41. **Line endings in this repository are MIXED, and some tools flatten them (2026-10-19).** Many tracked files hold both CRLF and LF-only lines (`CLAUDE.md` 861/348, `build.py` 1,939/346, `copy_source_assets.py` 509/357). An editor or a text-mode rewrite that normalises every line turns an edit of a few lines into a diff of hundreds, and `git diff --stat` is the only place it shows. Count real endings with Python (`bytes.count(b"\r\n")` against `bytes.count(b"\n")`), not with `grep -c` in Git Bash, where `$'\r'` matches every line. Edit mixed files by bytes, or restore the committed endings afterwards by aligning with `git show HEAD:<file>`.
-42. **The private release is data-bearing, and four things keep it from leaking (2026-10-19, `main`).** `build_complete_private_release.py` rebuilds the gitignored `external_mcps.private.json` (dev catalog + the install's servers) and ships `data.keys` as `<install>/data.keys` through `TLAMATINI_BUNDLE_DATA_KEYS`. Never move that variable into the public builder, which pops it; `build.py` aborts if the vault is requested with the PUBLIC catalog; `.gitignore` and the self-modify snapshot exclude the new file. Open: an in-app update does not preserve `data.keys`; installing over an existing install keeps its own `external_mcps.json`. See [the record](../changes/2026-10-19-private-release-data.md).
+42. **The private release is data-bearing, and four things keep it from leaking (2026-10-19, `main`).** `build_complete_private_release.py` rebuilds the gitignored `external_mcps.private.json` (dev catalog + the install's servers) and ships `data.keys` as `<install>/data.keys` through `TLAMATINI_BUNDLE_DATA_KEYS`. Never move that variable into the public builder, which pops it; `build.py` aborts if the vault is requested with the PUBLIC catalog; `.gitignore` and the self-modify snapshot exclude the new file. Updates preserve an existing `data.keys`; public packages and self-modification snapshots exclude it. On reinstall, installing over an existing install keeps its own `external_mcps.json`. See [the record](../changes/2026-10-19-private-release-data.md).
 
 ## Windows flow-file lifecycle — 2026-10-04, shipped in `v1.76.0`
 

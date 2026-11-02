@@ -8,12 +8,16 @@
 -->
 # Tlamatini Agents — MCP connector
 
-> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -76,12 +80,11 @@ Contracts and evidence: [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), [Canvas e
 
 
 
-Exposes **every complete live Tlamatini agent directory (86 in v1.91.1, unchanged since Terminater arrived in v1.88.0;
-85 in v1.87.0)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+Exposes **every complete live Tlamatini agent directory (87 in v1.92.3, including Torrenter)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **103 root stdio MCP tools total in v1.91.1, unchanged since v1.88.0 (102 in v1.87.0)**. The server discovers agents
+ACPX tools: **104 root stdio MCP tools total in v1.92.3**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files
@@ -238,7 +241,7 @@ Typical long-running pattern: call the agent (gets `run_id`) →
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 87 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](docs/desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](docs/agent-coverage.md), and the [GUI-Manager design](docs/GUI-Manager-design.md).
 

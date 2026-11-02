@@ -1133,6 +1133,8 @@ class ChapterOpener(FullPage):
         gp.drawOn(canv, 64, y - 16 - gh)
         y = y - 16 - gh - 40
         titles = [s.title for s in ch.sections]
+        if ch.key == "release":
+            titles = [s.title for s in ch.sections if s.key in {"release1923", "release1911", "release191", "release190", "lineage", "identity_release"}]
         if titles:
             draw_text(canv, 64, y, "IN THIS CHAPTER", "sans-semibold", 7.4, "gold", space=2.2)
             y -= 12

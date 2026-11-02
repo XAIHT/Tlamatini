@@ -28,7 +28,7 @@ SKILLS_PKG = AGENT_DIR / "skills_pkg"
 SELF_KNOWLEDGE = AGENT_DIR / "Tlamatini.md"
 
 # Multi-Turn tool surface = these fixed classes + the wrapped launchers.
-CORE_TOOLS = 20
+CORE_TOOLS = 21  # Includes the Interactor module tool.
 ACPX_SKILL_TOOLS = 12
 EXTERNAL_MCP_SUPERVISORS = 10
 
@@ -85,7 +85,7 @@ class SelfKnowledgeCountsMatchSourceTests(unittest.TestCase):
                          f"breakdown {parts} must sum to the stated total {total}")
         expected = CORE_TOOLS + self.wrapped + ACPX_SKILL_TOOLS + EXTERNAL_MCP_SUPERVISORS
         self.assertEqual(total, expected,
-                         f"total tools must be {expected} (20 core + {self.wrapped} wrapped + 12 + 10)")
+                         f"total tools must be {expected} ({CORE_TOOLS} core + {self.wrapped} wrapped + 12 + 10)")
         self.assertIn(self.wrapped, parts,
                       "the wrapped-launcher number in the breakdown must match source")
 

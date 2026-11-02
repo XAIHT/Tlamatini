@@ -8,7 +8,7 @@
 -->
 # Tlamatini Daily Chat Test — harness
 
-> Current release: **[v1.91.1](../../../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 > **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Every automated test, command, diagnostic, script, build, agent, prompt and browser must run in a visible, forked foreground window on Angela's real desktop. Use visible CMD/PowerShell consoles and headed browsers (`headless=False`); keep output on screen and monitor live. No hidden/background execution, including CI or quick checks. If visibility cannot be confirmed, do not run. Mandatory policy: [visible execution](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).

@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Installation and removal windows
 
-> Current release: **[v1.91.1](changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
 
 
 **Status: shipped in the published `v1.82.0` release (tag at `880a335e`, 2026-10-12).**
@@ -251,3 +251,7 @@ uses foreground attachment without that keystroke, verifies the resulting state,
 and accepts only windows owned by the compiled setup process, excluding previews.
 Uninstaller observation is strictly passive on this machine: no launch, input,
 activation or repositioning is used to bypass the desktop service's app block.
+
+## Updating a 1.92 installation
+
+The installer and in-app updater preserve an existing `data.keys`. The package carries `Uninstaller.exe` under its runtime receipt. The update swapper can install that copy even for a client that staged only the inner ZIP. The self-modify payload includes the build inputs and the Torrenter workspace needed for a rebuild. Builds with different dependency fingerprints can run side by side. A shared environment is locked for preparation and the full build.

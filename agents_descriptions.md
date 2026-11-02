@@ -8,12 +8,16 @@
 -->
 # Tlamatini — Agent Descriptions
 
-> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -94,7 +98,7 @@ Descriptions are written for **non-expert readers** — when in doubt, prefer th
 
 > **Note — the canvas PDF reader is not an agent.** Opening a PDF in the *chat* canvas and turning it into context (2026-09-16) is a page feature, not a workflow agent, so it has no row in this file: see [docs/pdf-canvas.md](docs/pdf-canvas.md). It does reuse the **Image-Interpreter** agent below for its optional image analysis, and it is distinct from **File-Extractor** (which extracts raw text from a PDF you name) and **PDFer** (which *creates* PDFs).
 
-The visual workflow designer ships with **86 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
+The visual workflow designer ships with **87 agent types**, grouped below by their role in a flow. Drag any of them onto the canvas, wire connections between them, and press *Start* — the agents run as separate, log-emitting processes that talk to each other through their `config.yaml` files.
 
 ### Control Agents
 
@@ -218,7 +222,7 @@ Glue and infrastructure agents — they do not directly produce output but make 
 |-------|-------------|
 | **Parametrizer** | Carries structured results from one agent into another agent’s configuration, one segment at a time. Its parser registry follows all declared output producers (50 currently, including Keyboarder). It preserves empty fields, checks numeric and Boolean conversions, and requires every configured mapping to succeed before writing or starting the target. It backs up and restores the target config and blocks automatic replay of interrupted mouse/keyboard input until application state is checked. |
 | **FlowBacker** | A passive backup utility. When triggered (typically by Ender), it copies the entire deployed session pool directory to a configured `target_directory`, overwriting any previous backup of the same session, then launches its `target_agents` (Cleaners). The "save before you wipe" step in any flow that ends with cleanup. |
-| **FlowCreator** | Designs a workflow from your objective. It first selects from all 86 installed agent types, then uses their detailed instructions and current configuration/connection contracts to produce a .flw file. It checks references, branches, fields and Parametrizer mappings before publishing, with bounded repair for invalid plans. The generated flow remains reviewable before you run it; catalog coverage does not guarantee every external application or service is ready. |
+| **FlowCreator** | Designs a workflow from your objective. It first selects from all 87 installed agent types, then uses their detailed instructions and current configuration/connection contracts to produce a .flw file. It checks references, branches, fields and Parametrizer mappings before publishing, with bounded repair for invalid plans. The generated flow remains reviewable before you run it; catalog coverage does not guarantee every external application or service is ready. |
 
 ### Cryptography Agents
 

@@ -8,12 +8,16 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Current release: **[v1.91.1](../changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](../changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -625,7 +629,7 @@ Because `{self_knowledge}` is **always** present and authoritative, a generic pr
 
 ## Self-Update (in-app) & Post-Update DB Migration
 
-Tlamatini updates herself from **About ▸ Check for updates** (`agent/self_update.py`): she checks the latest `XAIHT/Tlamatini` GitHub release, downloads + stages it, and hands off to the external `apply_update.ps1` (run from OUTSIDE the install so it can replace locked files — `Tlamatini.exe`, `python\`, `jre\`, `git\`). The swapper kills the running app's process tree (sparing its own PID), renames `agents → agents_backup` (one generation kept), deletes the old install except the preserved set, moves the new build in except the preserved set, and relaunches. **Preserved across the swap:** `config.json`, `DB`, `Temp`, `Templates`, `application(s)`, the `*_generated` / `context_files` dirs, and `Uninstaller.exe` (built separately, never inside `pkg.zip`).
+Tlamatini updates herself from **About ▸ Check for updates** (`agent/self_update.py`): she checks the latest `XAIHT/Tlamatini` GitHub release, downloads + stages it, and hands off to the external `apply_update.ps1` (run from OUTSIDE the install so it can replace locked files — `Tlamatini.exe`, `python\`, `jre\`, `git\`). The swapper kills the running app's process tree (sparing its own PID), renames `agents → agents_backup` (one generation kept), deletes the old install except the preserved set, moves the new build in except the preserved set, and relaunches. **Preserved across the swap:** `config.json`, `DB`, `Temp`, `Templates`, `application(s)`, the `*_generated` / `context_files` dirs, and `data.keys`. Since v1.92.2, keep the installed uninstaller until the swapper installs the receipt-verified replacement. With no incoming replacement, retain the installed copy.
 
 **Post-update DB migration (2026-06-15, v1.23.0).** The live `db.sqlite3` sits inside `_internal/` (PyInstaller `_MEIPASS`), which is replaced wholesale on update — so it cannot be protected by the top-level preserve set. To keep the user's chat history + custom toggles AND still deliver new migrations (new agent / tool / prompt rows), `apply_update.ps1` (step 3b) copies the user's DB into the preserved `DB/ToLoad/` and drops `DB/post_update_migrate.flag`. On the next launch `manage.py::_apply_pending_db_swap()` swaps that DB back over the freshly-shipped one and `_run_post_update_migrate_if_flagged()` runs `migrate` in a **child process** — safe because `agent/apps.py::AgentConfig.ready()` only starts the MCP servers for `runserver`/`startserver`/`daphne`/`asgi`, so a child `migrate` neither starts a second server nor recurses. The two preserve lists (`apply_update.ps1 $Preserve` and the `self_update.py` docstring) must stay byte-coherent; the `tlamatini-self-update-inclusion` sweep enforces it. See `docs/claude/recent-fixes.md` (2026-06-15).
 
@@ -682,7 +686,7 @@ startup must not pass its return value to `asyncio.run`.
 - Defined in `tools.py` as synchronous `@tool` functions
 - Returned by `get_mcp_tools()` (misnamed - returns LangChain tools, NOT MCP services)
 - Only active when unified-agent chain is selected
-- Includes 21 direct/module tools, 67 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **110 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
+- Includes 21 direct/module tools, 68 wrapped chat-agent launchers (see `chat_agent_registry.WRAPPED_CHAT_AGENT_SPECS`), 12 ACPX/Skill tools, and 10 External-MCP supervisors for **111 built-ins** before dynamic `ext__*` remotes. The wrapped set includes `chat_agent_flowcreator`, PDFer, LaTeXer, and the media playback pair.
 - Googler tool must run Playwright inside a `ThreadPoolExecutor` — `sync_playwright()` is incompatible with Django Channels' running event loop
 
 ---
@@ -851,7 +855,7 @@ Every chat card has a **Drop** button beside Copy (`agent_page_chat.js`). After 
 
 Mouser now resolves explicit physical, window and screenshot coordinates; Keyboarder binds Unicode/key delivery to a verified window; Shoter publishes capture geometry. `input_sent` is delivery evidence, not application success, and a failed or interrupted input segment must be observed before replay.
 
-Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 86 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
+Parametrizer derives its parser registry from current contracts and validates complete typed mappings. FlowCreator selects from all 87 installed agents and validates the generated graph before publishing; FlowHypervisor separates execution, kill and observation relationships and uses current desktop receipts/timing. GUI-Manager remains design only.
 
 See [configuration, examples and limitations](../desktop-input-and-flow-contracts.md), the [complete generated coverage inventory](../agent-coverage.md), and the [GUI-Manager design](../GUI-Manager-design.md).
 

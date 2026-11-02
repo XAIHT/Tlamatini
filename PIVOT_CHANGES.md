@@ -8,7 +8,10 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
-> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+[1.92.3 release and subsequent fixes](docs/changes/2026-11-01-v1.92.3.md) · October 30–November 2. Typing up to 250 WPM, Torrenter admission and verified delivery, updater and uninstaller carriage, isolated build environments, queued metadata and Executer command parsing.
+
 
 
 A dated, append-only log of surgical changes with the verbatim request and the

@@ -1424,7 +1424,7 @@
       "aliases": [
         "flowcreator"
       ],
-      "purpose": "Designs a workflow from your objective. It first selects from all 86 installed agent types, then uses their detailed instructions and current configuration/connection contracts to produce a .flw file. It checks references, branches, fields and Parametrizer mappings before publishing, with bounded repair for invalid plans. The generated flow remains reviewable before you run it; catalog coverage does not guarantee every external application or service is ready.",
+      "purpose": "Designs a workflow from your objective. It first selects from all 87 installed agent types, then uses their detailed instructions and current configuration/connection contracts to produce a .flw file. It checks references, branches, fields and Parametrizer mappings before publishing, with bounded repair for invalid plans. The generated flow remains reviewable before you run it; catalog coverage does not guarantee every external application or service is ready.",
       "config_schema": {
         "flow_filename": "str",
         "prompt": "str",

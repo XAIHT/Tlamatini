@@ -1,8 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Live Editor and Terminater settings
 
-Source update (2026-10-30): both typing-speed limits are now 250 WPM; v1.91.1
-shipped with a 160 WPM limit. Defaults and minimum speeds are unchanged.
+Since v1.92.0, the maximum is 250 WPM for each control. Live Editor defaults to 100 WPM and Terminater to 50.
 
 Open **Config → Live Editor & Terminater**, the canvas Settings button, or the
 terminal Settings button. Live Editor, Terminater and Voice share one dialog.

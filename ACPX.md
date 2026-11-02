@@ -8,12 +8,16 @@
 -->
 # ACPX & Skills in Tlamatini — A complete guide for dummies
 
-> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -78,7 +82,7 @@ Contracts and evidence: [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), [Canvas e
 
 **Document version:** 1.0
 **Date:** 2026-04-29
-**Status:** Shipped in the current v1.85.0 release. Original design date retained below.
+**Status:** Shipped in v1.85.0. Original design date retained below.
 **Companion docs:** `CLAUDE.md`, `docs/claude/architecture.md`, `docs/claude/agents.md`, `docs/claude/multi-turn.md`, `TlamatiniVsOpenClaw.md`.
 
 > **⚠️ v1.51.2 (2026-09-07) — ACPX now tells the truth about its peers.** `acp_doctor` gained a `deep=True` readiness probe (a real prompt down the real transport, because `--version` answers fine on a CLI that is dead everywhere else); a child that refuses or produces nothing now yields `ok: false` with a NAMED code instead of a green `ok: true`; and `config.json` can retune an agent's `args` / `transport` / `prompt_arg_flag` / `prompt_subcommand_args` / drain budgets, so repairing a peer no longer needs a rebuild. Contract: `docs/claude/acpx.md` → *The delivery verdict*; forensics: `docs/claude/recent-fixes.md` (2026-09-07).
@@ -747,7 +751,7 @@ In `config.json`:
 
 ### 10.5 "I want to add a skill that needs a tool that doesn't exist yet"
 
-The Tlamatini contract is: skills can only `requires_tools` a tool registered in the live `get_mcp_tools()` surface. The current built-in set is 20 core tools + 67 wrapped chat-agents + 12 ACPX/Skill tools + 10 External-MCP supervisors; dynamic `ext__*` tools exist only while their server is active and healthy, so a portable skill should depend on the stable supervisor/dispatcher rather than a transient wrapper. If a skill needs a new native tool, add the `@tool` first through `Tlamatini/.mcps/create_new_mcp.md`, then write the skill.
+The Tlamatini contract is: skills can only `requires_tools` a tool registered in the live `get_mcp_tools()` surface. The current built-in set is 21 core tools + 68 wrapped chat-agents + 12 ACPX/Skill tools + 10 External-MCP supervisors; dynamic `ext__*` tools exist only while their server is active and healthy, so a portable skill should depend on the stable supervisor/dispatcher rather than a transient wrapper. If a skill needs a new native tool, add the `@tool` first through `Tlamatini/.mcps/create_new_mcp.md`, then write the skill.
 
 ---
 

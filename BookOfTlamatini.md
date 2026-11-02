@@ -8,12 +8,12 @@
 -->
 # Tlamatini
 
-> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 ![Project Logo](Tlamatini.jpg)
 
-> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 86 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
+> **The Book of Tlamatini** — a step-by-step guide to running, using, and mastering a locally-deployed AI developer assistant with RAG, Multi-Turn tool orchestration, ACPX external-CLI delegation, an Unreal MCP client for driving Unreal Engine 5 from chat or canvas, a visual workflow designer, 87 drag-and-drop agent types, and a backend Flow Compiler that turns the live canvas — or a chat-generated tool-call log — into a registry-validated, secret-redacted, source-and-frozen-portable workflow.
 >
 > Visit our site at **https://xaiht.org**, or get a one-minute taste of Tlamatini on YouTube: **https://youtu.be/a51miZ1JIe0**.
 >
@@ -136,7 +136,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Part I — Getting Tlamatini Running**: prerequisites, Ollama, the **Pro-or-higher requirement for complete functionality**, cloud models, installation, and first login. *Read this once.*
 - **Part II — Using the Chat**: the five toolbar checkboxes (Multi-Turn, Exec Report, ACPX, Ask Execs, internet) walked through one by one. *This is the dummy-friendly heart of the book.*
 - **Part III — The Visual Workflow Designer**: drag-and-drop flows, FlowCreator, FlowHypervisor, Parametrizer.
-- **Part IV — The Tlamatini Bestiary**: compact reference covering all 86 workflow agents, with one authoritative row per live agent directory.
+- **Part IV — The Tlamatini Bestiary**: compact reference covering all 87 workflow agents, with one authoritative row per live agent directory.
 - **Part V — The Tool Surface**: every LLM-facing tool the chat can call, organized by family.
 - **Part VI — Inside Tlamatini**: architecture, RAG, the embedding-memory pre-flight guard, Multi-Turn pipeline, ACPX runtime mechanics. *For the curious.*
 - **Part VII — Configuration Reference**: every `config.json` knob.
@@ -179,6 +179,7 @@ Open it from the chat with **Panels ▸ Prompt Flow Panel**, or from the Agentic
 | **Flush embeddings** | triangle pointing down | Takes that reference text away again, keeping the conversation. |
 | **Clean History** | trapezoid | Forgets this run's conversation so far, keeping the reference text. |
 | **User Input** | notched top and downward point | Stops and asks you something; your reply joins the conversation. |
+| **Torrenter** | Inspect a magnet, select files, and follow an account-owned Jobs transfer to its verified manifest. [Guide](docs/torrenter.md). |
 | **Terminater** | parallelogram | Runs one action in your visible CMD or PowerShell terminal; its output becomes `{{last_output}}`. Stop aborts typing and the running command. |
 | **User Commentary** | speech bubble | A static review note on the canvas; it never runs or changes the conversation. |
 
@@ -998,7 +999,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-This book documents **v1.91.1** (the Prompt Flow and short-tool-name fixes on top of v1.91.0), including Live Editor & Terminater configuration, editable canvas files, native Save As and Interactor. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
+This book covers **v1.92.3**. Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -1253,7 +1254,7 @@ This is the big one. Until you tick **Multi-Turn**, Tlamatini only *describes* t
 Multi-Turn flips Tlamatini from "answerer" to **operator**:
 
 - The chat skips its prompt-shape validator (you no longer have to phrase requests as questions).
-- A request-scoped **planner** picks the relevant tools from **110 built-ins**: 21 direct/module tools, 67 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
+- A request-scoped **planner** picks the relevant tools from **111 built-ins**: 21 direct/module tools, 68 wrapped chat-agents, 12 ACPX/Skill tools, and 10 External-MCP supervisors. Healthy active servers can add lazily discovered `ext__<server>__<tool>` remotes on top without inflating every prompt permanently.
 - The unified-agent loop runs **up to 4096 iterations** (`unified_agent_max_iterations`): the LLM calls a tool, sees the result, decides what to call next, and chains its way to the goal.
 - Wrapped sub-agents launch **silently** in the background (no console window pop-ups).
 
@@ -1954,7 +1955,7 @@ A compact reference for all 85 workflow-agent types. The **Parametrizer** chapte
 | **Whisperer** | **Direct chat microphone:** Mic beside Send starts host capture without an LLM decision and stops on the configured silence gate. Config → Mic (last entry) selects automatic submission with the current draft/modes or an editable transcript for manual Send, and configures device, gain, gate and recognition preferences per browser. Each recording snapshots its settings. It has no extra console, workflow artifact output or wrapped-tool Exec Report row. **Standalone/workflow surface:** SPEECH-TO-TEXT (STT / voice recognition), the sibling of Talker — turns spoken audio into a text string. 100% self-sufficient for the microphone: it opens, configures (channels / sample-rate / gain) and records the mic ITSELF (no Recorder dependency; `record_seconds: 0` uses the sound gate by default), or transcribes a given audio FILE (`input_source` ∈ mic / file / auto, `audio_file`). Transcription engine: **faster-whisper LOCALLY by default** — it auto-detects an NVIDIA GPU via CTranslate2 and ALWAYS falls back to CPU (int8) on a machine without one (and auto-retries on CPU if the GPU path fails); `model` ∈ tiny / base / small / medium / large-v3 / large-v3-turbo (default `base`). Cloud engines `cloud-groq` / `cloud-openai` are also supported. **NOTE — Ollama CANNOT do speech-to-text** (no audio input): recognition is always done by the ASR engine; an optional Ollama pass only tidies the FINISHED transcript's punctuation. Observational (but STILL in the Exec Report); emits `INI_SECTION_WHISPERER<<<` (body = the transcript text) and always triggers `target_agents`. Needs `faster-whisper` for local transcription (absent + no cloud key → `status: engine_unavailable`, not a crash). Canvas counterpart of the `chat_agent_whisperer` Multi-Turn tool. |
 | **Mouser** | Pointer movement, click, drag, scroll, click-at-window, locate-image. |
 | **Keyboarder** | Keyboard typing / hotkey chords (PyAutoGUI). |
-| **Terminater** | Visible, user-supervised terminals (CMD / PowerShell / PowerShell 7) in the Terminals area. Types every key like a person (`typing_wpm` 50 by default, 20-160; no paste, no instant mode), waits for the command, reads the output back in full, detects a hung command (`hang_seconds` 45), hands the keyboard to the user at `<<USER:hint>>`, and lets the user take over with Esc. One `action` per run (`run`, `open`, `type`, `send_key`, `wait`, `read`, `abort`, `kill`, `force_kill`, `layout`, `watch_user`, `warn_user`, `handover`, …); terminals persist in the Tlamatini hub between runs. Emits `INI_SECTION_TERMINATER` (`status`, `exit_code`, `typed`, `user_part`, …) and always starts its `target_agents`. Windows 10 1809+ (ConPTY). Agent #86; see [docs/terminater.md](docs/terminater.md). |
+| **Terminater** | Visible, user-supervised terminals (CMD / PowerShell / PowerShell 7) in the Terminals area. Types every key like a person (`typing_wpm` 50 by default, 20-250; no paste, no instant mode), waits for the command, reads the output back in full, detects a hung command (`hang_seconds` 45), hands the keyboard to the user at `<<USER:hint>>`, and lets the user take over with Esc. One `action` per run (`run`, `open`, `type`, `send_key`, `wait`, `read`, `abort`, `kill`, `force_kill`, `layout`, `watch_user`, `warn_user`, `handover`, …); terminals persist in the Tlamatini hub between runs. Emits `INI_SECTION_TERMINATER` (`status`, `exit_code`, `typed`, `user_part`, …) and always starts its `target_agents`. Windows 10 1809+ (ConPTY). Agent #86; see [docs/terminater.md](docs/terminater.md). |
 | **Windower** | Deterministic Win32 window manager (pywin32 + ctypes). Locates an application window by title (`match_mode` ∈ substring/exact/regex, plus `match_index` to disambiguate same-titled windows) and runs ONE window-lifecycle operation: `focus`, `minimize`, `maximize`, `restore`, `move`, `resize`, `move_resize`, `close`, `topmost` / `untopmost` (always-on-top), or `arrange` (snap/tile to left/right/top/bottom halves, four quadrants, center, or full) — or `list` every open window with its position, size, and state. The window member of the desktop-UI trio (Windower = the window, Mouser = clicks, Keyboarder = typing). Ports the window-management subset of Microsoft's Windows-MCP (incl. the AttachThreadInput cross-process focus-transfer dance). Emits an `INI_SECTION_WINDOWER<<<` block (`action`, `window_title`, `matched`, `match_count`, `state`, `left`, `top`, `width`, `height`, `response_body`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_windower` Multi-Turn tool. |
 | **Kalier** | Kali Linux offensive-security bridge to the **MCP-Kali-Server** (`server.py` Flask API; default `http://127.0.0.1:5000`; stdlib `urllib`, self-contained — no `requests`/`mcp` deps in the pool). `action` ∈ `command` / `nmap` / `gobuster` / `dirb` / `nikto` / `sqlmap` / `metasploit` / `hydra` / `john` / `wpscan` / `enum4linux` / `health`. Emits an `INI_SECTION_KALIER<<<` block (`action`, `endpoint`, `method`, `subject`, `return_code`, `success`, `timed_out`, `server_url`, `response_body`) and always triggers `target_agents` so a Forker can branch on `{success}`/`{return_code}`. Canvas counterpart of the `chat_agent_kalier` Multi-Turn tool. **Authorized targets only.** |
 | **Nmapper** | LOCAL, **use-only** nmap bridge for pentesters and CTF recon — the instant, zero-install sibling of Kalier (a REMOTE Kali box) and Discoverer (the ProjectDiscovery suite). It RUNS an nmap the user installed and **never bundles or redistributes nmap** (the NPSL forbids embedding it), resolving PATH → `C:\Program Files (x86)\Nmap` / `C:\Program Files\Nmap` → a `%LOCALAPPDATA%\Tlamatini\nmap` copy; with none found it REFUSES gracefully with install guidance, and `action: install` downloads + launches the OFFICIAL FREE nmap installer (which also brings Npcap). The DEFAULT is an **unprivileged TCP connect scan** (`-sT`) needing no Npcap and no admin, so a fresh install scans immediately; on Windows without Npcap a SYN scan auto-downgrades to `-sT`, `-O` is dropped (both warned) and a raw `udp` scan is refused — never a crash. `action` ∈ quick (`-sT -sV -sC -Pn -T4 --top-ports 1000`, the CTF opener) / full / top_ports / version / scripts (NSE) / host_discovery / udp / custom (shell metacharacters rejected) / validate / install. Runs `-oX` (parsed for `hosts_up` / `open_ports`) + `-oN` (the human report). Emits `INI_SECTION_NMAPPER<<<` (`action`, `target`, `scan_technique`, `ports`, `return_code`, `success`, `hosts_up`, `open_ports`, `npcap_present`, `xml_path`, `output_path`, `stage`) and always triggers `target_agents`. Canvas counterpart of the `chat_agent_nmapper` Multi-Turn tool. **Authorized targets only** — treat scan output as untrusted data. |
@@ -2087,7 +2088,9 @@ Every tool the chat LLM can call in Multi-Turn mode. Tools can be individually e
 | `agent_stat_getter` | Check template-agent runtime status. |
 | `interactor` | Read and edit the live unsaved canvas; teach one segment, guide a learner field, save with authorization. |
 
-## 28. Wrapped chat-agent tools (67)
+## 28. Wrapped chat-agent tools (68)
+
+Use `chat_agent_torrenter` to inspect a source, submit selected files and read a verified manifest. Jobs keeps the transfer running when the chat closes. See the [Torrenter guide](docs/torrenter.md).
 
 Each wrapped tool launches an isolated, sequenced runtime copy of a workflow agent template under `agent/agents/pools/_chat_runs_/{agent}_{seq:03d}_{short_id}/`. Failed runs are preserved.
 
@@ -2852,14 +2855,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.91.1 is taken)
+git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.92.3 is taken)
 git push origin vMAJOR.MINOR.PATCH
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.91.1/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.91.1`, so the bare runtime version resolves to `1.91.1`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.92.3/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The current version is `v1.91.1`, so the bare runtime version resolves to `1.91.1`. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -4645,8 +4648,8 @@ editor teaching action so its controls remain yours.
 
 | Tab | Practical choices |
 |---|---|
-| Live Editor | 40–160 WPM; optional linked terminal speed; 0–3 s pause; brief/balanced/detailed teaching; suggestions on/off and choices without ghost text; follow typing; font, line numbers and wrapping |
-| Terminater | 20–160 WPM; available default shell; task-controlled or user-only Enter; advisor for new terminals; command, no-output and user-handoff waits; font, cursor and layout |
+| Live Editor | 40–250 WPM; optional linked terminal speed; 0–3 s pause; brief/balanced/detailed teaching; suggestions on/off and choices without ghost text; follow typing; font, line numbers and wrapping |
+| Terminater | 20–250 WPM; available default shell; task-controlled or user-only Enter; advisor for new terminals; command, no-output and user-handoff waits; font, cursor and layout |
 | Voice | Narrate each command or editor segment; explanation, literal text or both; before/during/after; wait for completion before typing; errors/all/off result notices |
 
 Account behavior follows you across chat and the control panels. Appearance stays

@@ -94,6 +94,7 @@ AGENT_FAMILIES: list[tuple[str, str, str, list[tuple[str, str]]]] = [
         ("file_extractor", "Extracts raw text from PDF, DOCX and similar documents."),
         ("de_compresser", "Compresses or decompresses .zip, .7z, .gz and tar archives."),
         ("j_decompiler", "Decompiles JAR and WAR archives with the bundled jd-cli."),
+        ("torrenter", "Manages account-owned transfers in Tlachihuani Jobs and reports verified output paths."),
         ("gitter", "Runs git operations and custom git commands."),
     ]),
     ("Documents", "magenta", "Compose, typeset and present.", [
@@ -723,7 +724,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Limits", "Cold model loading, provider latency and hardware vary; no zero-latency promise."),
                 ("Detailed guide", "docs/chat-microphone-design.md records configuration, protocol and evidence."),
             ], deck="cards"),
-        Section("navbar", "NAVIGATION", "The menu bar in v1.91.1",
+        Section("navbar", "NAVIGATION", "The menu bar in v1.92.3",
             "Views controls the workspace, Panels opens the flow editors, and Config holds settings.",
             table={"columns": ["Menu", "What you find there"], "widths": [0.20, 0.80], "rows": [
                 ["Open · Save", "Open a canvas file; menu Save chooses a destination with native Save As."],
@@ -1824,7 +1825,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "main in the next commit, so a build of main then reported 1.88.0 and carried all of it.",
                 "The private (keyed) release now carries the data of the machine that builds it: every External MCP server "
                 "of the installed copy and its active choice, merged into a gitignored private catalog, and the whole "
-                "data.keys vault. The public builder refuses both. An in-app update does not keep data.keys.",
+                "data.keys vault. The public builder refuses both. As of v1.92.2, updates preserve an existing vault.",
             ],
             points=[
                 ("Terminals", "Real CMD and PowerShell you can watch, typed like a person, with a hand-over."),

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 2026-05-26: Added `agent/migrations/0103_add_stm32er_demo_prompts.py` seeding 3 tiered STM32F-programming demos for the STM32er agent ([[project_stm32er_agent]]) into the Catalog of prompts (the `Prompt` model; the "Catalog of prompts" button in agent_page.html opens it). All drive the wrapped **chat_agent_stm32er** Multi-Turn tool, Multi-Turn-only (NOT behind ACPX).

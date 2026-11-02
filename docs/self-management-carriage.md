@@ -1,11 +1,15 @@
 # Self-modify and self-update carriage review
 
-> Current release: **[v1.91.1](changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -553,3 +557,7 @@ all load the shared resources. Frozen imports and runtime/source inventories mus
 retain these modules; partial copying can leave an apparently saved setting inert.
 The static cache suffix includes `-interaction-settings-1`. No new workflow agent
 or tool is registered. These carriage changes do not modify DB backup/restore.
+
+## Updating a 1.92 installation
+
+The installer and in-app updater preserve an existing `data.keys`. The package carries `Uninstaller.exe` under its runtime receipt. The update swapper can install that copy even for a client that staged only the inner ZIP. The self-modify payload includes the build inputs and the Torrenter workspace needed for a rebuild. Builds with different dependency fingerprints can run side by side. A shared environment is locked for preparation and the full build.

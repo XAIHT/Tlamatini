@@ -5923,7 +5923,7 @@ class AgentDescriptionsFileTests(TestCase):
         )
 
     def test_descriptions_file_parses_to_at_least_sixty_entries(self):
-        # 60 is a sanity floor (86 agents ship today). Allow growth ('>='); flag shrinkage hard
+        # 60 is a sanity floor (87 agents ship in v1.92.3). Allow growth ('>='); flag shrinkage hard
         # so accidental row deletions don't slip through review.
         with open(self.descriptions_path, 'r', encoding='utf-8') as handle:
             purpose_map = views._parse_agent_purpose_map(handle.readlines())

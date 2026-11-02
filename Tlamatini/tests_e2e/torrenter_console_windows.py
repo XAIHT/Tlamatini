@@ -1,7 +1,10 @@
 # Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 
 """Observe real console windows, including transient SHOW events, from a visible coordinator."""
-import ctypes,json,subprocess,sys,time
+import ctypes
+import subprocess
+import sys
+import time
 from ctypes import wintypes
 from pathlib import Path
 import psutil
@@ -24,22 +27,28 @@ if not console or not u.IsWindowVisible(console) or console!=u.GetForegroundWind
     raise SystemExit('Run this check in a visible foreground PowerShell console and keep it open afterward.')
 events=[]
 def observe(hwnd):
-    if not u.IsWindowVisible(hwnd):return
-    pid=wintypes.DWORD();u.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
-    name=ctypes.create_unicode_buffer(256);u.GetClassNameW(hwnd,name,256)
+    if not u.IsWindowVisible(hwnd):
+        return
+    pid = wintypes.DWORD()
+    u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    name = ctypes.create_unicode_buffer(256)
+    u.GetClassNameW(hwnd, name, 256)
     events.append((pid.value,name.value))
 @callback_type
 def shown(hook,event,hwnd,obj,child,thread,ms):
-    if obj==0 and child==0:observe(hwnd)
+    if obj == 0 and child == 0:
+        observe(hwnd)
 @enum_type
 def enumerated(hwnd,_):
-    observe(hwnd);return True
+    observe(hwnd)
+    return True
 hook=u.SetWinEventHook(0x8002,0x8002,None,shown,0,0,0)
 assert hook,ctypes.get_last_error()
 def pump():
     message=wintypes.MSG()
     while u.PeekMessageW(ctypes.byref(message),None,0,0,1):
-        u.TranslateMessage(ctypes.byref(message));u.DispatchMessageW(ctypes.byref(message))
+        u.TranslateMessage(ctypes.byref(message))
+        u.DispatchMessageW(ctypes.byref(message))
 def run(mode):
     events.clear()
     root=Path(__file__).resolve().parents[1]
@@ -53,12 +62,14 @@ def run(mode):
     child=subprocess.Popen([str(Path(sys.executable).with_name("pythonw.exe")),"-u","-c",code],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     processes={child.pid:{"name":"pythonw.exe"}}
     while child.poll() is None:
-        pump();u.EnumWindows(enumerated,0)
+        pump()
+        u.EnumWindows(enumerated, 0)
         try:
             for p in psutil.Process(child.pid).children(recursive=True):
                 if p.pid not in processes:
                     processes[p.pid]={"name":p.name(),"command":p.cmdline()}
-        except psutil.Error:pass
+        except psutil.Error:
+            pass
         time.sleep(.004)
     pump()
     out,err=child.communicate(timeout=5)
@@ -75,4 +86,5 @@ try:
     patched=run("patched")
     assert not patched,patched
     print("PASS: positive control observed; 20 corrected calls produced no visible child windows.",flush=True)
-finally:u.UnhookWinEvent(hook)
+finally:
+    u.UnhookWinEvent(hook)

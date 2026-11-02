@@ -6,12 +6,16 @@ Tlamatini Author Banner — do not remove
 
 # Tlamatini instructions for Codex and every coding agent
 
-> Current release: **[v1.91.1](docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+## v1.92.3 — Downloads, updates and build isolation
+
+Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md).
 
 ## v1.91.1 — Prompt Flow fixes and short tool names
 
-**v1.91.1** is the current version (2026-10-27). Its annotated tag resolves to
-`9915938a` and is present on origin; it is published on GitHub as the Latest
+**v1.91.1** was the English release of that date (2026-10-27). Its annotated tag resolves to
+`9915938a` and was present on origin; it was published on GitHub as the then-Latest
 release, replacing v1.91.0 (published 2026-10-23). It is a patch release: no agent,
 tool, skill or migration was added, so the catalog stays **86 workflow agents, 67
 wrapped chat agents, 110 built-in tools, 29 skills and 220 migrations**.
@@ -131,8 +135,7 @@ only empty or placeholder values are filled; the install's active selection, at 
 **`data.keys`** vault shipped as `<install>/data.keys` through
 `TLAMATINI_BUNDLE_DATA_KEYS`. The public builder clears that variable, `build.py` aborts
 if the vault is requested with the PUBLIC catalog, and the new file is gitignored and
-excluded from the self-modify snapshot. Not solved: an in-app update does not preserve
-`data.keys`, and two entries (`OPENROUTER_API_KEY`, `DASHSCOPE_API_KEY`) have no
+excluded from the self-modify snapshot. Updates preserve an existing `data.keys`; public packages and self-modification snapshots exclude it. Two entries (`OPENROUTER_API_KEY`, `DASHSCOPE_API_KEY`) have no
 consumer other than the vault itself.
 
 ## v1.87.0 — Leaner catalog, safer removal, smaller release (carried)
@@ -310,7 +313,7 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 for every page: each dropped file is recognised by its bytes and sent to its own mechanism, so an MCP
 .json imports everywhere and never errors, opens as text or navigates away."* It was published on GitHub
 on 2026-10-14 ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so self-update delivered `v1.83.0` then;
-that historical runtime version was `1.83.0`. The current release is `v1.91.1`. `v1.83.0` carried everything in `v1.82.0` plus the three
+that historical runtime version was `1.83.0`. The current release is `v1.92.3`. `v1.83.0` carried everything in `v1.82.0` plus the three
 changes below. `v1.83.0` added no migration after 0213 (0214 arrived in v1.87.0); the frontend has 60 JS modules and 26
 stylesheets, and the live `STATIC_VERSION` cache suffix is now `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 
@@ -411,7 +414,7 @@ GitHub on 2026-10-09; self-update delivered `v1.77.0` until `v1.78.0` was publis
 - **Uninstaller.** `application`, `applications`, `content_generated`, `context_files`, `doc_generated`
   and `Templates` are kept whenever they hold a file; `Temp/` is erased; `agents/` is always kept
   (`uninstall.py::PRESERVED_WHEN_NOT_EMPTY`, commit `0520dc97`). An in-app update keeps the old
-  `Uninstaller.exe`; only a new Installer replaces it.
+  `Uninstaller.exe`; v1.92.2 and later packages also deliver its replacement during update.
 
 ## v1.76.0 — the Model Brain, a coloured console, honest PDF refusals (2026-10-08)
 

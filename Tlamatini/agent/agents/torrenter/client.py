@@ -2,7 +2,6 @@
 """Transport for the installed Windows Jobs service. Never follows redirects or proxies."""
 
 import base64
-import hashlib
 import http.client
 import json
 import os

@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current release: **[v1.91.1](../../docs/changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 2026-05-26 (v1.9.0 release prep, not committed): broad alignment pass after the STM32er zero-config bootstrap + preflight work ([[project_stm32er_bootstrap_preflight]]).

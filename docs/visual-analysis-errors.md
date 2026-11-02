@@ -1,6 +1,6 @@
 # Image and video failures, dialogs and recovery
 
-> Current release: **[v1.91.1](changes/2026-10-27-v1.91.1.md)**. Dated records below retain their original evidence dates.
+> Current version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
 
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

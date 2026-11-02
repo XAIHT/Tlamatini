@@ -160,7 +160,7 @@ def configure_checks(H, B):
     B.chk('the default action is run', page.locator('#pmt-field-action').input_value() == 'run')
     B.chk('the default type is PowerShell', page.locator('#pmt-field-kind').input_value() == 'powershell')
     wpm = page.evaluate("() => { const e = document.getElementById('pmt-field-typing_wpm'); return [e.value, e.min, e.max]; }")
-    B.chk('the typing speed starts at 50 and is limited to 20-160', wpm == ['50', '20', '160'], str(wpm))
+    B.chk('the typing speed starts at 50 and is limited to 20-250', wpm == ['50', '20', '250'], str(wpm))
     B.chk('the text area names the <<USER:hint>> hand-over', 'USER:hint' in (page.locator('label[for="pmt-field-text"]').inner_text() or ''))
     for name in ('submit', 'secret', 'wait', 'close_after'):
         B.chk('the %s switch is present' % name, page.locator('#pmt-field-%s' % name).count() == 1)
