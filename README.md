@@ -19,6 +19,9 @@
   Talk to her, work beside her in the editor, and connect specialized agents into visual workflows.
 </p>
 
+> [!TIP]
+> **Setting up Tlamatini for the first time?** [▶ Watch the English setup walkthrough on YouTube](https://www.youtube.com/watch?v=8bQcWyqL9kg) and follow along on your Windows PC. Prefer to read? Jump to the [installation steps](#installation).
+
 <p align="center">
   <a href="https://github.com/XAIHT/Tlamatini/tree/v1.92.3"><img src="https://img.shields.io/badge/SOURCE-v1.92.3-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.92.3" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
@@ -194,6 +197,8 @@ The application, database, agent programs, workflow files, credentials and local
 You choose the projects, tools and services involved. “Local-first” describes where the application and control live; it does not promise that every configured operation stays offline. [How Ollama cloud works →](https://docs.ollama.com/cloud)
 
 ## Installation
+
+Follow along with the [English setup video](https://www.youtube.com/watch?v=8bQcWyqL9kg) as you work through the steps below.
 
 ### 1 · Install Tlamatini
 
