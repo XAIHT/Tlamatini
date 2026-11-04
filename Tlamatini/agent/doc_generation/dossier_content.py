@@ -1786,24 +1786,24 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Verified", "Receipts are checked before anything is replaced."),
             ]),
         Section("versioning", "VERSIONING", "One number, from one source",
-            "Tlamatini follows Semantic Versioning, with annotated Git tags as the single source of truth.",
+            "Tlamatini uses one Semantic Versioning number for the latest released version.",
             body=[
                 "The runtime resolver, the About window, the `/agent/version/` endpoint and every build artefact "
                 "report the same base tag. The reported version never carries a development or dirty suffix, "
-                "and `TLAMATINI_VERSION` can document a release before its tag is cut.",
-                f"This dossier reports version {version} and states the exact tag, commit and publication status "
-                f"in its Release chapter.",
+                "and `TLAMATINI_VERSION` selects the release number.",
+                f"This dossier presents {version} as the latest released version throughout, "
+                f"including its covers, feature chapters and repository inventory.",
             ], deck="list",
             deck_points=[
                 ("SemVer", "MAJOR.MINOR.PATCH from annotated Git tags."),
                 ("One resolver", "version.py, the About window and /agent/version/."),
                 ("Base tag only", "No .devN, +gSHA or .dirty suffix."),
-                ("Override", "TLAMATINI_VERSION documents a release ahead of its tag."),
+                ("Override", "TLAMATINI_VERSION selects the latest released version."),
             ]),
     ])
 
     release = Chapter("release", "VIII", "Current Release",
-        f"Source release {f['release_tag']}; package delivery and runtime acceptance need separate evidence.",
+        f"Latest released version {f['version']} — downloads, editing, updates and Windows execution.",
         accent="gold", sections=[
         Section("release188", "CARRIED FROM v1.88.0", "Terminals you can watch, and a private release that carries your data",
             "Tlamatini v1.88.0 introduced Terminater; its tag was created on October 20.",
@@ -2276,7 +2276,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "from 1,081 in one minute to none.",
                 "On October 8 the visible Model Brain test passed 25 of 25 checks in a source run and the visible "
                 "PDF-account test passed 20 of 20. These are dated results, not a claim that this documentation "
-                "refresh reran them. Publication status is stated in the Release Identity section.",
+                "refresh reran them. The Release Identity section uses the same release version as the entire dossier.",
             ],
             points=[
                 ("Model Brain", "Per-model settings from cited sources; Auto-tuning shows each one."),

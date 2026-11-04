@@ -13,7 +13,19 @@ description: Use when asked to create or update a complete technical PPTX deck, 
 
 # Overlap-Safe PPTX Dossier
 
-> Current version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
+
+## Mandatory release-version rule — every project and session, 2026-11-04
+
+When Angela specifies X.Y.Z, **assume X.Y.Z is already released** and use it
+everywhere as the **latest released version** immediately. Her number is the
+one version. Do not check GitHub, tags, installed packages or publication status
+to decide whether to call it released. Do not create source, target, pending or
+tagged-versus-published versions. Update every current reference, manifest,
+`Tlamatini.md`, PDF/PPTX and generator together. Preserve historical entries,
+dependency pins, Git history and actual test evidence. Git writes and executable
+builds still require authorization. This rule supersedes older contrary advice.
+
 
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
@@ -73,7 +85,7 @@ The generator builds the full PPTX and performs an internal geometry audit while
 
 For the v1.48.17 release and later, include Grepper's multi-encoding search, the guarded five-class Exec Report vocabulary, Kuberneter's canonical result fields, `Uninstaller.exe` preservation, source-derived public/private build checks, the standardized Escape-closes-every-dialog policy with its sealed-updater exception, the themed `tlmAlert`/`tlmConfirm` popups, and the frozen-bundle carriage proof. Retain the v1.48.14 private External-MCP runtime flow, ten supervisors, inactive defaults, catalog tombstones, persistent Memory state, secret-separated builds, nested-diagram repair, and explicit "proposal, not shipped behavior" updater label, plus the v1.48.13 placement/dialog/logging foundations.
 
-For the v1.50.0 release and later, include separate, readable slides for NetSpeed-Calculator and its metered-bandwidth warning; WAL-safe SQLite backup/set/hot-swap; Googler's structured dork compiler, syntax/preset contract, `links_only` file workflow, and responsible-use boundary; a separate Googler resilience slide covering four plain-HTTP server-rendered routes before browser launch, visible installed Chrome, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retries, answer attribution, and Google-only advanced operators; the External MCP Adder lifecycle; Deep Internet Research prompt; Ollama Pro-or-higher setup; private contact synchronization/public PII exclusion; and the source-derived 86/67/110/29/220 counts. Show the annotated `v1.50.0` tag commit separately from a later `HEAD` when needed. Split these topics rather than shrinking type or allowing dense panels to overlap.
+For the v1.50.0 release and later, include separate, readable slides for NetSpeed-Calculator and its metered-bandwidth warning; WAL-safe SQLite backup/set/hot-swap; Googler's structured dork compiler, syntax/preset contract, `links_only` file workflow, and responsible-use boundary; a separate Googler resilience slide covering four plain-HTTP server-rendered routes before browser launch, visible installed Chrome, bundled-browser fallback, seven browser routes, explicit-engine Tier-0 bypass, bounded retries, answer attribution, and Google-only advanced operators; the External MCP Adder lifecycle; Deep Internet Research prompt; Ollama Pro-or-higher setup; private contact synchronization/public PII exclusion; and the source-derived 86/67/110/29/220 counts. Use Angela's specified number as the latest released version; keep commit hashes in the repository inventory. Split these topics rather than shrinking type or allowing dense panels to overlap.
 
 ## Validation Checklist
 
@@ -91,7 +103,7 @@ source inventory and upgrade chain.
 
 ## Prompt Flow graphical editing and layout gate (2026-10-04)
 
-Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.92.3 (tag `b99ea506`). Report the later queue and Executer changes separately from that tag. Keep source, GitHub publication and installed-package acceptance separate. Include the Live Editor & Terminater settings, migration 0220, shared narration receipts and the dated October 23 evidence. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
+Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.92.3 as the single release version, including the Torrenter queue and Executer fixes. Apply Angela's requested version immediately across all documentation; do not wait for a tag, GitHub publication or package generation. Include the Live Editor & Terminater settings, migration 0220, shared narration receipts and the dated October 23 evidence. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
 
 ## Usage documentation gate (2026-10-10)
 

@@ -123,46 +123,28 @@ def short_date(iso_value: str) -> str:
     return document_datetime(iso_value).strftime("%Y-%m-%d")
 
 
-def _github_releases() -> dict:
-    """The releases actually PUBLISHED on GitHub; fail-open to an empty mapping.
-
-    A tag is not a release: a repository can carry a newer tag with nothing
-    published for it, so the tag alone never states "the current release".
-    """
-    try:
-        listing = subprocess.run(
-            ["gh", "release", "list", "--limit", "30", "--json",
-             "tagName,isLatest,isDraft,isPrerelease,publishedAt"],
-            cwd=str(REPO_ROOT), capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=90, check=True).stdout.strip()
-        rows = json.loads(listing) if listing else []
-    except Exception:
-        return {}
-    if not isinstance(rows, list):
-        return {}
-    live = [row for row in rows if isinstance(row, dict) and not row.get("isDraft")]
-    latest = next((row for row in live if row.get("isLatest")), None)
-    return {
-        "latest_tag": str((latest or {}).get("tagName", "")),
-        "latest_published_at": str((latest or {}).get("publishedAt", "")),
-        "published_tags": [str(row.get("tagName", "")) for row in live],
-    }
-
-
 def published_releases() -> dict:
-    """Use the selected release consistently throughout the documentation.
+    """Select Angela's one latest released version without publication checks.
 
-    Angela's release contract: the latest generated version is the released
-    version. The explicit override wins; otherwise use the reachable Git tag.
-    GitHub listing latency must not relabel the dossier as an older release.
+    Explicit documentation/build overrides win; the manifest records the
+    requested release between sessions. Git is only a missing-manifest fallback.
+    The legacy result keys are retained for the shared dossier data schema.
     """
-    release = os.environ.get("TLAMATINI_RELEASE_TAG", "").strip() or git(
-        "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
-    if not git_ok("rev-parse", "-q", "--verify", f"refs/tags/{release}"):
-        raise ValueError(f"Documentation release tag does not exist: {release}")
-    dated = git("for-each-ref", "--format=%(creatordate:iso-strict)", f"refs/tags/{release}")
-    print(f"Current released version: {release}", flush=True)
-    return {"latest_tag": release, "latest_published_at": dated,
+    release = (os.environ.get("TLAMATINI_RELEASE_TAG", "").strip()
+               or os.environ.get("TLAMATINI_VERSION", "").strip())
+    if not release:
+        manifest = REPO_ROOT / "package.json"
+        if manifest.is_file():
+            release = str(json.loads(manifest.read_text(encoding="utf-8-sig"))["version"]).strip()
+        else:
+            release = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
+    version = release.removeprefix("v")
+    if not re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
+                        r"(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", version):
+        raise ValueError(f"Invalid documentation release version: {release}")
+    release = f"v{version}"
+    print(f"Latest released version: {release}", flush=True)
+    return {"latest_tag": release, "latest_published_at": "",
             "published_tags": [release]}
 
 
@@ -441,7 +423,6 @@ def release_facts(published: dict, head_short: str) -> dict:
     tag_commit = git("rev-parse", "--short", f"{tag}^{{commit}}")
     tag_date = git("for-each-ref", "--format=%(creatordate:iso-strict)", f"refs/tags/{tag}")
     distance = int(git("rev-list", "--count", f"{tag}..HEAD") or 0)
-    on_origin = bool(git("ls-remote", "--tags", "origin", f"refs/tags/{tag}", check=False))
     after = git("log", "--format=%h\x1f%s", f"{tag}..HEAD").splitlines()
     pfp_path = "Tlamatini/agent/templates/agent/prompt_flow_panel.html"
     pfp_in_tag = git_ok("cat-file", "-e", f"{tag}:{pfp_path}")
@@ -449,7 +430,7 @@ def release_facts(published: dict, head_short: str) -> dict:
     latest = published.get("latest_tag", "")
     return {
         "tag": tag, "tag_commit": tag_commit, "tag_date": short_date(tag_date) if tag_date else "",
-        "distance": distance, "on_origin": on_origin, "after": [row.split("\x1f", 1) for row in after],
+        "distance": distance, "after": [row.split("\x1f", 1) for row in after],
         "pfp_in_tag": pfp_in_tag, "pfp_commit": pfp_commit, "latest_published": latest,
         "latest_published_at": short_date(published["latest_published_at"])
         if published.get("latest_published_at") else "",
@@ -459,22 +440,18 @@ def release_facts(published: dict, head_short: str) -> dict:
 
 def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[str]], list[tuple[str, str]]]:
     statements = [
-        f"**{rel['latest_published']} is the current tagged source version.** The application, user guides "
-        f"and both dossiers use the same version, **{version}**.",
-        f"This audit inspected commit `{rel['head_short']}`. The existing annotated tag `{rel['tag']}` "
-        f"was created on {rel['tag_date']} and resolves to `{rel['tag_commit']}`. Git history is preserved.",
-        "A source tag identifies the implementation. GitHub publication and installed-package acceptance "
-        "require separate evidence; documentation generation does not build or install an executable.",
+        f"**The latest released version is {version}.** The application, user guides, "
+        "PDF dossier and PowerPoint deck all use this one release version.",
+        f"This edition documents commit `{rel['head_short']}` and the complete release, "
+        "including the Torrenter queue and Executer fixes.",
     ]
-    points = [("Current release", rel['latest_published']),
-              ("Audit commit", rel['head_short']),
-              ("Runtime version", version)]
+    points = [("Latest released version", version),
+              ("Documented commit", rel["head_short"]),
+              ("Documentation", "Application, guides, PDF and PowerPoint")]
     rows = [
-        ["Current release", rel['latest_published']],
-        ["Runtime version", version],
-        ["Existing annotated tag", f"{rel['tag']} → {rel['tag_commit']} ({rel['tag_date']})"],
-        ["Inspected commit", rel['head_short']],
-        ["Tag on remote", "Yes" if rel["on_origin"] else "No"],
+        ["Latest released version", version],
+        ["Documented commit", rel["head_short"]],
+        ["Coverage", "Features, architecture, usage and inventory"],
     ]
     return statements, rows, points
 
@@ -505,10 +482,9 @@ def collect_facts() -> dict:
     supervisors = supervisor_tool_names()
     skill_list = skills()
     fields, groups, model_agents = model_settings()
-    version = version_info()
     head_short = git("rev-parse", "--short", "HEAD")
     published = published_releases()
-    version = {"version": published["latest_tag"].removeprefix("v"), "source": "release tag"}
+    version = {"version": published["latest_tag"].removeprefix("v"), "source": "release version"}
     rel = release_facts(published, head_short)
     statements, rel_rows, rel_points = release_statements(rel, version["version"])
     js = sorted((AGENT_DIR / "static" / "agent" / "js").glob("*.js"))

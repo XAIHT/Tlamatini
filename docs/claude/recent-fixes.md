@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Current version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
 
 [1.92.3 release and subsequent fixes](../changes/2026-11-01-v1.92.3.md) · October 30–November 2. Typing up to 250 WPM, Torrenter admission and verified delivery, updater and uninstaller carriage, isolated build environments, queued metadata and Executer command parsing.
 

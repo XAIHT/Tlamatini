@@ -23,7 +23,7 @@
 > **Setting up Tlamatini for the first time?** [▶ Watch the English setup walkthrough on YouTube](https://www.youtube.com/watch?v=8bQcWyqL9kg) and follow along on your Windows PC. Prefer to read? Jump to the [installation steps](#installation).
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/tree/v1.92.3"><img src="https://img.shields.io/badge/SOURCE-v1.92.3-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini source v1.92.3" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.92.3"><img src="https://img.shields.io/badge/RELEASE-v1.92.3-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini release v1.92.3" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/OPEN%20SOURCE-MIT-E9C46A?style=for-the-badge&labelColor=101827" alt="MIT open source" /></a>
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-818CF8?style=for-the-badge&labelColor=101827&logo=discord&logoColor=white" alt="Join the community on Discord" /></a>
@@ -109,13 +109,13 @@ teaching segment, choose what she says and when, and let speech finish before
 typing. **Standard** and **Guided learning** presets give you a starting point;
 Preview lets you try the draft before saving. [Explore the settings →](docs/interaction-settings.md)
 
-**New in the [1.92 series](docs/changes/2026-11-01-v1.92.3.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
+**Release [1.92.3](docs/changes/2026-11-01-v1.92.3.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
 
 **Since [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
 dialog controls the real editor and terminal behavior across chat and both control
-panels. This source tag is available; the Downloads link refers to published packages.
+panels. These settings are included in release **1.92.3**.
 
-**Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The release record distinguishes tagged source, later `main` changes and dated installed-build evidence.
+**Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The [1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md) covers the complete release.
 
 ## Speak and be heard
 

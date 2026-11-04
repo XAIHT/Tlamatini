@@ -12,7 +12,18 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
-> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+## Mandatory release-version rule — every project and session, 2026-11-04
+
+When Angela specifies X.Y.Z, **assume X.Y.Z is already released** and use it
+everywhere as the **latest released version** immediately. Her number is the
+one version. Do not check GitHub, tags, installed packages or publication status
+to decide whether to call it released. Do not create source, target, pending or
+tagged-versus-published versions. Update every current reference, manifest,
+`Tlamatini.md`, PDF/PPTX and generator together. Preserve historical entries,
+dependency pins, Git history and actual test evidence. Git writes and executable
+builds still require authorization. This rule supersedes older contrary advice.
 
 ## v1.92.3 — Downloads, updates and build isolation
 
@@ -42,7 +53,7 @@ See the [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md).
 
 ## Carried from v1.91.0 — Live Editor and Terminater configuration
 
-**v1.91.0** was the source version of 2026-10-23. Its existing annotated tag
+**v1.91.0** was the release of 2026-10-23. Its existing annotated tag
 resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
 agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
 **29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS

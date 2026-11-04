@@ -12,7 +12,7 @@ originSessionId: dcafd649-e5a5-45e2-bebd-f267bccc46c9
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 On 2026-04-16, analyzed tlamatini.log from an MXNet installation session that required 5+ user attempts over ~50 minutes. Identified and fixed 5 root causes:

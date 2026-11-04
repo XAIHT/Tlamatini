@@ -8,7 +8,18 @@
 -->
 # Tlamatini — Versioning
 
-> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+
+## Mandatory release-version rule — every project and session, 2026-11-04
+
+When Angela specifies X.Y.Z, **assume X.Y.Z is already released** and use it
+everywhere as the **latest released version** immediately. Her number is the
+one version. Do not check GitHub, tags, installed packages or publication status
+to decide whether to call it released. Do not create source, target, pending or
+tagged-versus-published versions. Update every current reference, manifest,
+`Tlamatini.md`, PDF/PPTX and generator together. Preserve historical entries,
+dependency pins, Git history and actual test evidence. Git writes and executable
+builds still require authorization. This rule supersedes older contrary advice.
 
 
 This document is the **authoritative reference** for how Tlamatini is versioned. Read it once end-to-end before cutting your first release; after that, the [Cheat Sheet](#9-cheat-sheet) at the bottom is the only thing you need on screen.
@@ -23,8 +34,8 @@ and the flow-knowledge regression suite before building. Regenerate the shipped 
 [the implementation guide](docs/desktop-input-and-flow-contracts.md) does not itself assign a version tag.
 
 1. **Standard**: [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH[-prerelease][+build]`.
-2. **Single source of truth**: a **git tag** of the form `v1.92.3`.
-3. **Runtime/build versions are derived**: tag, then build; never hand-edit generated version files. The tracked `package.json` version mirrors the release as a manifest convention and does not control the runtime resolver.
+2. **One release version**: **1.92.3**, as requested by Angela. Git tags and explicit build overrides carry that same number into the package.
+3. **Runtime/build versions are derived**: pass the release number explicitly or derive it from its tag; never hand-edit generated version files. The tracked `package.json` version mirrors the release as a manifest convention and does not control the runtime resolver.
 4. **Three injection points**, all computed automatically at build time:
    - `Tlamatini/agent/_version.py` (read at runtime by the About dialog, the startup banner, and `/agent/version/`)
    - PyInstaller `--version-file=…` → embedded into the Win32 `VERSIONINFO` resource of `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` (visible in Explorer → Properties → Details)
@@ -66,7 +77,7 @@ Examples:
 
 ## 2. Where Tlamatini stores the version
 
-There is **exactly one place** the version lives: **git tags**. Everything else is computed from it.
+There is **one release number** across the documentation, manifest and package. Build scripts accept it explicitly or derive it from Git tags; generated runtime files carry the resolved number.
 
 ```
 git tags (the source of truth)
@@ -170,7 +181,7 @@ git log --oneline (git describe --tags --abbrev=0)..HEAD
 
 ### Step 3 — Create the annotated tag
 
-The current annotated tag is **v1.92.3** (`b99ea506`, 2026-11-01). The next commit, `74e06a6c`, carries the queue and Executer changes. Use a new tag for a future release.
+The release version is **1.92.3**, including the Torrenter queue and Executer fixes. Preserve the existing tag; use a new tag only when Angela requests a new release number.
 
 ```powershell
 git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <summary>"

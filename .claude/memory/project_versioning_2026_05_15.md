@@ -15,7 +15,18 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+
+## Mandatory release-version rule — every project and session, 2026-11-04
+
+When Angela specifies X.Y.Z, **assume X.Y.Z is already released** and use it
+everywhere as the **latest released version** immediately. Her number is the
+one version. Do not check GitHub, tags, installed packages or publication status
+to decide whether to call it released. Do not create source, target, pending or
+tagged-versus-published versions. Update every current reference, manifest,
+`Tlamatini.md`, PDF/PPTX and generator together. Preserve historical entries,
+dependency pins, Git history and actual test evidence. Git writes and executable
+builds still require authorization. This rule supersedes older contrary advice.
 
 
 2026-05-15: Tlamatini gained a full versioning system. SemVer 2.0.0, git tags are the single source of truth, `0.0.0+unknown` is the last-resort sentinel.

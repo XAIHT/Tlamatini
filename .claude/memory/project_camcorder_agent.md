@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 2026-06-03: added **Camcorder** (#71) — a webcam capture agent (OpenCV `cv2`) on BOTH canvas + Multi-Turn (`chat_agent_camcorder`). Sibling of [[project_playwrighter_agent]]-style capture but for the physical CAMERA (Shoter = screen, Camcorder = camera); observational like Shoter so NOT in the Exec Report.

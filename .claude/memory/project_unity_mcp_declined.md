@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 User declined to implement a Uniter agent (Unity-MCP counterpart of Unrealer) on 2026-05-17 after I delivered the full analysis/proposal.

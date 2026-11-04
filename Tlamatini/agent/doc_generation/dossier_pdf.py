@@ -1443,7 +1443,7 @@ def about_flow(facts, st: Styles) -> list:
         ["Generated", facts["generated_at"]],
         ["Inspected commit", f"{facts['head_short']} — {facts['head_subject']}"],
         ["Version", facts['version']],
-        ["Current source release", facts["release"]["latest_published"] or "unknown"],
+        ["Latest released version", facts["release"]["latest_published"] or "unknown"],
         ["Companion deck", "Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx"],
     ], [0.30, 0.70], st))
     flow.append(Spacer(1, 12))

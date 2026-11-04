@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 2026-05-29: The user discarded the ENTIRE ~2-day external-exec hardening series in one `git discard` — "nothing you did worked." That series = [[project_pythonxer_forkbomb_fix]] + [[project_external_exec_safety_layer]] (7 follow-ups logged in PIVOT_CHANGES.md): blocking `compile()` syntax gate, blocking Ruff, Windows Job-Object containment, `_run_bounded`/`_kill_process_tree` anti-freeze, and the f/u#7 `_watch_script_completion`/`_kill_script_window_remnants` watcher daemon.

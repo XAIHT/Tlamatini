@@ -4,7 +4,7 @@ description: NetSpeed-Calculator (agent #88) — COMPLETE and wired across ~30 s
 metadata:
   type: project
 ---
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 

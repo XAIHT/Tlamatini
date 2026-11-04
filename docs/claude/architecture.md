@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Current version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
 
 ## v1.92.3 — Downloads, updates and build isolation
 
@@ -38,7 +38,7 @@ See the [v1.91.1 release record](../changes/2026-10-27-v1.91.1.md).
 
 ## Carried from v1.91.0 — Live Editor and Terminater configuration
 
-**v1.91.0** was the source version of 2026-10-23. Its existing annotated tag
+**v1.91.0** was the release of 2026-10-23. Its existing annotated tag
 resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
 agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
 **29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
@@ -804,7 +804,7 @@ When asked to debug an issue, `Tlamatini/tlamatini.log` is the first artifact to
 
 ## Doc Generation (agent/doc_generation)
 
-- `complete_project_docs.py` — the project-dossier generator (2026-09-26). One run rebuilds BOTH `tlamatini_app_summary.pdf` and `Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx` from facts it derives from the source and Git (agent, tool, skill and migration counts, release tags, the tracked file tree). It then verifies both files: no glyph off the page, no overlapping lines, every PowerPoint text box inside its shape, and the file tree in each file matching `git ls-files`. It exits non-zero rather than publish a file that failed. The version is derived from an existing source tag: `TLAMATINI_RELEASE_TAG=vX.Y.Z` selects it explicitly; otherwise `git describe --tags --abbrev=0 --match v[0-9]* HEAD` selects the latest reachable tag. The console prints `Current released version: vX.Y.Z`. This identifies the documented source release, not a verified published GitHub package. Helpers: `dossier_content.py` (the chapters), `dossier_editor_content.py` (canvas editing, Interactor and the account wizard), `dossier_theme.py` (palette, fonts, glyph coverage), `dossier_pdf.py`, `dossier_pptx.py` and `dossier_verify.py`. It needs Git and the Windows fonts it names. The normal native presentation check requires PowerPoint; if Office cannot start, record that limitation separately from structural checks and any alternate rendered-slide review.
+- `complete_project_docs.py` — the project-dossier generator (2026-09-26). One run rebuilds BOTH `tlamatini_app_summary.pdf` and `Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx` from facts it derives from the source and Git (agent, tool, skill and migration counts, release tags, the tracked file tree). It then verifies both files: no glyph off the page, no overlapping lines, every PowerPoint text box inside its shape, and the file tree in each file matching `git ls-files`. It exits non-zero rather than publish a file that failed. The release version follows Angela's requested number: `TLAMATINI_RELEASE_TAG` or `TLAMATINI_VERSION` selects it explicitly; otherwise the generator reads `package.json`, with the reachable Git tag as fallback. No tag or GitHub publication is required to update the documentation. Covers, feature chapters and release tables use that one release version. Helpers: `dossier_content.py` (the chapters), `dossier_editor_content.py` (canvas editing, Interactor and the account wizard), `dossier_theme.py` (palette, fonts, glyph coverage), `dossier_pdf.py`, `dossier_pptx.py` and `dossier_verify.py`. It needs Git and the Windows fonts it names. The normal native presentation check requires PowerPoint; if Office cannot start, record that limitation separately from structural checks and any alternate rendered-slide review.
 - `refresh_project_docs.py` — thin entry point that calls `complete_project_docs.main()`.
 - `mardown_to_pdf.py` *(sic, typo preserved)* — the older Markdown → PDF helper; PDFer's pipeline was ported from it. The dossier no longer uses it.
 

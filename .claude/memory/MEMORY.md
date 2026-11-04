@@ -1,5 +1,5 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 <!-- Unless noted, work is UNCOMMITTED in source; frozen needs build.py. Detail in topic files. -->
@@ -31,7 +31,7 @@
 - [Agent table WIPED every boot](project_agent_table_wiped_on_boot.md) — apps.ready() deletes+rebuilds Agent rows with .title(); real cause of "Pdfer" + 6 dead canvas connections. Fixed via agent_paths; test_agent_display_names.py.
 - [Agent naming (CRITICAL)](feedback_agent_naming_conventions.md) — display exact case (STM32er); dirs/pool/CSS lowercase; INI_SECTION ALL-CAPS.
 - [Update agent docs](feedback_update_agent_docs.md) — agent changes also update create_new_agent.md/agentic_skill.md/README.
-- [package.json version bump](feedback_package_json_version_bump.md) — bump on each pushed release.
+- [Single release version](feedback_package_json_version_bump.md) — apply Angela's requested version immediately to both editions, all current docs, Tlamatini.md and PDF/PPTX generators; no source/publication split.
 - PYZ verification — `feedback_pyinstaller_pyz_verification.md` (historical entry; file absent from this checkout) — check frozen modules inside the PYZ, not loose .py.
 - LIVE app = FROZEN install — `project_live_app_is_frozen_install.md` (historical entry; file absent from this checkout) — :8000 is C:\Tlamatini\Tlamatini.exe; MCP tools are SOURCE. Repo-only frontend fix is INVISIBLE: copy into _internal/staticfiles + _internal/agent/static + TlamatiniSourceCode → relaunch → prove over HTTP → Ctrl+F5.
 - .claude assets tracked — `project_claude_assets_tracked.md` (historical entry; file absent from this checkout) — .claude/ pushed PUBLIC; memories mirrored STATIC (re-copy first); settings.local/data.keys ignored.

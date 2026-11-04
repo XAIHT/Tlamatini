@@ -7,7 +7,7 @@
 -->
 # Tlamatini — Companion-App Discovery Contract
 
-> Current version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
 
 
 A stable lookup surface that lets XAIHT **companion apps** (e.g. **Tlamatini-FlowPills**)

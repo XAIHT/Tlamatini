@@ -1,4 +1,4 @@
-> Current version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 ## This folder contains the source code aimed to you in order to modify and improve yourself.

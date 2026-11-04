@@ -8,7 +8,7 @@
 -->
 # ACPX & Skills in Tlamatini — A complete guide for dummies
 
-> Current version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
 
 ## v1.92.3 — Downloads, updates and build isolation
 
@@ -38,7 +38,7 @@ See the [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md).
 
 ## Carried from v1.91.0 — Live Editor and Terminater configuration
 
-**v1.91.0** was the source version of 2026-10-23. Its existing annotated tag
+**v1.91.0** was the release of 2026-10-23. Its existing annotated tag
 resolves to `a771d27c` and is present on origin. The catalog remains **86 workflow
 agents, 67 wrapped chat agents and 110 built-in tools** (21 + 67 + 12 + 10), with
 **29 skills and 220 migrations**. The frontend has **64 JS modules and 29 CSS
@@ -89,7 +89,7 @@ Contracts and evidence: [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), [Canvas e
 >
 > **Compact mode (2026-10-01, shipped in v1.74.0; the switch 2026-10-02, shipped in v1.75.0):** when the configured model's real window cannot hold Tlamatini's complete request, that request runs in Compact mode. As tagged in v1.74.0, ACPX was switched off for it and the ACPX checkbox was locked, so the 12 ACPX/Skill tools were not bound at all. **Since 2026-10-02 (shipped in v1.75.0, tag at `f7eb53ff`) that ACPX lock is GONE:** Compact mode is a real toolbar switch that unticks the Configure rows (all but System-Metrics, Files-Search and Current-Time) and binds exactly what the user ticks back, so an ACPX/Skill tool rides along only when its row is ticked **and** the toolbar's ACPX box is on. A small model locks the Compact mode box ON; while the box is OFF, a model that holds everything activated gets the complete request byte for byte. See `docs/claude/architecture.md` → *Compact mode* and `docs/claude/multi-turn.md` → *Multi-Turn on a small model — Compact mode*.
 
-> **Current state: Tlamatini v1.85.0, released 2026-10-16.** Refresh, Views and the centered avatar join the existing chat. The ACPX runtime retains its 12 ACPX/Skill tools and existing permission model.
+> **Latest released version: Tlamatini 1.92.3.** The release includes Torrenter, 250 WPM configuration, verified uninstaller delivery and isolated build environments. ACPX retains its 12 ACPX/Skill tools and permission model.
 
 ---
 

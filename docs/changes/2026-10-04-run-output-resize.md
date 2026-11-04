@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Prompt Flow Run output resizing — 2026-10-04
 
-> Current version: **[v1.92.3](2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](2026-11-01-v1.92.3.md)**.
 
 
 ## Request

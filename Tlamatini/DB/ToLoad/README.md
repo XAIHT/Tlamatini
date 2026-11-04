@@ -8,7 +8,7 @@
 -->
 # DB / ToLoad
 
-> Current version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 This directory is the **drop zone** for replacing Tlamatini's live SQLite

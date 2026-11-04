@@ -8,7 +8,7 @@
 -->
 # Whatsapper Setup: Send A WhatsApp Message From Tlamatini
 
-> Current version: **[v1.92.3](../../../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 This guide is for absolute beginners. Do one numbered step, then the next. The **default** path (`provider=cloud`) uses **Meta's official WhatsApp Cloud API only** — no Twilio, no TextMeBot, no unofficial relay.

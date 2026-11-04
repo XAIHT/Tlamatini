@@ -12,7 +12,7 @@ originSessionId: 161aebfa-f2df-4d28-bcdf-e79b7579c58e
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 The 2026-05-07 desktop-UI Multi-Turn run (`open notepad, type "Hi!, I'm Tlamatini", wait 30s, close`) got force-stopped at iteration 15 before reaching Keyboarder. Root cause was a stack of bugs; all 8 are now fixed in one batch on `main`.

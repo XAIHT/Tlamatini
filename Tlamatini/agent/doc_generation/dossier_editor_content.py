@@ -7,7 +7,7 @@ def editor_sections(section):
         section("torrent_workspace", "TORRENTER", "From a magnet to verified files",
                 "Chat, the Agentic Control Panel and XT share the account’s Jobs queue.",
                 body=["Inspect the metadata and select file IDs. A job receipt lets you reconnect. Enable Wait for complete download in a flow when downstream nodes need the files.",
-                      "After the tag (74e06a6c), a fifth magnet can wait for a metadata slot. Reuse its inspection ID. The verified manifest identifies the delivered copy in Downloads or the edition’s fallback folder."], deck_points=[
+                      "A fifth magnet can wait for a metadata slot. Reuse its inspection ID. The verified manifest identifies the delivered copy in Downloads or the edition’s fallback folder."], deck_points=[
                     ('Inspect', 'Keep the inspection ID while queued.'),
                     ('Select', 'Choose the file IDs from the resolved metadata.'),
                     ('Follow', 'Reconnect with the Jobs job ID.'),
@@ -182,10 +182,10 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
-        section("release1923", "CURRENT VERSION · v1.92.3", "What changed in 1.92",
-                "Tag b99ea506 · November 1, 2026",
+        section("release1923", "RELEASED · v1.92.3", "What is included in 1.92.3",
+                "Downloads, typing, updates and Windows execution",
                 body=["Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.",
-                      "Builds with different requirement fingerprints coexist. An OS lock protects preparation and the full build. The 1.92.2 update package includes the verified uninstaller and preserves existing data.keys."], deck_points=[
+                      "Builds with different requirement fingerprints coexist. An OS lock protects preparation and the full build. The 1.92.3 update package includes the verified uninstaller and preserves existing data.keys."], deck_points=[
                     ('Typing', 'Live Editor 40–250 WPM. Terminater 20–250 WPM.'),
                     ('Downloads', 'Torrenter shares the signed-in Jobs queue across chat, ACP and XT.'),
                     ('Updates', 'Install the verified uninstaller and preserve the existing vault.'),

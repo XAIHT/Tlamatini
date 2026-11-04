@@ -12,7 +12,7 @@ originSessionId: 6011d685-3956-4be6-b3b1-ab20f1b1076c
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 **ABSOLUTE RULE.** For the Tlamatini project: all work goes on `main`, FOREVER AND EVER. The user has explicitly reinforced this rule THREE TIMES IN ESCALATING TONE in session `4a208cb5-99b2-498e-9045-72d3a2ba8110`:

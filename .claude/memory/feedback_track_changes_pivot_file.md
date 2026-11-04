@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 When I make changes for the user — **especially edits to `prompt.pmt`, the wrapped chat-agent wrapper (`tools.py` / `chat_agent_registry.py`), and agent `config.yaml` defaults** — I must keep a running record so a later "roll back just that last change" is exact and self-contained.

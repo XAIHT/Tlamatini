@@ -8,7 +8,7 @@
 -->
 # Creating a New Skill (SKILL.md package) in Tlamatini
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 Authoritative, step-by-step guide for authoring a new **Skill** — including

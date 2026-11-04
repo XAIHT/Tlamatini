@@ -68,10 +68,15 @@ ALL_FILES = sorted([f for f in git("ls-files", "-z").split("\0") if f], key=lamb
 FILES = [f for f in ALL_FILES if not f.startswith(A + "migrations/")]
 PATHSET = set(FILES)
 HEAD = git("rev-parse", "--short", "HEAD").strip()
-try:
-    TAG = git("describe", "--tags", "--abbrev=0").strip()
-except subprocess.CalledProcessError:
-    TAG = "untagged"
+# Angela's requested release is authoritative, even before packaging/tagging.
+with open(os.path.join(ROOT, "package.json"), encoding="utf-8-sig") as release_manifest:
+    _manifest_version = str(json.load(release_manifest)["version"]).strip()
+_release_version = (os.environ.get("TLAMATINI_RELEASE_TAG", "").strip()
+                    or os.environ.get("TLAMATINI_VERSION", "").strip()
+                    or _manifest_version).removeprefix("v")
+if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", _release_version):
+    raise ValueError(f"Invalid release version: {_release_version}")
+TAG = f"v{_release_version}"
 COMMIT_DATE = git("log", "-1", "--format=%cs").strip()
 TODAY = datetime.date.today().isoformat()
 
@@ -2182,14 +2187,14 @@ def sheet_live_editor():
 
 def sheet_torrenter():
     sh = new_sheet('Torrenter and release delivery',
-                   'v1.92.3 and the subsequent queue update', "integration")
+                   'Latest released version 1.92.3', "integration")
     box(sh.body, 12, TOP, 193, "Ltransport", "1. Sign in and choose the account", [
         "Chat, the Agentic Control Panel and XT open the same account queue. Migration 0221 registers Torrenter.",
         "Django authenticates the browser. The controller obtains a scoped credential from Tlachihuani Jobs.",
     ], h=72, size=15, tsize=14)
     box(sh.body, 215, TOP, 193, "Lintegration", "2. Inspect the source and select files", [
         "Inspect the magnet or torrent. Keep its inspection ID until the metadata and file IDs are ready.",
-        "After the tag, a fifth magnet can queue behind four active metadata lookups. Poll the same ID.",
+        "A fifth magnet can queue behind four active metadata lookups. Poll the same ID.",
     ], h=72, size=15, tsize=14)
     box(sh.body, 12, TOP - 82, 193, "Lintelligence", "3. Submit and follow the job", [
         "Submit selected IDs and the metadata revision. Reuse the operation key on an uncertain retry.",
@@ -2205,7 +2210,7 @@ def sheet_torrenter():
     ], h=72, size=15, tsize=14)
     box(sh.body, 215, TOP - 164, 193, "Lplatform", "Build and run on Windows", [
         "Version 1.92.3 isolates build environments by requirements fingerprint. The OS lock covers preparation and use.",
-        "After the tag, Executer preserves shell assignments such as PLAYWRIGHT_BROWSERS_PATH and applies the configured command timeout.",
+        "Executer preserves shell assignments such as PLAYWRIGHT_BROWSERS_PATH and applies the configured command timeout.",
     ], h=72, size=15, tsize=14)
     return sh
 

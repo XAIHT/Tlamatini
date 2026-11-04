@@ -6,7 +6,7 @@ type: feedback
 
 # All execution must be visible — Angela, reaffirmed 2026-09-23
 
-> Current version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
 
 
 **HEADLESS IS FORBIDDEN.** Every command, automated test, diagnostic, script,
