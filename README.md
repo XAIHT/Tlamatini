@@ -246,8 +246,8 @@ Pull the local embedding model and register the cloud tags used by the current a
 
 ```powershell
 ollama pull nomic-embed-text
-ollama pull glm-5.3:cloud
-ollama pull mistral-large-3:675b-cloud
+ollama pull deepseek-v4.1-flash:cloud
+ollama pull mistral-large-4:cloud
 ollama pull gemma4:cloud
 ```
 

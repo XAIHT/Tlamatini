@@ -508,7 +508,8 @@ _FROZEN_TERMINATER_MODULES = (
 _FROZEN_TORRENTER_MODULES = (
     "agent.management.commands.enroll_torrenter", "agent.torrenter_tool", "agent.torrenter_views",
     "agent.torrenter_bridge", "agent.agents.torrenter.client", "agent.agents.torrenter.contract", "agent.agents.torrenter.sources",
-    "agent.agents.torrenter.activity", "agent.agents.torrenter.torrenter", "agent.migrations.0221_torrenter",
+    "agent.agents.torrenter.activity", "agent.agents.torrenter.torrenter", "agent.migrations.0221_torrenter", "agent.migrations.0222_replace_mistral_large3",
+    "agent.rag.directory_listing",
 )
 
 # PyInstaller ships these Windows extensions as loose .pyd files outside the PYZ.

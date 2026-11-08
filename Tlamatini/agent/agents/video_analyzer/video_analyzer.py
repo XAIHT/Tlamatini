@@ -123,8 +123,8 @@ class VideoAnalyzerFatal(RuntimeError):
 # fallbacks only kick in when a stale pool config.yaml predates a field.
 # Initial defaults only; load_config resolves saved Config -> Models choices first.
 DEFAULT_INTERPRETER_MODEL_1 = "gemma4:cloud"
-DEFAULT_INTERPRETER_MODEL_2 = "mistral-large-3:675b-cloud"
-DEFAULT_MERGING_MODEL = "glm-5.3:cloud"
+DEFAULT_INTERPRETER_MODEL_2 = "mistral-large-4:cloud"
+DEFAULT_MERGING_MODEL = "deepseek-v4.1-flash:cloud"
 DEFAULT_EXPECTED_MOTION = (
     "The servo/actuator performs its programmed motion — it sweeps between its "
     "commanded positions and repeats the sequence continuously."

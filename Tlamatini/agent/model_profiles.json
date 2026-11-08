@@ -7,7 +7,11 @@
       "id": "glm-5",
       "vendor": "Z.ai",
       "match": "^glm-?5",
-      "sampling": {"temperature": 1.0, "top_p": 0.95, "repeat_penalty": 1.0},
+      "sampling": {
+        "temperature": 1,
+        "top_p": 0.95,
+        "repeat_penalty": 1
+      },
       "sources": [
         "https://huggingface.co/zai-org/GLM-5.3/raw/main/generation_config.json",
         "https://huggingface.co/zai-org/GLM-5.2",
@@ -20,7 +24,11 @@
       "id": "deepseek-v4",
       "vendor": "DeepSeek",
       "match": "^deepseek-?v4",
-      "sampling": {"temperature": 1.0, "top_p": 1.0, "repeat_penalty": 1.0},
+      "sampling": {
+        "temperature": 1,
+        "top_p": 1,
+        "repeat_penalty": 1
+      },
       "sources": [
         "https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro",
         "https://api-docs.deepseek.com/guides/thinking_mode"
@@ -31,40 +39,80 @@
       "id": "minimax-m3",
       "vendor": "MiniMax",
       "match": "^minimax-?m3",
-      "sampling": {"temperature": 1.0, "top_p": 0.95, "repeat_penalty": 1.0},
-      "sources": ["https://huggingface.co/MiniMaxAI/MiniMax-M3"],
+      "sampling": {
+        "temperature": 1,
+        "top_p": 0.95,
+        "repeat_penalty": 1
+      },
+      "sources": [
+        "https://huggingface.co/MiniMaxAI/MiniMax-M3"
+      ],
       "notes": "Model card: temperature=1.0, top_p=0.95 for best performance."
     },
     {
       "id": "gemma-4",
       "vendor": "Google",
       "match": "^gemma-?4",
-      "sampling": {"temperature": 1.0, "top_p": 0.95, "top_k": 64, "repeat_penalty": 1.0},
-      "sources": ["https://huggingface.co/google/gemma-4-31B-it"],
+      "sampling": {
+        "temperature": 1,
+        "top_p": 0.95,
+        "top_k": 64,
+        "repeat_penalty": 1
+      },
+      "sources": [
+        "https://huggingface.co/google/gemma-4-31B-it"
+      ],
       "notes": "Model card: one standardized configuration for all use cases (temperature 1.0, top_p 0.95, top_k 64). History keeps only final responses, except tool-call turns where thinking content should be preserved."
     },
     {
       "id": "qwen-3.5",
       "vendor": "Qwen",
       "match": "^qwen-?3\\.5",
-      "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "presence_penalty": 0.0, "repeat_penalty": 1.0},
-      "sampling_no_thinking": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "presence_penalty": 1.5, "repeat_penalty": 1.0},
-      "sources": ["https://huggingface.co/Qwen/Qwen3.5-397B-A17B"],
+      "sampling": {
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0,
+        "presence_penalty": 0,
+        "repeat_penalty": 1
+      },
+      "sampling_no_thinking": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0,
+        "presence_penalty": 1.5,
+        "repeat_penalty": 1
+      },
+      "sources": [
+        "https://huggingface.co/Qwen/Qwen3.5-397B-A17B"
+      ],
       "notes": "Model card: thinking mode temperature 0.6 / top_p 0.95 / top_k 20 / min_p 0 / presence 0 / repetition 1.0; non-thinking 0.7 / 0.8 / 20 / 0 / presence 1.5 / 1.0. Historical output keeps only the final answer (the chat template does this)."
     },
     {
       "id": "qwen-2.5",
       "vendor": "Qwen",
       "match": "^qwen-?2\\.5",
-      "sampling": {"temperature": 0.7, "top_p": 0.8, "top_k": 20, "repeat_penalty": 1.05},
-      "sources": ["https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/raw/main/generation_config.json"],
+      "sampling": {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "repeat_penalty": 1.05
+      },
+      "sources": [
+        "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/raw/main/generation_config.json"
+      ],
       "notes": "generation_config.json: temperature 0.7, top_p 0.8, top_k 20, repetition_penalty 1.05."
     },
     {
       "id": "gpt-oss",
       "vendor": "OpenAI",
       "match": "^gpt-?oss",
-      "sampling": {"temperature": 1.0, "top_p": 1.0, "repeat_penalty": 1.0},
+      "sampling": {
+        "temperature": 1,
+        "top_p": 1,
+        "repeat_penalty": 1
+      },
       "sources": [
         "https://github.com/openai/gpt-oss",
         "https://developers.openai.com/cookbook/articles/openai-harmony"
@@ -76,22 +124,44 @@
       "vendor": "Moonshot AI",
       "match": "^kimi",
       "sampling": {},
-      "sources": ["https://platform.kimi.ai/docs/guide/use-thinking-models"],
+      "sources": [
+        "https://platform.kimi.ai/docs/guide/use-thinking-models"
+      ],
       "notes": "Moonshot docs: temperature is not modifiable for the thinking models - use the default and do not pass it; K3 is tuned only through reasoning_effort. In tool-call loops keep every reasoning_content and send it back as-is."
+    },
+    {
+      "id": "mistral-large-4",
+      "vendor": "Mistral AI",
+      "match": "^mistral-?large-?4(?:$|[-.])",
+      "sampling": {},
+      "sources": [
+        "https://ollama.com/library/mistral-large-4:cloud",
+        "https://docs.mistral.ai/models/mistral-large-4-0"
+      ],
+      "notes": "Use the serving model defaults. The published Large 4 pages do not prescribe the Large 3 temperature; do not inherit its 0.05 sampling profile. Capabilities and context are discovered through Ollama /api/show."
     },
     {
       "id": "mistral-large-3",
       "vendor": "Mistral AI",
       "match": "^mistral-?large-?3",
-      "sampling": {"temperature": 0.05, "repeat_penalty": 1.0},
-      "sources": ["https://huggingface.co/mistralai/Mistral-Large-3-675B-Instruct-2512"],
+      "sampling": {
+        "temperature": 0.05,
+        "repeat_penalty": 1
+      },
+      "sources": [
+        "https://huggingface.co/mistralai/Mistral-Large-3-675B-Instruct-2512"
+      ],
       "notes": "Model card: use a temperature below 0.1 for daily-driver and production environments; keep the tool set small and well defined."
     },
     {
       "id": "nemotron-3",
       "vendor": "NVIDIA",
       "match": "^nemotron-?3",
-      "sampling": {"temperature": 1.0, "top_p": 0.95, "repeat_penalty": 1.0},
+      "sampling": {
+        "temperature": 1,
+        "top_p": 0.95,
+        "repeat_penalty": 1
+      },
       "sources": [
         "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
         "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16/raw/main/generation_config.json"

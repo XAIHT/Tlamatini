@@ -42,3 +42,33 @@ Rollback copies and a verified SQLite online backup are retained at:
 `C:\Tlamatini\Temp\runtime-implementation-1.63.0-backup`.
 
 At the end of the 2026-09-20 verification, the installed app served `http://127.0.0.1:8000/agent/agent/`. This is dated evidence, not a current process-health assertion. Local diagnostic logs are under repository `Temp/runtime-fix-*.log`; they are untracked operator artifacts, not release prerequisites. See [model configuration](model_configuration.md) for repeatable commands.
+
+
+## 2026-11-08 — Initial model and verification of both editions
+
+English and Spanish source checks ran in Angela's visible verification console.
+Both `config.json` files contain 26 text-model selections set to
+`deepseek-v4.1-flash:cloud`. Talker retains
+`legraphista/Orpheus:3b-ft-q8`; no replacement speech model was downloaded.
+
+| Check | English | Spanish |
+|---|---|---|
+| Model, configuration, vision, speech and directory regressions | 182 passed, 5 skipped | 182 passed, 5 skipped |
+| Private-data checker unit tests | 143 passed | 143 passed |
+| Python syntax compilation and Ruff | 942 files; passed | 970 files; passed |
+| ESLint, zero warnings permitted | Passed | Passed |
+| JavaScript syntax check | 108 files; passed | 110 files; passed |
+
+In Spanish, the local `npm run lint` launcher delegated to pnpm and attempted
+to prepare `esbuild` before ESLint ran. The existing local ESLint and
+`scripts/check_js_parse.mjs` were then invoked directly with the same targets
+and rules as the package script. No dependency scripts were approved and no
+packages were downloaded for the retry. The provisional `pnpm-workspace.yaml`
+created by that attempt was moved out of the active repository and retained as
+evidence in `Temp/parity-127/pnpm-workspace.generated-by-lint.yaml`.
+
+Logs and results are under Spanish's `Temp/parity-127`: `verification-summary.json`,
+`final-check-results.json`, `javascript-local-results.json` and the logs per
+edition. This verifies source configuration and the listed regressions; it does
+not certify complete execution of all 127 prompts or a new installed release.
+No commits were made.

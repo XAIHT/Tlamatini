@@ -337,6 +337,9 @@ REQUIRED_SNAPSHOT_FILES = (
     "docs/torrenter.md",
     "Tlamatini/agent/management/commands/enroll_torrenter.py",
     "Tlamatini/agent/migrations/0221_torrenter.py",
+    "Tlamatini/agent/migrations/0222_replace_mistral_large3.py",
+    "Tlamatini/agent/rag/directory_listing.py",
+    "Tlamatini/agent/test_available_directories.py",
     "Tlamatini/agent/torrenter_tool.py",
     "Tlamatini/agent/torrenter_bridge.py",
     "Tlamatini/agent/torrenter_views.py",
@@ -399,6 +402,7 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/chat_agent_runtime.py",
     "Tlamatini/agent/management/commands/check_agent_runtimes.py",
     "Tlamatini/agent/test_model_settings.py",
+    "Tlamatini/agent/test_model_tag_upgrade.py",
     "docs/model_configuration.md",
     # Fatal visual diagnostics must survive both portable copies and self-rebuilds.
     "Tlamatini/agent/agents/visual_errors.py",

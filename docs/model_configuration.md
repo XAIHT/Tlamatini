@@ -5,8 +5,27 @@
 
 Config → Models manages **38 model, engine and voice settings** for core services
 and **21 model-backed agents**. This reference describes the implemented registry
-as reviewed on **2026-09-20**. Defaults below are application defaults, not a promise
+with initial defaults updated on **2026-11-08**. Defaults below are application defaults, not a promise
 that a provider will continue to serve a particular model.
+
+## Initial models — November 8, 2026
+
+New installations use **`deepseek-v4.1-flash:cloud`** for chat, reasoning,
+classification, summaries, analysis merging and text agents. Angela's initial
+demo choice is set in both `config.json` and the shared registry defaults;
+the release builders carry those same files.
+
+Image and video observers retain vision models: `mistral-large-4:cloud` and
+`gemma4:cloud`. Retired Mistral Large 3 choices resolve to Large 4; the catalog
+migration updates old Mistral and GLM references without deleting cards.
+Embedding and speech-recognition models are unchanged. Talker keeps
+**`legraphista/Orpheus:3b-ft-q8`**; this change does not download another
+speech model.
+
+Other available models remain selectable in **Config → Models**. The initial
+model change does not disable GLM or automatically replace a custom GLM choice
+in an existing installation. Rebuild to include these changes in an executable;
+editing the repository does not update an already installed program.
 
 ## Use the dialog
 
@@ -57,23 +76,23 @@ saving a dedicated value means later Unified model changes do not override it.
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
 | `embeding-model` — Embedding / memory | — | `Nomic-Embed-Text:latest` | ollama |
-| `chained-model` — Chained reasoning | — | `glm-5.3:cloud` | ollama |
-| `access_aimed_prompt_model` — Access aimed prompts | — | `glm-5.3:cloud` | ollama |
-| `unified_agent_model` — Unified / Multi-Turn | — | `glm-5.3:cloud` | ollama |
-| `mcp_files_search_model` — MCP file search | — | `glm-5.3:cloud` | ollama |
-| `internet_classifier_model` — Internet classifier | — | `glm-5.3:cloud` | ollama |
-| `web_summarizer_model` — Web search summaries | — | `glm-5.3:cloud` | ollama |
+| `chained-model` — Chained reasoning | — | `deepseek-v4.1-flash:cloud` | ollama |
+| `access_aimed_prompt_model` — Access aimed prompts | — | `deepseek-v4.1-flash:cloud` | ollama |
+| `unified_agent_model` — Unified / Multi-Turn | — | `deepseek-v4.1-flash:cloud` | ollama |
+| `mcp_files_search_model` — MCP file search | — | `deepseek-v4.1-flash:cloud` | ollama |
+| `internet_classifier_model` — Internet classifier | — | `deepseek-v4.1-flash:cloud` | ollama |
+| `web_summarizer_model` — Web search summaries | — | `deepseek-v4.1-flash:cloud` | ollama |
 
 ### Vision
 
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
-| `image_interpreter_model` — Image interpreter 1 | `image_interpreter.interpreter_model_1` | `mistral-large-3:675b-cloud` | ollama |
+| `image_interpreter_model` — Image interpreter 1 | `image_interpreter.interpreter_model_1` | `mistral-large-4:cloud` | ollama |
 | `image_interpreter_model_2` — Image interpreter 2 | `image_interpreter.interpreter_model_2` | `gemma4:cloud` | ollama |
-| `image_merging_model` — Image merger | `image_interpreter.merging_model` | `glm-5.3:cloud` | ollama |
+| `image_merging_model` — Image merger | `image_interpreter.merging_model` | `deepseek-v4.1-flash:cloud` | ollama |
 | `video_interpreter_model` — Video interpreter 1 | `video_analyzer.interpreter_model_1` | `gemma4:cloud` | ollama |
-| `video_interpreter_model_2` — Video interpreter 2 | `video_analyzer.interpreter_model_2` | `mistral-large-3:675b-cloud` | ollama |
-| `video_merging_model` — Video merger | `video_analyzer.merging_model` | `glm-5.3:cloud` | ollama |
+| `video_interpreter_model_2` — Video interpreter 2 | `video_analyzer.interpreter_model_2` | `mistral-large-4:cloud` | ollama |
+| `video_merging_model` — Video merger | `video_analyzer.merging_model` | `deepseek-v4.1-flash:cloud` | ollama |
 | `claude_image_model` — Claude image analysis | — | `claude-opus-4-5-20251101` | provider |
 
 ### Speech
@@ -85,40 +104,40 @@ saving a dedicated value means later Unified model changes do not override it.
 | `whisperer_engine` — Whisperer · recognition engine | `whisperer.engine` | `faster-whisper` | choice |
 | `whisperer_model` — Whisperer · local speech model | `whisperer.model` | `base` | local |
 | `whisperer_cloud_model` — Whisperer · cloud speech model | `whisperer.cloud_model` | Empty (provider default) | provider; optional |
-| `whisperer_cleanup_model` — Whisperer · transcript cleanup | `whisperer.cleanup_model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
+| `whisperer_cleanup_model` — Whisperer · transcript cleanup | `whisperer.cleanup_model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
 | `video_transcription_model` — Video-Analyzer · audio tracks | `video_analyzer.transcription.model` | `base` | local |
 
 ### Workflows
 
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
-| `crawler_model` — Crawler | `crawler.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `flowcreator_model` — FlowCreator | `flowcreator.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `flowhypervisor_model` — FlowHypervisor | `flowhypervisor.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `prompter_model` — Prompter | `prompter.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `pser_model` — PSer | `pser.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `reviewer_model` — Reviewer | `reviewer.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
+| `crawler_model` — Crawler | `crawler.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `flowcreator_model` — FlowCreator | `flowcreator.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `flowhypervisor_model` — FlowHypervisor | `flowhypervisor.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `prompter_model` — Prompter | `prompter.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `pser_model` — PSer | `pser.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `reviewer_model` — Reviewer | `reviewer.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
 
 ### Documents
 
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
-| `file_interpreter_model` — File-Interpreter | `file_interpreter.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `summarizer_model` — Summarizer | `summarizer.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `pdfer_model` — PDFer · design and polish | `pdfer.ollama_model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `pptxer_model` — PPTXer · design and polish | `pptxer.ollama_model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `latexer_model` — LaTeXer · repair | `latexer.repair_model` | `glm-5.3:cloud` | ollama; optional; fallback `unified_agent_model` |
+| `file_interpreter_model` — File-Interpreter | `file_interpreter.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `summarizer_model` — Summarizer | `summarizer.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `pdfer_model` — PDFer · design and polish | `pdfer.ollama_model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `pptxer_model` — PPTXer · design and polish | `pptxer.ollama_model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `latexer_model` — LaTeXer · repair | `latexer.repair_model` | `deepseek-v4.1-flash:cloud` | ollama; optional; fallback `unified_agent_model` |
 
 ### Monitoring & messaging
 
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
-| `monitor_log_model` — Monitor-Log | `monitor_log.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `monitor_netstat_model` — Monitor-Netstat | `monitor_netstat.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `notifier_model` — Notifier | `notifier.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `recmailer_model` — RecMailer | `recmailer.llm.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `instant_messaging_doctor_model` — Instant-Messaging-Doctor | `instant_messaging_doctor.ollama.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
-| `teletlamatini_model` — TeleTlamatini · completeness check | `teletlamatini.completeness_check.model` | `glm-5.3:cloud` | ollama; fallback `unified_agent_model` |
+| `monitor_log_model` — Monitor-Log | `monitor_log.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `monitor_netstat_model` — Monitor-Netstat | `monitor_netstat.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `notifier_model` — Notifier | `notifier.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `recmailer_model` — RecMailer | `recmailer.llm.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `instant_messaging_doctor_model` — Instant-Messaging-Doctor | `instant_messaging_doctor.ollama.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
+| `teletlamatini_model` — TeleTlamatini · completeness check | `teletlamatini.completeness_check.model` | `deepseek-v4.1-flash:cloud` | ollama; fallback `unified_agent_model` |
 
 ## Speech and model compatibility
 
@@ -243,7 +262,8 @@ Monitor-Netstat and RecMailer read UTF-8 YAML, including a Windows BOM.
 
 Self-update preserves the user's global configuration. New absent keys receive
 registry defaults when loaded; Save persists all current values. Preserved literal
-model choices are not silently migrated away. The self-modification snapshot must
+model choices remain explicit, except the exact retired Mistral Large 3 tag
+listed above. The self-modification snapshot must
 carry the registry, runtime preparation, verification command, regression tests
 and this guide. See [carriage and build gates](self-management-carriage.md).
 
@@ -271,7 +291,7 @@ evidence that a local Whisper name or provider model ID is invalid.
 ## Video summaries and HTTP failures
 
 Video-Analyzer initially uses `gemma4:cloud` and
-`mistral-large-3:675b-cloud`, merged by `glm-5.3:cloud`. Its local audio model
+`mistral-large-4:cloud`, merged by `deepseek-v4.1-flash:cloud`. Its local audio model
 initially uses `base`. `robotics` remains the default task; `transcription` extracts
 timestamped audio tracks and `summary` combines speech with sampled visual evidence.
 

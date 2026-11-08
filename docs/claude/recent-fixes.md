@@ -10,6 +10,23 @@
 
 > Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
 
+## 2026-11-08 — DeepSeek initial model and vision update
+
+Angela selected `deepseek-v4.1-flash:cloud` for the initial demo. Keep
+`agent/config.json`, `agent/agents/model_settings.py`, agent fallback
+values, documentation and catalog examples aligned. Public and private builds
+carry the repository configuration; updating only the defaults table is not
+sufficient. The `glm-5.3-flash:cloud` variant found in both configuration
+files was also corrected.
+
+Vision uses `mistral-large-4:cloud` alongside `gemma4:cloud`. The registry
+recognizes the retired Mistral Large 3 choice, and migration 0222 updates catalog
+references. Keep `legraphista/Orpheus:3b-ft-q8`: Angela withdrew the request
+to change it to `latest` because of her limited data connection. Do not
+download speech models for this change. Regression coverage lives in
+`agent/test_model_tag_upgrade.py`; see the
+[model configuration guide](../model_configuration.md).
+
 ## v1.92.4 — Matching builds, explicit release identity and readable Markdown
 
 The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](../changes/2026-11-08-v1.92.4.md).
@@ -1844,7 +1861,7 @@ rebuild were not part of this verification.
 
 **Do NOT** read an agent template's YAML from web code without passing it through `resolve_agent_models` — any registered model field can be `@config`.
 
-**Retired model replaced (same day).** `jcyhsiao/qwen3.5cloud:latest` (`qwen3.5:397b`) answers **HTTP 410, retired 2026-09-25**, and was the shipped default for Image-Interpreter interpreter 1 and Video-Analyzer interpreter 2, so every image ran on one interpreter. Angela chose **`mistral-large-3:675b-cloud`** (Ollama reports `vision`; it read page 12's title correctly). It is now the default in `model_settings.py`, both agents' `DEFAULT_*` constants, `agent/config.json`, every LLM-facing description (`chat_agent_registry.py`, `mcp_agent.py`, `agentic_skill.md`, `agents_descriptions.md`, `flow_catalog.json`, `Tlamatini.md`) and the docs; the interpreter-1 prompt no longer claims to run on Qwen3.5. Migration **0209** rewrites the tag in the Catalog-of-Prompts rows; 0165/0168/0206/0208 keep the old text on purpose, because 0208 matches it exactly. Live proof on the real page 12: mistral OK 36.6 s, gemma4 OK 7.1 s, glm-5.3 merge → **`status=merged`**, 134.7 s.
+**Retired model replaced (same day).** `jcyhsiao/qwen3.5cloud:latest` (`qwen3.5:397b`) answers **HTTP 410, retired 2026-09-25**, and was the shipped default for Image-Interpreter interpreter 1 and Video-Analyzer interpreter 2, so every image ran on one interpreter. Angela chose the then-current Mistral vision model (Ollama reported `vision`; it read page 12's title correctly). This is historical evidence; the November 8 update selects `mistral-large-4:cloud` and requires its own validation. It is now the default in `model_settings.py`, both agents' `DEFAULT_*` constants, `agent/config.json`, every LLM-facing description (`chat_agent_registry.py`, `mcp_agent.py`, `agentic_skill.md`, `agents_descriptions.md`, `flow_catalog.json`, `Tlamatini.md`) and the docs; the interpreter-1 prompt no longer claims to run on Qwen3.5. Migration **0209** rewrites the tag in the Catalog-of-Prompts rows; 0165/0168/0206/0208 keep the old text on purpose, because 0208 matches it exactly. Live proof on the real page 12: mistral OK 36.6 s, gemma4 OK 7.1 s, glm-5.3 merge → **`status=merged`**, 134.7 s.
 
 ## 2026-09-26 — Native node double-click and transactional Ctrl-drag
 

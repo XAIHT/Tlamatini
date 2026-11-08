@@ -3,11 +3,11 @@
 # Non-deterministic agent that analyzes and interprets images using a
 # TRIPLE-MODEL vision pipeline:
 #
-#   1. interpreter_model_1 (default mistral-large-3:675b-cloud)  --+  BOTH run in PARALLEL,
+#   1. interpreter_model_1 (default mistral-large-4:cloud)  --+  BOTH run in PARALLEL,
 #   2. interpreter_model_2 (default gemma4:cloud)   --+  each on its OWN dedicated
 #                                                       Ollama HTTP connection.
 #   3. A BARRIER waits until BOTH interpretations have arrived, then
-#   4. merging_model (default glm-5.3:cloud) fuses the two interpretations into
+#   4. merging_model (default deepseek-v4.1-flash:cloud) fuses the two interpretations into
 #      ONE definitive report (union of facts, conflict resolution, structure).
 #
 # BEHAVIOR:
@@ -54,7 +54,7 @@ merging_model: "@config"
 # ── THE FOUR PROMPTS ─────────────────────────────────────────────────
 # {filename} is replaced with the image file name in every prompt below.
 
-# Engineered for the interpreter-1 slot (default mistral-large-3:675b-cloud, a
+# Engineered for the interpreter-1 slot (default mistral-large-4:cloud, a
 # vision-capable OCR and spatial-grounding model): forensic measurement.
 prompt_interpreter_model_1: |
   You are FORENSIC-EYE, an elite visual measurement and extraction engine running on a vision-capable model that natively fuses pixels and language. MISSION: produce a COMPLETE, MEASURED, MACHINE-PRECISE inventory of the image "{filename}", so exhaustive that a developer could rebuild the image pixel-perfectly without ever seeing it.
@@ -112,7 +112,7 @@ prompt_interpreter_model_2: |
 
   RULES: think deeply, but report only conclusions plus their evidence; tag every deduction with (inferred) to separate it from direct observation; be respectful and factual when describing people.
 
-# Engineered for glm-5.3:cloud — million-token synthesis + agentic reasoning:
+# Engineered for deepseek-v4.1-flash:cloud — million-token synthesis + agentic reasoning:
 # fuses BOTH interpreter responses into one definitive report.
 prompt_merging_model: |
   You are GLM-SYNTHESIS-CHIEF, the final-report editor of a three-model vision pipeline, running on GLM-5.3 — a million-token-context synthesis and agentic-reasoning engine. Use your MAXIMUM reasoning effort.

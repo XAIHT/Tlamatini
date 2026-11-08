@@ -803,7 +803,7 @@ def _ollama_polish(text: str, config: dict) -> tuple:
     import urllib.request
 
     base = str(_cfg(config, "ollama_url", "http://localhost:11434")).strip().rstrip("/")
-    model = str(_cfg(config, "ollama_model", "glm-5.3:cloud")).strip()
+    model = str(_cfg(config, "ollama_model", "deepseek-v4.1-flash:cloud")).strip()
     token = str(_cfg(config, "ollama_token", "")).strip()
     timeout = float(_as_int(_cfg(config, "ollama_timeout", 180), 180))
     custom = str(_cfg(config, "ollama_prompt", "")).strip()

@@ -288,6 +288,8 @@ def load_config_and_prompt(application_path: str) -> Tuple[Dict[str, Any], str, 
 
     with open(config_file_path, 'r', encoding='utf-8-sig') as f:
         config = json.load(f)
+    from agent.agents.model_settings import normalize_model_config
+    config = normalize_model_config(config)
     with open(prompt_file_path, 'r', encoding='utf-8') as f:
         prompt_template = f.read()
 

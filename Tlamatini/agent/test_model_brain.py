@@ -73,7 +73,7 @@ class KnowledgeBaseTests(_NoLearned):
         expected = {
             "glm-5.3:cloud": "glm-5", "glm-5.2:cloud": "glm-5", "kimi-k3:cloud": "kimi",
             "kimi-k2.7-code:cloud": "kimi", "kimi-k2.6:cloud": "kimi", "deepseek-v4-pro:cloud": "deepseek-v4",
-            "minimax-m3:cloud": "minimax-m3", "mistral-large-3:675b-cloud": "mistral-large-3",
+            "minimax-m3:cloud": "minimax-m3", "mistral-large-4:cloud": "mistral-large-4",
             "gemma4:31b-cloud": "gemma-4", "gemma4:cloud": "gemma-4", "nemotron-3-ultra:cloud": "nemotron-3",
             "qwen3.5:397b-cloud": "qwen-3.5", "jcyhsiao/qwen3.5cloud:latest": "qwen-3.5",
             "gpt-oss:120b-cloud": "gpt-oss", "gpt-oss:20b-cloud": "gpt-oss", "qwen2.5:latest": "qwen-2.5",
@@ -92,7 +92,7 @@ class KnowledgeBaseTests(_NoLearned):
         self.assertEqual(sampling("gemma4:31b-cloud")["top_k"], 64)
         self.assertEqual(sampling("qwen2.5:latest")["repeat_penalty"], 1.05)
         self.assertEqual(sampling("kimi-k3:cloud"), {}, "Moonshot: do not send temperature")
-        self.assertLess(sampling("mistral-large-3:675b-cloud")["temperature"], 0.1)
+        self.assertEqual(sampling("mistral-large-4:cloud"), {})
         self.assertEqual(sampling("deepseek-v4-pro:cloud")["top_p"], 1.0)
 
     def test_no_profile_uses_the_old_fixed_values(self):
