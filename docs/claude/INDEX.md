@@ -8,9 +8,13 @@
 -->
 # docs/claude/ — Tlamatini AI-Assistant Docs Index
 
-> Latest released version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
 
-## v1.92.3 — Downloads, updates and build isolation
+## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+
+The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](../changes/2026-11-08-v1.92.4.md).
+
+## Carried from v1.92.3 — Downloads, updates and build isolation
 
 Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](../changes/2026-11-01-v1.92.3.md).
 

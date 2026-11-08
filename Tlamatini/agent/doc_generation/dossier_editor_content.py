@@ -182,7 +182,45 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
-        section("release1923", "RELEASED · v1.92.3", "What is included in 1.92.3",
+        section("release1924", f"RELEASED · v{facts['version']}", "Matching versions before the build starts",
+                "One predicted application version for English and Spanish, with explicit release identity.",
+                body=[
+                    "BuildTlamatinis.cmd calls each checkout's own resolver and previews its version emitter in memory. "
+                    "It compares the actual number the executable will report; a tag on HEAD is not required. "
+                    "The common value is pinned with --version before either complete wrapper starts.",
+                    "Private or Public mode runs both editions in parallel with --self-modify. New ZIPs are "
+                    "CRC-checked, SHA-256 hashed and moved to edition/type/start-minute folders. Each successful "
+                    "edition keeps its archive even if the other fails; the overall command then reports failure.",
+                    "Complete wrappers embed release_type in the generated version module. The application log "
+                    "begins with version and Private/Public banners. Source and unspecified builds are labeled "
+                    "explicitly; folder names, environment variables and credentials do not guess the type.",
+                ], deck_points=[
+                    ("Predict", "Use each real resolver/emitter before spending time on compilation."),
+                    ("Pin", "One common --version; parallel builds with --self-modify."),
+                    ("Deliver", "Separate English/Spanish and Private/Public ZIPs, with checksums."),
+                    ("Identify", "Read the embedded release type in the first application-log lines."),
+                ]),
+        section("release1924_recovery", f"RELEASED · v{facts['version']}", "Recover safely and open readable Markdown",
+                "Build dependency isolation and lossless text loading are part of the release contract.",
+                body=[
+                    "Standalone builds use application-owned Temp/build-env; the combined launcher supplies "
+                    "separate caches under the release root. If dependency setup fails and no healthy isolated "
+                    "environment exists, the build stops before the machine-Python NumPy purge or pip --user path. "
+                    "A previously healthy isolated cache remains reusable.",
+                    "Readable README.md files containing occasional control characters remain editable. Strict "
+                    "BOM-aware decoding and byte-preserving saves stay intact. A decoded NUL, control-dominated "
+                    "payload or malformed encoding still causes a refusal before the canvas is replaced.",
+                    "Dated evidence: the November 8 complete-build campaign passed all four real builds and "
+                    "packaged-executable checks at version 1.92.3, with correct release types. Integrity checks, "
+                    "public-data audits, 26 build-isolation tests and focused lint passed. This document refresh "
+                    "does not relabel those archives or claim a new install, reboot or live-model acceptance run.",
+                ], deck_points=[
+                    ("Cache", "Application-owned isolated environments; no user-profile scratch fallback."),
+                    ("Failure", "Stop before touching ambient Python when no healthy cache exists."),
+                    ("Canvas", "Preserve readable text and bytes; keep genuine binary refusal."),
+                    ("Evidence", "Four real builds verified on November 8; retain their actual 1.92.3 identity."),
+                ]),
+        section("release1923", "CARRIED FROM v1.92.3", "Downloads, typing and Windows delivery",
                 "Downloads, typing, updates and Windows execution",
                 body=["Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.",
                       "Builds with different requirement fingerprints coexist. An OS lock protects preparation and the full build. The 1.92.3 update package includes the verified uninstaller and preserves existing data.keys."], deck_points=[

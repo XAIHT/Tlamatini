@@ -1,8 +1,11 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Markdown in the chat canvas
 
-> Latest released version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
 
+## Readable files with occasional controls — 1.92.4
+
+A readable Markdown file is not rejected merely for containing an isolated control character, such as a bell or backspace introduced while escaping a path. Bytes, BOM and line endings are preserved. Decoding remains strict: decoded NUL, control-dominated content and malformed encodings are refused before replacing the canvas. See [editing and saving](canvas-editing.md).
 
 **Views → Canvas** keeps this document and its viewer alive while hiding the pane. Opening a document shows the pane again. **Views → Reset layout** restores both panes and their sizes without clearing the document or context. See [v1.85.0](changes/2026-10-16-v1.85.0.md).
 

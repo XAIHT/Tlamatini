@@ -8,7 +8,7 @@
 -->
 # Tlamatini — ACPX (Agent Communication Protocol eXtension)
 
-> Latest released version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
 
 > **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).
 

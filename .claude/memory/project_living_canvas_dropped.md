@@ -12,7 +12,7 @@ originSessionId: c4ba907a-c91d-4c2c-8f86-5b38594aaca7
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
 
 
 The Living Canvas v0 commit set (`2fc441d`, `0705a9c`, `d496cda`) was force-reverted to `1ad4fb0` on 2026-04-29 and force-pushed to `origin/main`.

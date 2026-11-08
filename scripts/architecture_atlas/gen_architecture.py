@@ -2187,7 +2187,7 @@ def sheet_live_editor():
 
 def sheet_torrenter():
     sh = new_sheet('Torrenter and release delivery',
-                   'Latest released version 1.92.3', "integration")
+                   f'Latest released version {TAG}', "integration")
     box(sh.body, 12, TOP, 193, "Ltransport", "1. Sign in and choose the account", [
         "Chat, the Agentic Control Panel and XT open the same account queue. Migration 0221 registers Torrenter.",
         "Django authenticates the browser. The controller obtains a scoped credential from Tlachihuani Jobs.",
@@ -2209,9 +2209,68 @@ def sheet_torrenter():
         "Ship the workspace HTML, JavaScript and CSS with the controller. Include them in the self-modify snapshot.",
     ], h=72, size=15, tsize=14)
     box(sh.body, 215, TOP - 164, 193, "Lplatform", "Build and run on Windows", [
-        "Version 1.92.3 isolates build environments by requirements fingerprint. The OS lock covers preparation and use.",
+        "Isolate build environments by requirements fingerprint. The OS lock covers preparation and use.",
         "Executer preserves shell assignments such as PLAYWRIGHT_BROWSERS_PATH and applies the configured command timeout.",
     ], h=72, size=15, tsize=14)
+    return sh
+
+
+def sheet_release_builds():
+    sh = new_sheet("Matching releases and isolated builds",
+                   f"Latest released version {TAG} — English and Spanish", "build")
+    cards = [
+        [
+            "1. Predict before compiling",
+            "Lbuild",
+            [
+                "The combo launcher previews each real resolver and version emitter in memory.",
+                "Compare the application-reported number, not tag placement. Pin one --version for both wrappers."
+            ]
+        ],
+        [
+            "2. Build and archive both editions",
+            "Lplatform",
+            [
+                "Private or Public mode runs both complete wrappers concurrently with --self-modify.",
+                "Verify new ZIPs and SHA-256; archive by edition/type/start minute. Preserve a successful sibling on failure."
+            ]
+        ],
+        [
+            "3. Identify the package in its log",
+            "Ltransport",
+            [
+                "The generated version module carries release_type. First log lines show version and Private/Public.",
+                "Development and unspecified builds are explicit; never infer type from credentials or folder names."
+            ]
+        ],
+        [
+            "4. Recover within isolated caches",
+            "Lpersistence",
+            [
+                "Use application-owned Temp/build-env or separate edition caches beneath the release root.",
+                "If setup fails without a healthy cache, stop before ambient NumPy cleanup or pip --user."
+            ]
+        ],
+        [
+            "5. Open readable Markdown faithfully",
+            "Lpresentation",
+            [
+                "Occasional control characters no longer make a readable README.md binary. Preserve the original bytes.",
+                "Strict BOM-aware decoding still refuses NUL, control-dominated content and malformed encodings."
+            ]
+        ],
+        [
+            "Dated build evidence",
+            "Lquality",
+            [
+                "November 8: four real English/Spanish Private/Public archives and executable checks passed at 1.92.3.",
+                "Integrity, public-data audits and 26 isolation tests passed. This document refresh is not installed acceptance."
+            ]
+        ]
+    ]
+    for i, (title, color, lines) in enumerate(cards):
+        box(sh.body, 12 if i % 2 == 0 else 215, TOP - 82 * (i // 2),
+            193, color, title, lines, h=72, size=15, tsize=14)
     return sh
 
 
@@ -2444,6 +2503,7 @@ sheet_lifecycle()
 sheet_live_editor()
 sheet_interaction_settings()
 sheet_torrenter()
+sheet_release_builds()
 autofit(sheet_intelligence, BOTTOM + 1.5)
 sheet_agents()
 autofit(sheet_integration, BOTTOM + 4.5)

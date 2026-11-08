@@ -13,7 +13,7 @@ description: Use when asked to create or update a complete project PDF dossier, 
 
 # Full Project PDF Dossier
 
-> Latest released version: **[v1.92.3](../../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../../../docs/changes/2026-11-08-v1.92.4.md)**.
 
 ## Mandatory release-version rule — every project and session, 2026-11-04
 
@@ -92,7 +92,7 @@ Verify exact path parity within that declared application scope.
 
 ## Prompt Flow graphical editing and layout gate (2026-10-04)
 
-Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.92.3 as the single release version, including the Torrenter queue and Executer fixes. Apply Angela's requested version immediately across all documentation; do not wait for a tag, GitHub publication or package generation. Include the Live Editor & Terminater settings, migration 0220, shared narration receipts and the dated October 23 evidence. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
+Keep eight executable operations (including Terminater) separate from static User Commentary. Explain the floating mixed-style text toolbar, direct border/corner resizing, full-text containment without internal scrollbars, and absence of a commentary configuration dialog. Document version 2 rich runs plus literal text, plain-note normalization and version 1 User Input migration. Give Run output its own readable section: 5–95% of usable pane height, independent scrolling at unchanged content scale, keyboard controls and separate per-user layout storage. Date the 23-check commentary/file-fidelity evidence and 14-check divider evidence; do not present historical browser tests as rerun during a document refresh. Use v1.92.4 as the single release version, including the Torrenter queue and Executer fixes. Apply Angela's requested version immediately across all documentation; do not wait for a tag, GitHub publication or package generation. Include the Live Editor & Terminater settings, migration 0220, shared narration receipts and the dated October 23 evidence. Include canvas editing, native saving, Interactor and the account-wizard intent guards. Keep test evidence attributed to its actual run and do not build an executable merely to regenerate these documents.
 
 ## Usage documentation gate (2026-10-10)
 

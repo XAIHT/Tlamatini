@@ -1,6 +1,8 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Live Editor and Terminater settings
 
+> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+
 Since v1.92.0, the maximum is 250 WPM for each control. Live Editor defaults to 100 WPM and Terminater to 50.
 
 Open **Config → Live Editor & Terminater**, the canvas Settings button, or the

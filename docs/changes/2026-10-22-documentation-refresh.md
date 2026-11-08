@@ -1,6 +1,8 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Documentation refresh - v1.90.0 (2026-10-22)
 
+> Latest released version: **[v1.92.4](2026-11-08-v1.92.4.md)**.
+
 ## Baseline and scope
 
 Requested after Angela tagged, committed and pushed the implementation. The annotated

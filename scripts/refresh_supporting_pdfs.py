@@ -1,5 +1,6 @@
 # Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Regenerate the lifecycle note and the existing PDF renderer fixture visibly."""
+import json
 from pathlib import Path
 from xml.sax.saxutils import escape
 from reportlab.lib import colors
@@ -10,6 +11,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = json.loads((ROOT / "package.json").read_text(encoding="utf-8-sig"))["version"]
 pdfmetrics.registerFont(TTFont("Doc", "C:/Windows/Fonts/segoeui.ttf"))
 pdfmetrics.registerFont(TTFont("DocBold", "C:/Windows/Fonts/segoeuib.ttf"))
 BODY = ParagraphStyle("body", fontName="Doc", fontSize=10.5, leading=15, spaceAfter=12,
@@ -21,7 +23,7 @@ def footer(canvas, doc):
     canvas.line(42, 46, A4[0]-42, 46)
     canvas.setFont("Doc", 8)
     canvas.setFillColor(colors.HexColor("#53657b"))
-    canvas.drawString(42, 31, "Tlamatini v1.91.0 | Angela López Mendoza | source review 2026-10-23")
+    canvas.drawString(42, 31, f"Tlamatini v{VERSION} | Angela López Mendoza | Latest released version")
     canvas.drawRightString(A4[0]-42, 31, str(doc.page))
 def main():
     text = (ROOT/"docs/oob-namu-lifecycle.md").read_text(encoding="utf-8")
@@ -37,7 +39,7 @@ def main():
             story.append(Paragraph(escape(" ".join(para.splitlines())), BODY))
     path = ROOT/"OOB_shift_reaper-and-NAMU-Design.pdf"
     SimpleDocTemplate(str(path), pagesize=A4, leftMargin=42, rightMargin=42,
-                      topMargin=42, bottomMargin=64, title="OOB and NAMU - v1.91.0",
+                      topMargin=42, bottomMargin=64, title=f"OOB and NAMU - v{VERSION}",
                       author="Angela López Mendoza").build(story, onFirstPage=footer, onLaterPages=footer)
     print(f"Regenerated {path}", flush=True)
     # Keep this file a small renderer fixture, not another product guide.
@@ -49,7 +51,7 @@ def main():
                                ("TOPPADDING",(0,0),(-1,-1),8),
                                ("BOTTOMPADDING",(0,0),(-1,-1),8)]))
     SimpleDocTemplate(str(fixture), pagesize=A4, title="Test Document", author="Angela López Mendoza").build([
-        Paragraph("Test Document", TITLE), Paragraph("Renderer fixture for Tlamatini v1.91.0.", BODY),
+        Paragraph("Test Document", TITLE), Paragraph(f"Renderer fixture for Tlamatini v{VERSION}.", BODY),
         Paragraph("This is a test paragraph.", BODY),
         Paragraph("Table", H2), table, Spacer(1,20),
         Paragraph("CREATED BY ANGELA LÓPEZ MENDOZA · @angelahack1", BODY)])

@@ -1,6 +1,8 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Interactor: teaching in the live canvas editor
 
+> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+
 Interactor is a module, not a workflow agent. It connects the existing chat and
 CodeMirror editor without another process or terminal. Enable **Multi-Turn** and
 the **Interactor** tool in Configure; leave **Live editor** enabled above the

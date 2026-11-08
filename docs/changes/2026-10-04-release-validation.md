@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Release validation and repairs — October 4, 2026
 
-> Latest released version: **[v1.92.3](2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](2026-11-08-v1.92.4.md)**.
 
 
 This is an uncommitted local release campaign against source and Windows frozen

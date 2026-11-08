@@ -1,5 +1,7 @@
 # Torrenter
 
+> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+
 Torrenter is a Tlamatini workflow agent and the wrapped chat tool `chat_agent_torrenter`. It controls downloads in the separately installed Tlachihuani Jobs Windows service at `http://127.0.0.1:12064/api/v1`. Jobs owns the transfer, files and journal. You can close chat, the ACP or the browser and reconnect to the same job.
 
 The signed-in page is carried with Tlamatini in `agent/torrenter_workspace/`.

@@ -8,9 +8,13 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Latest released version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
 
-[1.92.3 release and subsequent fixes](../changes/2026-11-01-v1.92.3.md) · October 30–November 2. Typing up to 250 WPM, Torrenter admission and verified delivery, updater and uninstaller carriage, isolated build environments, queued metadata and Executer command parsing.
+## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+
+The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](../changes/2026-11-08-v1.92.4.md).
+
+[1.92.4 release and subsequent fixes](../changes/2026-11-08-v1.92.4.md) · October 30–November 2. Typing up to 250 WPM, Torrenter admission and verified delivery, updater and uninstaller carriage, isolated build environments, queued metadata and Executer command parsing.
 
 
 > **Carried from v1.88.0 (tagged 2026-10-20):** [Terminater](../terminater.md) (workflow agent #86 and the Terminals area) and a private release that carries the builder's own data. Counts: 86 workflow agents, 67 wrapped chat agents, 109 built-in tools, 217 migrations. See the [v1.88.0 release record](../changes/2026-10-20-v1.88.0.md) and the change records [Terminater](../changes/2026-10-19-terminater.md) and [private-release data](../changes/2026-10-19-private-release-data.md).

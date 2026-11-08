@@ -98,7 +98,7 @@ class ActionContractTests(SimpleTestCase):
         for raw in (
             {"request": "stop everything"},
             {"action": "list", "permission": True},
-            {"action": "list", "arguments": {"password": "secret"}},
+            {"action": "list", "arguments": {"password": "<REDACTED>"}},
         ):
             answer = json.loads(wrapper.invoke(raw))
             self.assertEqual(answer["status"], "refused")

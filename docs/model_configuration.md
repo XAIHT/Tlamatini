@@ -1,6 +1,6 @@
 # Model configuration
 
-> Latest released version: **[v1.92.3](changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
 
 
 Config → Models manages **38 model, engine and voice settings** for core services

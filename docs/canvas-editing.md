@@ -1,6 +1,8 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Editing and saving canvas files
 
+> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+
 Introduced in v1.89.0 (2026-10-21), carried by v1.91.0 with configurable editor behavior. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
 
 Open a text or source file in the chat canvas and edit it directly. The filename

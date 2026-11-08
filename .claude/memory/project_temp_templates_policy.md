@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
 
 
 2026-06-02: Forceful "files stay inside Tlamatini" policy, two dirs at the **application root** (`path_guard._get_application_root()` → frozen: exe dir e.g. `C:\Tlamatini`; source: repo root e.g. `D:\devenv\source\Tlamatini`).

@@ -8,9 +8,9 @@
 -->
 # Tlamatini Agents — MCP connector
 
-> Latest released version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](docs/changes/2026-11-08-v1.92.4.md)**.
 
-## v1.92.3 — Downloads, updates and build isolation
+## Carried from v1.92.3 — Downloads, updates and build isolation
 
 Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md).
 
@@ -80,11 +80,11 @@ Contracts and evidence: [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), [Canvas e
 
 
 
-Exposes **every complete live Tlamatini agent directory (87 in v1.92.3, including Torrenter)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+Exposes **every complete live Tlamatini agent directory (87 in v1.92.4, including Torrenter)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **104 root stdio MCP tools total in v1.92.3**. The server discovers agents
+ACPX tools: **104 root stdio MCP tools total in v1.92.4**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files

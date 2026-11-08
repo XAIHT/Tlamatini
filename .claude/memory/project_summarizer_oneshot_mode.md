@@ -12,7 +12,7 @@ originSessionId: e25edb21-9ca2-44b3-97b0-de5d58329e32
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.92.3](../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
 
 
 Until 2026-05-06, `chat_agent_summarize_text` was a broken contract: the

@@ -1,5 +1,7 @@
 # Architecture atlas — how to rebuild `Tlamatini-Architecture.pdf`
 
+> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+
 `Tlamatini-Architecture.pdf` (repository root) is a multi-sheet A3 architecture
 atlas of Tlamatini. **Every application file tracked in git** appears twice: as a clickable
 tile on an atlas sheet, grouped by architectural cluster, and as an entry in the

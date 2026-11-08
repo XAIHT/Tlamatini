@@ -1,6 +1,6 @@
 # Video-Analyzer: robotics, transcription and summaries
 
-> Latest released version: **[v1.92.3](../../../../docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../../../../docs/changes/2026-11-08-v1.92.4.md)**.
 
 
 Created by Angela López Mendoza · @angelahack1 — Tlamatini.

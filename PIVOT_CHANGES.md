@@ -8,9 +8,13 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
-> Latest released version: **[v1.92.3](docs/changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](docs/changes/2026-11-08-v1.92.4.md)**.
 
-[1.92.3 release and subsequent fixes](docs/changes/2026-11-01-v1.92.3.md) · October 30–November 2. Typing up to 250 WPM, Torrenter admission and verified delivery, updater and uninstaller carriage, isolated build environments, queued metadata and Executer command parsing.
+## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+
+The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](docs/changes/2026-11-08-v1.92.4.md).
+
+[1.92.4 release and subsequent fixes](docs/changes/2026-11-08-v1.92.4.md) · October 30–November 2. Typing up to 250 WPM, Torrenter admission and verified delivery, updater and uninstaller carriage, isolated build environments, queued metadata and Executer command parsing.
 
 
 
@@ -550,13 +554,13 @@ marker, the manual, the dossier/atlas source text and every Markdown release ban
 and added the [v1.91.1 release record](docs/changes/2026-10-27-v1.91.1.md). The
 existing tag `v1.91.1` at `9915938a` is preserved; no code behavior changed. Regenerated the PDF dossier (157 pages), editable PPTX (192 slides) and architecture atlas (31 pages); their verifications passed with 1608/1608 files.
 
-## 2026-11-04 — One latest released version: 1.92.3
+## 2026-11-04 — One latest released version: 1.92.4
 
 Request: "NOW GET BACK TO UPDATE EVERYTHING TO SAY SO IN TLAMATINI".
 
 Updated all current Markdown version banners, README release links and badge,
 Tlamatini.md, release notes, maintainer instructions and persistent memory to use
-**1.92.3 as the latest released version**. Removed the source/publication split
+**1.92.4 as the latest released version**. Removed the source/publication split
 from the shared PDF/PPTX and architecture generators. Explicit version overrides
 take precedence over the manifest without requiring a tag or publication check.
 Historical entries, actual test evidence and Git history remain intact.

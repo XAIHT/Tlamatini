@@ -1,6 +1,8 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Release version pinning — 2026-10-22
 
+> Latest released version: **[v1.92.4](2026-11-08-v1.92.4.md)**.
+
 ## Failure and evidence
 
 Angela reported a public release ending with `build_installer.py failed.` after

@@ -8,9 +8,9 @@
 -->
 # Tlamatini — Creating a New MCP or Tool
 
-> Latest released version: **[v1.92.3](../changes/2026-11-01-v1.92.3.md)**.
+> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
 
-## v1.92.3 — Downloads, updates and build isolation
+## Carried from v1.92.3 — Downloads, updates and build isolation
 
 Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. See the [v1.92.3 release record](../changes/2026-11-01-v1.92.3.md).
 

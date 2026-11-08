@@ -6,6 +6,8 @@ Tlamatini Author Banner — do not remove
 
 # Terminater audit — 2026-10-20
 
+> Latest released version: **[v1.92.4](2026-11-08-v1.92.4.md)**.
+
 This is a source-checkout audit and a set of demonstrated corrections, not a
 certificate that Tlamatini has no bugs. The checkout started clean at
 `3129e0b8d7bd2aa46b01aeef99854f413d68bb52` on `main` (v1.88.0).

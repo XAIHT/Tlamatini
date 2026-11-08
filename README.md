@@ -23,7 +23,7 @@
 > **Setting up Tlamatini for the first time?** [▶ Watch the English setup walkthrough on YouTube](https://www.youtube.com/watch?v=8bQcWyqL9kg) and follow along on your Windows PC. Prefer to read? Jump to the [installation steps](#installation).
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.92.3"><img src="https://img.shields.io/badge/RELEASE-v1.92.3-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini release v1.92.3" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.92.4"><img src="https://img.shields.io/badge/RELEASE-v1.92.4-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini release v1.92.4" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/OPEN%20SOURCE-MIT-E9C46A?style=for-the-badge&labelColor=101827" alt="MIT open source" /></a>
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-818CF8?style=for-the-badge&labelColor=101827&logo=discord&logoColor=white" alt="Join the community on Discord" /></a>
@@ -34,7 +34,7 @@
   <a href="https://xaiht.org">Website</a> ·
   <a href="BookOfTlamatini.md">Full guide</a> ·
   <a href="Tlamatini-Architecture.pdf">Architecture atlas</a> ·
-  <a href="docs/changes/2026-11-01-v1.92.3.md">What's new</a>
+  <a href="docs/changes/2026-11-08-v1.92.4.md">What's new</a>
 </p>
 
 > [!IMPORTANT]
@@ -42,7 +42,7 @@
 
 <p align="center">
   <b>87 workflow agents</b> &nbsp;·&nbsp; <b>68 agents callable from chat</b> &nbsp;·&nbsp; <b>111 built-in tools</b><br />
-  <sub>Development inventory including Torrenter. The 111 tools include the 68 chat wrappers. Enabled external MCP servers add their own tools.</sub>
+  <sub>Released catalog including Torrenter. The 111 tools include the 68 chat wrappers. Enabled external MCP servers add their own tools.</sub>
 </p>
 
 <p align="center">
@@ -53,6 +53,13 @@
   <a href="#installation">Get started</a> ·
   <a href="#documentation">Go deeper</a>
 </p>
+
+
+> Latest released version: **[v1.92.4](docs/changes/2026-11-08-v1.92.4.md)**.
+
+## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+
+The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](docs/changes/2026-11-08-v1.92.4.md).
 
 ---
 
@@ -71,7 +78,7 @@
 
 ## Edit, learn, run
 
-The latest development brings Tlamatini closer to the work itself: **an editable canvas, a tutor that reads your live text, and real terminals you can watch.**
+Release 1.92.4 brings Tlamatini closer to the work itself: **an editable canvas, a tutor that reads your live text, and real terminals you can watch.**
 
 ### ✍️ Edit the file beside the conversation
 
@@ -109,13 +116,13 @@ teaching segment, choose what she says and when, and let speech finish before
 typing. **Standard** and **Guided learning** presets give you a starting point;
 Preview lets you try the draft before saving. [Explore the settings →](docs/interaction-settings.md)
 
-**Release [1.92.3](docs/changes/2026-11-01-v1.92.3.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
+**Release [1.92.4](docs/changes/2026-11-08-v1.92.4.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
 
 **Since [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
 dialog controls the real editor and terminal behavior across chat and both control
-panels. These settings are included in release **1.92.3**.
+panels. These settings are included in release **1.92.4**.
 
-**Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The [1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md) covers the complete release.
+**Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The [1.92.4 release record](docs/changes/2026-11-08-v1.92.4.md) covers the complete release.
 
 ## Speak and be heard
 
@@ -296,7 +303,7 @@ Pick a doorway and go as deep as your project needs.
 | :--- | :--- |
 | [Book of Tlamatini](BookOfTlamatini.md) | The full guide, architecture, workflows and development history. |
 | [Every agent](agents_descriptions.md) | The specialist catalog and each agent's role. |
-| [v1.92.3 release record](docs/changes/2026-11-01-v1.92.3.md) | The current patch release: what it fixes and where. |
+| [v1.92.4 release record](docs/changes/2026-11-08-v1.92.4.md) | The current patch release: what it fixes and where. |
 | [v1.91.0 release record](docs/changes/2026-10-23-v1.91.0.md) | Recent developments, source inventory and dated verification evidence. |
 | [Canvas editing](docs/canvas-editing.md) · [Interactor](docs/interactor.md) · [Terminater](docs/terminater.md) | Edit, learn and run with direct control. |
 | [Live Editor & Terminater settings](docs/interaction-settings.md) | Typing, teaching, narration, terminal behavior, presets and appearance. |
