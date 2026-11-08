@@ -9,7 +9,7 @@
     "lint:fix": "eslint --fix Tlamatini/agent/static/agent/js/ Tlamatini/agent/static/agent/interactor/ Tlamatini/agent/interactor/ scripts/ Tests/*.cjs eslint.config.mjs",
     "lint:python": "python scripts/check_python_quality.py",
     "check-js-parse": "node scripts/check_js_parse.mjs",
-    "test": "npm run lint && node scripts/file_drop_router_cases.mjs"
+    "test": "npm run lint && node --test Tests/test_canvas_text_decoding.cjs && node scripts/file_drop_router_cases.mjs"
   },
   "repository": {
     "type": "git",

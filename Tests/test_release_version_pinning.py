@@ -148,7 +148,9 @@ class ReleaseVersionPinningTests(unittest.TestCase):
                 with self.subTest(builder=builder.__name__, args=args):
                     dispatched, _, _ = self.run_release(builder, argv=args)
                     self.assert_versions(dispatched, "1.89.0")
-                    self.assertEqual(dispatched[0][3], [str(builder.BUILD), expected])
+                    self.assertEqual(dispatched[0][3], [str(builder.BUILD), "--release-type",
+                                                       "public" if builder is public else "private",
+                                                       expected])
 
     def test_public_build_failure_restores_fixture_configuration_at_every_stage(self):
         for stage in ("build.py", "build_installer.py"):

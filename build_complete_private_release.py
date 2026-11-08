@@ -514,7 +514,7 @@ def main(argv=None) -> int:
     choose_data_keys(args.keys_file)
 
     banner("STEP 2/4  build.py")
-    build_cmd = [py, str(BUILD)]
+    build_cmd = [py, str(BUILD), "--release-type", "private"]
     # Pass the decision EXPLICITLY either way, so the intent is recorded in the
     # build log and a stray "--self-modify" in the ambient argv cannot flip it.
     build_cmd.append("--self-modify" if self_modify else "--no-self-modify")

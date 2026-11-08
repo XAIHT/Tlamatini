@@ -44,10 +44,10 @@ class SealedEnvironmentTests(unittest.TestCase):
             self.assertEqual(folder.parent, Path(temporary))
             self.assertRegex(folder.name, r"^py\d+-[0-9a-f]{12}$")
 
-    def test_the_environment_lives_outside_the_repository(self):
+    def test_default_environment_is_application_owned_not_in_a_user_profile(self):
         with patch.dict(build_env.os.environ, {"TLAMATINI_BUILD_ENV_DIR": ""}):
             root = build_env.envs_root()
-        self.assertNotIn(str(ROOT).lower(), str(root).lower())
+        self.assertEqual(root, ROOT / "Temp" / "build-env")
 
 
 class ReRunTests(unittest.TestCase):
@@ -78,12 +78,13 @@ class ReRunTests(unittest.TestCase):
         self.assertEqual(command[3:], ["--self-modify", "--version", "1.90.0"])
         self.assertEqual(run.call_args.kwargs["env"][build_env.INSIDE_VAR], "1")
 
-    def test_with_no_sealed_python_at_all_the_build_still_runs(self):
+    def test_missing_sealed_python_never_falls_back_to_machine_python(self):
         with patch.dict(build_env.os.environ, {build_env.INSIDE_VAR: ""}), \
                 patch.object(build_env, "inside_sealed_env", return_value=False), \
                 patch.object(build_env, "ensure_sealed_env", return_value=None), \
                 patch.object(build_env.subprocess, "run") as run:
-            build_env.run_in_sealed_env("build.py", [])
+            with self.assertRaisesRegex(SystemExit, "No usable sealed build Python"):
+                build_env.run_in_sealed_env("build.py", [])
         run.assert_not_called()
 
     def test_off_restores_the_old_behaviour(self):

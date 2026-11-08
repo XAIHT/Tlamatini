@@ -38,6 +38,7 @@ from pyinstaller_guard import pyinstaller_command
 from versioning import (
     emit_build_artifacts,
     extract_cli_version,
+    extract_cli_release_type,
     resolve_build_version,
 )
 
@@ -1234,14 +1235,17 @@ def main():
     # ── Resolve and emit version artefacts FIRST ─────────────────────
     # Precedence: --version CLI flag > $TLAMATINI_VERSION > git describe.
     # See VERSIONING.md for the full contract.
+    release_type = extract_cli_release_type(sys.argv)
     cli_version = extract_cli_version(sys.argv)
     tlamatini_version = resolve_build_version(cli_version)
     version_file_path = emit_build_artifacts(
         tlamatini_version,
         product_name="Tlamatini",
         original_filename="Tlamatini.exe",
+        release_type=release_type,
     )
     print(f"Tlamatini version : {tlamatini_version}")
+    print(f"Release type     : {release_type.upper()}")
     print(f"VERSIONINFO file  : {version_file_path}")
 
     # ── Self-modify packaging flag ───────────────────────────────────

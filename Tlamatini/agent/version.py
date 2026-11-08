@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -163,6 +164,22 @@ def get_version() -> str:
     return UNKNOWN_VERSION
 
 
+def get_release_type() -> str:
+    """Return the embedded build type; never infer it from local keys or env.
+
+    A source checkout is development even after a private build left _version.py.
+    Older/unclassified frozen builds remain explicitly unknown.
+    """
+    if not getattr(sys, "frozen", False):
+        return "development"
+    try:
+        from agent import _version
+        value = getattr(_version, "__release_type__", "unspecified")
+    except ImportError:
+        return "unspecified"
+    return value if value in ("private", "public") else "unspecified"
+
+
 def get_version_info() -> dict:
     """Return a structured view of the version for the ``/agent/version/`` endpoint.
 
@@ -172,6 +189,7 @@ def get_version_info() -> dict:
       * ``commit``   — short git SHA, or ``"unknown"``
       * ``date``     — ISO 8601 build date, or empty
       * ``source``   — ``"generated"``, ``"git"``, or ``"unknown"``
+      * ``release_type`` — ``private``, ``public``, ``development`` or ``unspecified``
     """
     info = {
         "version": UNKNOWN_VERSION,
@@ -179,6 +197,7 @@ def get_version_info() -> dict:
         "commit":  "unknown",
         "date":    "",
         "source":  "unknown",
+        "release_type": get_release_type(),
     }
     try:
         from agent import _version  # type: ignore[import-not-found]
@@ -264,6 +283,7 @@ def write_version_module(
     build: Optional[str] = None,
     commit: str = "unknown",
     date: str = "",
+    release_type: str = "unspecified",
 ) -> None:
     """Write the generated ``agent/_version.py`` consumed at runtime.
 
@@ -272,6 +292,8 @@ def write_version_module(
     descriptor the build flow wants to archive — typically identical to
     ``version`` since the resolver no longer emits a local part.
     """
+    if release_type not in ("private", "public", "unspecified"):
+        raise ValueError("release_type must be private, public or unspecified")
     target_path = Path(target_path)
     target_path.parent.mkdir(parents=True, exist_ok=True)
     if build is None:
@@ -286,6 +308,7 @@ def write_version_module(
         f'__build__   = {build!r}\n'
         f'__commit__  = {commit!r}\n'
         f'__date__    = {date!r}\n'
+        f'__release_type__ = {release_type!r}\n'
     )
     target_path.write_text(content, encoding="utf-8")
 

@@ -50,6 +50,10 @@ that new name as already loaded context.
 
 UTF-8, UTF-8 BOM and BOM-marked UTF-16 LE/BE decode strictly. Unsupported or
 malformed encodings and binary content are refused before replacing the canvas.
+Readable text with occasional non-printing controls (such as a bell or backspace
+accidentally inserted by shell escaping) remains editable. Those characters are
+preserved, not silently removed or repaired. A decoded NUL or control-dominated
+content is still refused, regardless of the filename extension.
 Unedited files retain exact bytes. Edited files retain encoding and BOM; existing
 line terminators are retained by line, and additional lines use the first
 original terminator (LF for a file without one). Empty files can be saved. Text
@@ -140,6 +144,31 @@ replacement recovery. Full JavaScript lint and parsing (99 files), targeted
 Python Ruff checks and `git diff --check` passed. Collected static assets were
 refreshed before the regression run. Evidence is retained in
 `Temp/canvas-editing-visible/final-validation-transcript.txt`.
+
+For the sparse-control Markdown regression, run `node --test
+Tests/test_canvas_text_decoding.cjs` from a verified visible foreground console.
+It covers UTF-8/UTF-16 decoding, unedited and edited Save byte retention, and
+continued binary/malformed-encoding rejection. `npm test` includes these checks.
+The focused browser harness is `scripts/canvas_text_decoding_visible.py --file
+C:\project\README.md`: it opens the actual file through the native picker,
+checks Preview/Source, Refresh, drop routing and invalid-file preservation, and
+leaves Chrome open for review. It uses an isolated database and browser profile
+under the repository's `Temp/canvas-text-decoding-visible`, never the user profile.
+
+Verified on 2026-11-07: **13/13 decoder/Save regressions, 138/138 drop-router
+checks and 7/7 visible browser checkpoints passed**. The browser opened
+`C:\Development\XAIHT\Ruster\README.md` through the real Windows picker and
+retained its exact bytes (SHA-256
+`45408390f345f04f0ae91d87ebb631fea85ddd63133a88aa75a36c5b9f50dbe0`).
+JavaScript errors: zero; JavaScript lint/parsing and targeted Python lint passed.
+Evidence: `Temp/canvas-text-decoding-visible/results.json` and the visible
+console transcript in `Temp/canvas-readme-repair/console.log`. The first browser
+attempt stopped at a collapsed navigation menu; the final run handles that
+layout and passed. These are source-browser results, not a new executable build.
+The same day, the full Python quality gate compiled and linted 937 owned Python
+sources (including the undefined-name pass); JavaScript lint and parsing of
+108 source, harness and vendor files also passed. Full lint evidence:
+`Temp/canvas-readme-parity/lint-results.json`.
 
 ## Editor appearance and tutoring settings (v1.91.0)
 

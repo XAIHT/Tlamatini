@@ -15,9 +15,9 @@ projects as well.
 Now build.py, build_uninstaller.py and build_installer.py re-run themselves
 inside ONE dedicated virtual environment:
 
-* it lives OUTSIDE the repository, in ``%LOCALAPPDATA%\\Tlamatini\\build-env``
-  (``TLAMATINI_BUILD_ENV_DIR`` overrides), so no clean, snapshot, git or
-  context load ever touches it;
+* it lives in the application-owned ``Temp/build-env`` directory
+  (``TLAMATINI_BUILD_ENV_DIR`` overrides). Temp is excluded from source snapshots
+  and is not removed by the build/dist cleanup;
 * it sees NO system and NO user site-packages - only what requirements.txt
   installs into it (PyInstaller and its hooks are pinned there too);
 * it is named after a fingerprint of requirements.txt and the base Python, so
@@ -31,9 +31,10 @@ inside ONE dedicated virtual environment:
   Another process waits instead of clearing an environment in use.
 
 If the sealed environment cannot be made (for instance, no internet the very
-first time), the build does NOT stop: it uses the newest sealed environment
-that still works, and only when none exists it builds with the current Python
-and says so in capitals. ``TLAMATINI_BUILD_ENV=off`` forces the old behaviour.
+first time), a healthy prior sealed environment can be reused. If none exists,
+stop before build cleanup or dependency changes: never silently purge/install
+packages in the machine Python. ``TLAMATINI_BUILD_ENV=off`` remains an explicit
+legacy opt-out, never an automatic fallback.
 
 Stdlib only; nothing here imports Tlamatini.
 """
@@ -79,9 +80,7 @@ def envs_root() -> Path:
     override = os.environ.get("TLAMATINI_BUILD_ENV_DIR", "").strip()
     if override:
         return Path(override)
-    local = os.environ.get("LOCALAPPDATA", "").strip()
-    base = Path(local) if local else Path.home() / "AppData" / "Local"
-    return base / "Tlamatini" / "build-env"
+    return REPO_ROOT / "Temp" / "build-env"
 
 
 def base_python() -> str:
@@ -304,12 +303,11 @@ def run_in_sealed_env(script: str, argv=None) -> None:
     except Exception as exc:
         say(f"WARNING: sealed build Python unavailable: {exc}")
     if python is None:
-        print("=" * 74, flush=True)
-        print("  WARNING: NO SEALED BUILD PYTHON - building with this machine's Python.\n"
-              "  Libraries installed on this machine can leak into this release.\n"
-              "  Run the build again with internet access to make the sealed one.", flush=True)
-        print("=" * 74, flush=True)
-        return
+        raise SystemExit(
+            "No usable sealed build Python. Restore package-index connectivity "
+            "or a matching healthy cache, then retry. The machine Python was "
+            "not used for build cleanup, numpy removal or dependency installation."
+        )
     args = list(sys.argv[1:] if argv is None else argv)
     say(f"re-running {Path(script).name} inside the sealed build Python: {python}")
     try:

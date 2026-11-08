@@ -458,3 +458,13 @@ until v1.83.0 replaced it on 2026-10-14). The two tags before it, `v1.79.0`
 published release, and **no `v1.81.0` tag exists** — a skipped number is allowed;
 SemVer only requires that versions increase. Read `gh release list` for
 publication, and the frozen code itself when it matters whether a change shipped.
+
+## Release type and combined builder — 2026-11-07
+
+Complete private/public wrappers embed their type in `agent._version`.
+`tlamatini.log` starts with the version and `PRIVATE` or `PUBLIC`; source runs
+report `DEVELOPMENT`. Before either build starts, the combined launcher previews
+each existing resolver and emitter, compares the exact application-reported numbers,
+and pins one shared `--version` for both. Environment overrides are honored; tags
+on HEAD are not required. `--Override_versioning X.Y.Z` selects one common number. See the
+[combined builder guide](docs/combined-release-builder.md).

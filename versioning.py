@@ -89,6 +89,33 @@ def extract_cli_version(argv: list[str]) -> Optional[str]:
     return out or None
 
 
+def extract_cli_release_type(argv: list[str]) -> str:
+    """Consume the explicit wrapper-selected type; no environment inference."""
+    result = "unspecified"
+    seen = False
+    index = 1
+    while index < len(argv):
+        token = argv[index]
+        if token == "--release-type" or token.startswith("--release-type="):
+            if seen:
+                raise ValueError("--release-type may only be specified once")
+            seen = True
+            if token == "--release-type":
+                if index + 1 >= len(argv):
+                    raise ValueError("--release-type requires private or public")
+                value = argv[index + 1]
+                del argv[index:index + 2]
+            else:
+                value = token.split("=", 1)[1]
+                del argv[index]
+            if value not in ("private", "public"):
+                raise ValueError("--release-type requires private or public")
+            result = value
+        else:
+            index += 1
+    return result
+
+
 def _sanitize_version(raw: str) -> str:
     """Drop a leading 'v'/'V'/' ' but otherwise pass the string through."""
     return raw.lstrip(" vV").strip()
@@ -119,6 +146,7 @@ def emit_build_artifacts(
     *,
     product_name: str = "Tlamatini",
     original_filename: str = "Tlamatini.exe",
+    release_type: str = "unspecified",
 ) -> Path:
     """Write ``_version.py`` and the Win32 VERSIONINFO file to disk.
 
@@ -142,6 +170,7 @@ def emit_build_artifacts(
         build=version,
         commit=commit,
         date=iso_date,
+        release_type=release_type,
     )
 
     # 3. Win32 VERSIONINFO file for PyInstaller --version-file.

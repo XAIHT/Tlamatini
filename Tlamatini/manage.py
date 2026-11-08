@@ -782,6 +782,22 @@ class _TeeStream:
         return getattr(self._original, name)
 
 
+def _print_version_banner():
+    """First log lines: edition, embedded version and immutable release type."""
+    try:
+        from agent.version import get_release_type, get_version
+        version = get_version()
+        release_type = {
+            "private": "PRIVATE", "public": "PUBLIC",
+            "development": "DEVELOPMENT", "unspecified": "UNSPECIFIED",
+        }[get_release_type()]
+    except Exception:
+        version, release_type = "0.0.0+unknown", "UNSPECIFIED"
+    print(f"--- [VERSION] Tlamatini {version}")
+    print(f"--- [RELEASE] Tlamatini | {release_type}")
+    sys.stdout.flush()
+
+
 def _setup_log_tee():
     """Redirect stdout and stderr to both the console and tlamatini.log."""
     if getattr(sys, 'frozen', False):
@@ -793,6 +809,7 @@ def _setup_log_tee():
     try:
         log_file = open(log_path, 'w', encoding='utf-8')  # noqa: SIM115
     except OSError:
+        _print_version_banner()
         return
 
     # --- Install the console shield BEFORE the tees go live ------------------
@@ -816,6 +833,7 @@ def _setup_log_tee():
 
     tees = (_TeeStream(sys.stdout, log_file), _TeeStream(sys.stderr, log_file))
     sys.stdout, sys.stderr = tees
+    _print_version_banner()
 
     print("--- [CONSOLE-SHIELD] Console writes are queued on a drain thread — "
           "selecting text in this window can no longer block Tlamatini.")
@@ -1012,25 +1030,6 @@ _enforce_app_temp_dir()
 _pin_playwright_browsers()
 _pin_bundled_tools()
 _isolate_carried_python()
-
-
-def _print_version_banner():
-    """Print the running Tlamatini version on every startup.
-
-    Lands in both stdout AND ``tlamatini.log`` (the tee is already
-    installed by the time we run).  Cheap, never raises, and gives oncall
-    a one-line answer to "what's actually deployed here?" without having
-    to hit ``/agent/version/``.  See VERSIONING.md.
-    """
-    try:
-        from agent.version import get_version
-        version = get_version()
-    except Exception:
-        version = "0.0.0+unknown"
-    print(f"--- [VERSION] Tlamatini {version}")
-
-
-_print_version_banner()
 
 
 def _resolve_db_folder_root():

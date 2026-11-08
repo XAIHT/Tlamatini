@@ -883,7 +883,7 @@ def main(argv=None) -> int:
                   + " only.)")
 
         banner("STEP 3/6  build.py (reads the scrubbed tree)")
-        build_cmd = [py, str(BUILD)]
+        build_cmd = [py, str(BUILD), "--release-type", "public"]
         # Pass the decision EXPLICITLY either way, so the intent is recorded in
         # the build log and a stray "--self-modify" in the ambient argv cannot
         # flip it. DEFAULT (no flag on this script) = not-self-able-modify.

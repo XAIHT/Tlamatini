@@ -24,6 +24,18 @@
 
 ---
 
+## 2026-11-07 — Readable Markdown incorrectly refused as binary
+
+`agent_page_editing.js::decodeFile` previously rejected an entire file on the
+first non-whitespace C0 control. Ruster's UTF-8 README contained two BELs and one
+backspace amid ordinary Markdown, so Open failed even though the drop router
+classified it as text. After strict BOM-aware decoding, the editor now rejects
+NULs and control-dominated content (over 30%), preserving sparse controls exactly.
+Do not restore the single-control veto or bypass decoding based on `.md` alone.
+Tests: `Tests/test_canvas_text_decoding.cjs` (also in `npm test`) and the visible
+`scripts/canvas_text_decoding_visible.py` harness. Cache suffix: `-canvas-text-2`.
+See [canvas editing](../canvas-editing.md) for the file-preservation contract.
+
 ## 2026-10-22 — User-creation wizard diverted by two intent guards (DEV)
 
 The installed `C:\Tlamatini\tlamatini.log` showed the catalog's first setup

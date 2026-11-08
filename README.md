@@ -308,6 +308,7 @@ Pick a doorway and go as deep as your project needs.
 | [Architecture atlas · PDF](Tlamatini-Architecture.pdf) | A visual map of the system and its recorded repository inventory. |
 | [Project dossier · PDF](tlamatini_app_summary.pdf) · [Technical deck · PowerPoint](Tlamatini_eXtended_Artificial_Intelligence_Humanly_Tempered.pptx) | Downloadable project overviews. |
 | [Contributor documentation](docs/claude/INDEX.md) · [Versioning](VERSIONING.md) | Engineering contracts and release history. |
+| [Combined release builder](docs/combined-release-builder.md) | Parallel private/public builds, matching tags and startup-log banners. |
 
 <details>
 <summary><b>Under the hood</b></summary>
