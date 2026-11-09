@@ -512,6 +512,16 @@ _FROZEN_TORRENTER_MODULES = (
     "agent.rag.directory_listing",
 )
 
+# Catalog texts are imported dynamically by the native account handler. Name
+# every dependency explicitly and verify it in the frozen archive as well.
+_FROZEN_ACCOUNT_WIZARD_MODULES = (
+    "agent.user_creation_wizard",
+    "agent.management.commands.createuserconsole",
+    "agent.migrations.0185_standardize_prompt_params_batch3",
+    "agent.migrations.0219_user_wizard_graphical_notifications",
+    "agent.migrations.0223_create_superuser_console_handoff",
+)
+
 # PyInstaller ships these Windows extensions as loose .pyd files outside the PYZ.
 _FROZEN_PYWIN32_EXTENSIONS = ("win32cred", "win32crypt") if os.name == "nt" else ()
 
@@ -549,6 +559,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     *_FROZEN_PROMPT_FLOW_PANEL_MODULES,
     *_FROZEN_TERMINATER_MODULES,
     *_FROZEN_TORRENTER_MODULES,
+    *_FROZEN_ACCOUNT_WIZARD_MODULES,
 )
 
 
@@ -1546,6 +1557,7 @@ def main():
         *(f'--hidden-import={module}' for module in _FROZEN_PROMPT_FLOW_PANEL_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_TERMINATER_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_TORRENTER_MODULES),
+        *(f'--hidden-import={module}' for module in _FROZEN_ACCOUNT_WIZARD_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_PYWIN32_EXTENSIONS),
         # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
         # Every one of these is reached only through a FAIL-OPEN import:

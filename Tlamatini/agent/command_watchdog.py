@@ -205,6 +205,13 @@ def _external_mcp_protected_pids() -> Set[int]:
         pids |= set(_th.live_pids())
     except Exception:
         pass
+    # Account input is an intentional human wait, even when the browser has
+    # focus. Keep the owned live console and its descendants out of hang reaping.
+    try:
+        from .user_creation_wizard import live_pids
+        pids |= live_pids()
+    except Exception:
+        pass
     return pids
 
 

@@ -796,6 +796,20 @@ def _ask_rag_impl(rag_chain, question, chat_history=None, inet_enabled=False):
         global_state.set_state('rag_chain_ready', True)
         return str(response)
 
+    # This exact catalog wizard is a closed interactive operation. Return the
+    # human input handoff before a model can plan vision analysis or agent waits.
+    from ..user_creation_wizard import handle_request as handle_user_creation
+    wizard_reply = handle_user_creation(
+        raw_text, user_id=_conversation_user_id, chat_history=chat_history,
+        multi_turn_enabled=multi_turn_enabled, ask_execs_enabled=ask_execs_enabled,
+        run_epoch=_run_epoch,
+    )
+    if wizard_reply is not None:
+        metadata = wizard_reply.get('metadata') or {}
+        metadata['exec_report_enabled'] = exec_report_enabled
+        global_state.set_state(f'last_request_meta::{_conversation_user_id}', metadata)
+        return wizard_reply['output']
+
     # A scope inventory has no filesystem target to supply. Answer it from
     # the active path guard before an intent model can misclassify it as access.
     directory_reply = available_directories_reply(raw_text)

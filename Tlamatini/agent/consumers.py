@@ -901,6 +901,28 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
+    def _register_exec_permission_broker(self, user_id, run_epoch):
+        """Use the same browser approval gate for model tools and native wizards."""
+        from .exec_permission import ExecPermissionBroker, register_broker
+        loop = asyncio.get_running_loop()
+        channel_layer = self.channel_layer
+        room_group_name = self.room_group_name
+
+        def emit(detail):
+            asyncio.run_coroutine_threadsafe(
+                channel_layer.group_send(
+                    room_group_name,
+                    {'type': 'exec_permission_request', 'detail': detail},
+                ),
+                loop,
+            )
+
+        broker = ExecPermissionBroker(emit, run_user_id=user_id, run_epoch=run_epoch)
+        register_broker(user_id, broker)
+        self._active_broker = broker
+        print(f"--- [AskExecs] broker registered for user {user_id}")
+        return broker
+
     async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False, interactor_client_id=""):
         broker = None
         broker_key = conversation_user.id
@@ -922,6 +944,47 @@ class AgentConsumer(AsyncWebsocketConsumer):
         from .interactor import context as interactor_context
         _interactor_token = interactor_context.bind(self.scope, interactor_client_id, run_epoch)
         try:
+            # A real account console needs authenticated local account handling,
+            # not a ready model chain. Toolbar changes can rebuild that chain
+            # concurrently with Send; do not reject this closed operation then.
+            from .user_creation_wizard import handle_request, request_candidate
+            exec_report_enabled = bool(exec_report_enabled) and bool(multi_turn_enabled)
+            ask_execs_enabled = bool(ask_execs_enabled) and bool(multi_turn_enabled)
+            if request_candidate(message, user_id=broker_key, multi_turn_enabled=multi_turn_enabled):
+                if ask_execs_enabled:
+                    broker = self._register_exec_permission_broker(broker_key, run_epoch)
+                wizard_history = await self.load_recent_chat_history(conversation_user, limit=8)
+                wizard_reply = await sync_to_async(handle_request, thread_sensitive=False)(
+                    message, user_id=broker_key, chat_history=wizard_history,
+                    multi_turn_enabled=multi_turn_enabled, ask_execs_enabled=ask_execs_enabled,
+                    run_epoch=run_epoch,
+                )
+                if wizard_reply is not None:
+                    if is_run_cancelled(broker_key, run_epoch) and current_run_epoch(broker_key) > run_epoch:
+                        return
+                    metadata = wizard_reply.get('metadata') or {}
+                    print("--- [USER-WIZARD] native handoff; model readiness is not required")
+                    await process_llm_response(
+                        wizard_reply['output'], self.rag_chain, self.channel_layer, self.room_group_name,
+                        conversation_user=conversation_user,
+                        tool_calls_log=metadata.get('tool_calls_log'),
+                        multi_turn_used=True, exec_report_enabled=exec_report_enabled,
+                        exec_report_entries=metadata.get('exec_report_entries'),
+                        exec_report_denied=metadata.get('exec_report_denied'),
+                    )
+                    return
+
+                # Admission is deliberately cheaper than history validation.
+                # A stale pending reply may be ordinary chat after validation;
+                # it must not use an old chain while a toolbar rebuild is busy.
+                if not global_state.get_state('rag_chain_ready'):
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {'type': 'agent_message', 'message': self._say(constants.MSG_AGENT_STILL_LOADING),
+                         'username': 'Tlamatini'},
+                    )
+                    return
+
             # Check if rag_chain is ready
             if self.rag_chain is None:
                 print("!!! ERROR: rag_chain is not initialized yet. Please wait for the agent to finish loading.")
@@ -1027,32 +1090,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # state-changing tool. Register a per-request broker whose emit
             # schedules an `exec_permission_request` frame onto THIS event
             # loop; the executor thread looks it up by user id.
-            if ask_execs_enabled:
-                from .exec_permission import ExecPermissionBroker, register_broker
-                loop = asyncio.get_running_loop()
-                channel_layer = self.channel_layer
-                room_group_name = self.room_group_name
-
-                def _emit_permission_request(detail):
-                    try:
-                        asyncio.run_coroutine_threadsafe(
-                            channel_layer.group_send(
-                                room_group_name,
-                                {'type': 'exec_permission_request', 'detail': detail},
-                            ),
-                            loop,
-                        )
-                    except Exception as emit_err:  # noqa: BLE001
-                        print(f"--- [AskExecs] failed to emit permission request: {emit_err}")
-
-                broker = ExecPermissionBroker(
-                    _emit_permission_request,
-                    run_user_id=broker_key,
-                    run_epoch=run_epoch,
-                )
-                register_broker(broker_key, broker)
-                self._active_broker = broker
-                print(f"--- [AskExecs] broker registered for user {broker_key}")
+            if ask_execs_enabled and broker is None:
+                broker = self._register_exec_permission_broker(broker_key, run_epoch)
 
             ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
             chat_history = await self.load_recent_chat_history(conversation_user, limit=8)
@@ -2098,7 +2137,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 print("--- User question broadcasted to room.")
                 return
             
-            if not global_state.get_state('rag_chain_ready'):
+            from .user_creation_wizard import request_candidate
+            wizard_candidate = type is None and request_candidate(
+                message, user_id=user.id, multi_turn_enabled=multi_turn_enabled,
+            )
+            if not global_state.get_state('rag_chain_ready') and not wizard_candidate:
                 print("!!! RAG chain not ready. Message rejected.")
                 # Self-heal: a not-ready chain (a build that failed, or a
                 # toggle-triggered rebuild that is mid-flight) would otherwise stay

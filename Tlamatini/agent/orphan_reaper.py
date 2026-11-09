@@ -234,6 +234,13 @@ def _tracked_running_pids() -> Set[int]:
         pids |= set(_th.live_pids())
     except Exception:  # noqa: BLE001 — fail-open
         pass
+    # The account wizard has deliberately yielded to a human. Its process is
+    # live ownership, not an orphan merely because the chat turn has ended.
+    try:
+        from .user_creation_wizard import live_pids
+        pids |= live_pids()
+    except Exception:  # noqa: BLE001 — keep cleanup independent of optional UI
+        pass
     return pids
 
 

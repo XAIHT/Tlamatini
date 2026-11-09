@@ -82,11 +82,14 @@ class WizardIntentTests(SimpleTestCase):
 
 
 class UserCreationCatalogGuardTests(TestCase):
-    """Exercise the migrated catalog request through the real tool loop, without OS/account changes."""
+    """Preserve legacy/custom-card tool guards; the integrated card has separate tests."""
 
     def setUp(self):
         guard.reset()
-        self.prompt = Prompt.objects.get(idPrompt=1).promptContent
+        # The shipped card now uses the deterministic native handler. These
+        # cases retain the historical Executer/Notifier intent-guard contract;
+        # current-card behavior is covered by test_user_creation_wizard.py.
+        self.prompt = wizard_migration.WIZARD_PROMPT
         self.assertIn("createsuperuser", self.prompt)
         self.assertIn("I will type it only into the console", self.prompt)
 
