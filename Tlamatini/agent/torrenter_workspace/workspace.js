@@ -10,13 +10,27 @@ const checked = new Set();
 let policy;
 let refreshError = false;
 function message(text, error = false) { el('message').textContent = text; el('message').classList.toggle('error', error); }
+async function readSession() {
+  // A truncated read must not strand the owner heading or prevent recovery
+  // controls from starting. Retry only this read, never a torrent mutation.
+  for(let attempt=0; attempt<3; attempt++) {
+    const response=await fetch('session/', {cache:'no-store',credentials:'same-origin'});
+    if(!response.ok)throw new Error('Sign in to Tlamatini, then reload the workspace.');
+    try {
+      const data=await response.json();
+      if(typeof data.username==='string'&&typeof data.profile==='string'&&typeof data.csrf==='string')return data;
+    } catch(error) { if(!(error instanceof SyntaxError))throw error; }
+    if(attempt<2)await wait(200);
+  }
+  throw new Error('The local session response was incomplete. Reload the workspace to reconnect.');
+}
 async function api(route, method = 'GET', body, job, key) {
   const headers = {};
   if (!identity) throw new Error('Sign in to Tlamatini.');
   headers['X-Torrenter-Profile'] = identity.profile;
   if (method !== 'GET') {
-    const session = await fetch('session/', {cache:'no-store'});
-    if (session.ok) headers['X-CSRFToken'] = (await session.json()).csrf;
+    const session = await readSession();
+    headers['X-CSRFToken'] = session.csrf;
   }
   if (job) headers['If-Match'] = '"' + job.revision + '"';
   if (key) headers['Idempotency-Key'] = key;
@@ -40,7 +54,7 @@ function handle(button, action) {
   button.addEventListener('click', async event => {
     event.preventDefault(); button.disabled = true;
     try { await action(); } catch (err) { message(err.message, true); if (el('admit').open) el('admit-message').textContent = err.message; }
-    finally { button.disabled = false; }
+    finally { button.disabled = false; updateActions(); }
   });
 }
 function options(id,items,label) {
@@ -57,6 +71,15 @@ function selectionSummary() {
   el('select-page').disabled=!visibleRows.length;
   el('selection-summary').hidden=!checked.size;
   el('selection-count').textContent=checked.size+' selected'+(checked.size>visibleSelected?' · '+(checked.size-visibleSelected)+' outside this page':'');
+  updateActions();
+}
+function updateActions() {
+  const targets=jobs.filter(job=>checked.size?checked.has(job.job_id):job.job_id===selected);
+  for(const button of document.querySelectorAll('[data-action]')) {
+    const count=targets.filter(job=>TorrenterTable.canAction(job,button.dataset.action)).length;
+    button.disabled=!count;
+    button.title=count?'Applies to '+count+' eligible download(s).':'Not available for the selected download state.';
+  }
 }
 function filters() {
   return {search:el('search').value,status:el('filter').value,category:el('category').value,tag:el('tag').value,
@@ -160,11 +183,13 @@ function targetJobs() {
   const matches=jobs.filter(j=>ids.has(j.job_id)); if(!matches.length) throw new Error('Select a download first.');return matches;
 }
 async function applyToJobs(operation) {
-  const targets=targetJobs();
+  const all=targetJobs(), targets=all.filter(job=>TorrenterTable.canAction(job,operation));
+  const skipped=all.length-targets.length, suffix=skipped?' · '+skipped+' ineligible download(s) unchanged.':'';
+  if(!targets.length)throw new Error('This action is not available for the selected download state.');
   if ((operation==='cancel'||operation==='remove')&&!confirm(operation+' '+targets.length+' download record(s)? Files will be retained.')) return;
   if(targets.length>1 && ['pause','resume','stop','start'].includes(operation)){
     const result=await api('batch-operations','POST',{action:operation,jobs:targets.map(j=>({job_id:j.job_id,revision:j.revision}))},null,crypto.randomUUID());
-    const failed=result.items.filter(x=>!x.ok); await refresh(); message((targets.length-failed.length)+' accepted · '+failed.map(x=>x.job_id+': '+x.error).join(' · '),!!failed.length); return;
+    const failed=result.items.filter(x=>!x.ok); await refresh(); message((targets.length-failed.length)+' accepted · '+failed.map(x=>x.job_id+': '+x.error).join(' · ')+suffix,!!failed.length); return;
   }
   const errors=[];
   for (const job of targets) {
@@ -174,7 +199,7 @@ async function applyToJobs(operation) {
       else await api(path+'/actions','POST',{action:operation},job,crypto.randomUUID());
     } catch(err){errors.push(job.name+': '+err.message);}
   }
-  await refresh(); message(errors.length?errors.join(' · '):'Request recorded for '+targets.length+' download(s).',!!errors.length);
+  await refresh(); message((errors.length?errors.join(' · '):'Request recorded for '+targets.length+' download(s).')+suffix,!!errors.length);
 }
 document.querySelectorAll('[data-action]').forEach(b=>handle(b,()=>applyToJobs(b.dataset.action)));
 handle(el('move'),async()=>{const targets=targetJobs();if(targets.length!==1)throw new Error('Select one stopped download.');const job=targets[0];const destination=job.destination_root_id==='archive'?'downloads':'archive';if(!confirm('Move '+job.name+' to '+destination+'?'))return;const receipt=await api('torrents/'+job.job_id+'/actions','POST',{action:'move',destination_root_id:destination},job,crypto.randomUUID());message('Move receipt '+receipt.operation_id);await refresh();});
@@ -208,9 +233,10 @@ async function details(){
   document.body.classList.toggle('detail-open',Boolean(job));
   el('selected').textContent=job?job.name:'Transfer details';
   if(!job){area.textContent='Select a transfer.';return;}
+  const editable=job.desired_state==='stopped'&&['stopped','completed'].includes(job.phase);
   if(view==='general'){
     const dl=make('dl');
-    for(const [label,value] of Object.entries({'Job ID':id,'Desired':job.desired_state,'Observed':job.phase,'Verified':bytes(job.verified_bytes)+' / '+bytes(job.selected_bytes),'Queue position':job.queue_position+1,'Saved to':job.saved_to || job.destination_root_id,'Delivery':job.delivery_state || 'service_store','Delivery error':job.delivery_error || '—','Revision':job.revision,'Category':job.category||'Uncategorized','Tags':job.tags.join(', ')||'Untagged','Reason':job.error||'—'})){dl.append(make('dt',label),make('dd',value));}
+    for(const [label,value] of Object.entries({'Job ID':id,'Desired':job.desired_state,'Observed':TorrenterTable.status(job),'Verified':bytes(job.verified_bytes)+' / '+bytes(job.selected_bytes),'Queue position':job.queue_position+1,'Saved to':job.saved_to || job.destination_root_id,'Delivery':job.delivery_state || 'service_store','Delivery error':job.delivery_error || '—','Revision':job.revision,'Category':job.category||'Uncategorized','Tags':job.tags.join(', ')||'Untagged','Reason':job.completed_at&&['completed','stopped','paused'].includes(job.phase)?'—':job.error||'—','Recovery':job.recovery_note||(job.queue_reason==='stalled_retry'?'Yielded a stalled slot; retry is automatic.':job.phase==='waiting_for_peers'?'No connected peers. Reported seeds do not guarantee availability.':job.completed_at?'Download finished. Start is unnecessary; use Recheck only to verify the retained files.':'—')})){dl.append(make('dt',label),make('dd',value));}
     const edit=make('button','Edit labels and limits');
     handle(edit,async()=>{const cat=prompt('Category',job.category);if(cat===null)return;const tags=prompt('Comma-separated tags',job.tags.join(', '));if(tags===null)return;const limit=prompt('Download limit in bytes/second (0 = unlimited)',String(job.download_limit));if(limit===null)return;const up=prompt('Upload limit in bytes/second (0 = unlimited)',String(job.upload_limit));if(up===null)return;const position=prompt('Queue position (1 = first)',String(job.queue_position+1));if(position===null)return;await api('torrents/'+id,'PATCH',{category:cat,tags:tags.split(',').map(x=>x.trim()).filter(Boolean),download_limit:Number(limit),upload_limit:Number(up),queue_position:Number(position)-1},job,crypto.randomUUID());await refresh();});
     area.replaceChildren(dl,edit);return;
@@ -223,11 +249,11 @@ async function details(){
       list.append(make('p','Saved in content_generated because Windows Downloads was unavailable: '+(data.downloads_error || '—')));
     for(const file of data.files) list.append(make('p',file.path+' · '+file.sha256));
   } else if(view==='files'){
-    for(const file of data.items){const label=make('label');label.className='choice';const box=make('input');box.type='checkbox';box.checked=file.selected;box.value=file.id;box.disabled=job.phase!=='stopped';label.append(box,file.path+' · '+bytes(file.size));label.append(filePriority(file.id,file.priority,job.phase!=='stopped'));list.append(label);}
-    const save=make('button','Save file selection');save.disabled=job.phase!=='stopped';
+    for(const file of data.items){const label=make('label');label.className='choice';const box=make('input');box.type='checkbox';box.checked=file.selected;box.value=file.id;box.disabled=!editable;label.append(box,file.path+' · '+bytes(file.size));label.append(filePriority(file.id,file.priority,!editable));list.append(label);}
+    const save=make('button','Save file selection');save.disabled=!editable;
     handle(save,async()=>{const ids=[...list.querySelectorAll('input:checked')].map(b=>Number(b.value));await api('torrents/'+id+'/files','PATCH',{selected_file_ids:ids,priorities:priorities(list)},job,crypto.randomUUID());await refresh();});list.append(save);
   } else {for(const item of data.items) list.append(make('p',Object.entries(item).map(([k,v])=>k+': '+v).join(' · ')));if(!data.items.length)list.textContent='No entries in the current snapshot.';}
-  if((view==='trackers'||view==='web-seeds') && job.phase==='stopped'){const edit=make('button','Replace source list…');handle(edit,async()=>{const raw=prompt('Enter complete replacement URLs on separate lines. An empty list clears these sources.');if(raw===null)return;await api('torrents/'+id+'/'+view,'PATCH',{urls:raw.split(/\s+/).filter(Boolean)},job,crypto.randomUUID());await refresh();});list.append(edit);}
+  if((view==='trackers'||view==='web-seeds') && editable){const edit=make('button','Replace source list…');handle(edit,async()=>{const raw=prompt('Enter complete replacement URLs on separate lines. An empty list clears these sources.');if(raw===null)return;await api('torrents/'+id+'/'+view,'PATCH',{urls:raw.split(/\s+/).filter(Boolean)},job,crypto.randomUUID());await refresh();});list.append(edit);}
   area.replaceChildren(list);
 }
 el('add').onclick=async()=>{try{const {defaults}=await api('settings');el('resume-boot').checked=defaults.resume_on_boot;el('seed').checked=defaults.seed_after_completion;}catch(err){message(err.message,true);return;}inspection=null;el('files').replaceChildren();el('submit').disabled=true;el('admit-message').textContent='';el('admit').showModal();};
@@ -251,9 +277,7 @@ handle(el('submit'),async()=>{
   selected=result.job_id;el('admit').close();await refresh();message('Download accepted · '+result.job_id);
 });
 async function openWorkspace() {
-  const response=await fetch('session/', {cache:'no-store',credentials:'same-origin'});
-  if(!response.ok) throw new Error('Sign in to Tlamatini, then reload the workspace.');
-  identity=await response.json();
+  identity=await readSession();
   const spanish = identity.edition?.startsWith('es');
   el('owner-label').textContent=spanish ? 'Usuario conectado' : 'Signed-in user';
   el('workspace-owner').textContent=identity.username;

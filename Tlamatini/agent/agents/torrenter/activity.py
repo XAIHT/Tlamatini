@@ -103,6 +103,14 @@ class ActivityLog:
                    "Total size: " + value("total_bytes", " bytes"), "Selected: " + value("selected_bytes", " bytes"),
                    "Verified: " + value("verified_bytes", " bytes"), "ETA: " + value("eta_seconds", " s"),
                    "Destination: " + value("destination_root_id"))
+        if state.get("error"):
+            self.write("Current error: " + str(state["error"]))
+        if state.get("previous_error"):
+            self.write("Previous error (download subsequently completed): " + str(state["previous_error"]))
+        if state.get("recovery_note"):
+            self.write("Recovery: " + state["recovery_note"])
+        if state.get("restart_action"):
+            self.write("Available recovery action: " + state["restart_action"])
         if state.get("completed_at"):
             stamp = datetime.fromtimestamp(state["completed_at"], timezone.utc)
             self.write("Completed (UTC): " + stamp.isoformat(timespec="seconds"))

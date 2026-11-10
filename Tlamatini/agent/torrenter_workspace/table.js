@@ -10,11 +10,23 @@ const TorrenterTable = (() => {
     return job.selected_bytes > 0 ? Math.max(0, Math.min(100, 100 * (number(job.verified_bytes) || 0) / job.selected_bytes)) : 0;
   }
   function status(job) {
-    if (!job.completed_at) return job.phase || 'Unknown';
+    if (!job.completed_at) return job.queue_reason === 'stalled_retry' ? 'queued · retry scheduled' : job.phase || 'Unknown';
     if (!job.delivery_state || job.delivery_state === 'service_store') return 'Service update required';
     if (job.delivery_state === 'failed') return 'Download verified · saving failed';
     if (job.delivery_state === 'pending') return 'Saving to Downloads…';
-    return job.phase || 'Unknown';
+    return ['stopped','paused'].includes(job.phase) ? 'completed' : job.phase || 'Unknown';
+  }
+  function canAction(job, action) {
+    const done=Boolean(job.completed_at), desired=job.desired_state;
+    if(action==='start')return !done&&desired==='stopped';
+    if(action==='resume')return !done&&desired==='paused';
+    if(action==='pause')return !done&&desired==='running';
+    if(action==='stop')return ['running','paused'].includes(desired);
+    if(action==='cancel')return !done&&desired!=='cancelled';
+    if(action==='recheck')return desired!=='cancelled'&&!['checking','verifying'].includes(job.phase);
+    if(action==='reseed')return done&&desired!=='cancelled';
+    if(action==='remove')return done||['stopped','cancelled'].includes(desired);
+    return false;
   }
   const columns = [
     {key:'name', label:'Name', value:j=>j.name || ''},
@@ -73,6 +85,6 @@ const TorrenterTable = (() => {
     return {rows:rows.slice((current-1)*limit,current*limit), page:current, pages,
       first:rows.length?(current-1)*limit+1:0, last:Math.min(rows.length,current*limit)};
   }
-  return {columns, progress, status, normalizeSorts, sorted, matches, paginate};
+  return {columns, progress, status, canAction, normalizeSorts, sorted, matches, paginate};
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = TorrenterTable;

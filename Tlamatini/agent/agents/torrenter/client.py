@@ -188,6 +188,39 @@ class JobsHttpError(TorrentError):
 
 def publication_status(data):
     """An older service's verified private copy is not a delivered Downloads file."""
+    if "job_id" in data and "selected_bytes" in data and "phase" in data:
+        data = dict(data)
+        complete = bool(data.get("completed_at"))
+        data["download_complete"] = complete
+        if complete and data["phase"] in ("completed", "stopped", "paused"):
+            # Older Jobs snapshots retained a cleared verification error and
+            # displayed the stopped peer session as an unfinished download.
+            if data["phase"] != "completed":
+                data["transfer_state"] = data["phase"]
+            data["phase"] = "completed"
+            if data.get("error"):
+                data["previous_error"] = data.pop("error")
+        phase = data["phase"]
+        data["restart_action"] = "recheck" if phase == "failed" else None if complete else {
+            "stopped": "start", "paused": "resume", "failed": "recheck",
+        }.get(phase)
+        data["recovery_note"] = (
+            "Recheck validates retained pieces and retries. Read the current error first."
+            if phase == "failed" else
+            "Download finished; restarting is unnecessary. Check the manifest for saved files."
+            if complete else
+            "Automatically queued for another attempt after yielding its stalled slot."
+            if data.get("queue_reason") == "stalled_retry" else
+            "No connected peers right now. Reported seeds are not connected seeds; restarting cannot guarantee availability."
+            if phase == "waiting_for_peers" else
+            "Start resumes retained partial files; it does not download a new copy."
+            if phase == "stopped" else
+            "Resume continues this paused download."
+            if phase == "paused" else ""
+        )
+    if isinstance(data.get("items"), list):
+        data = {**data, "items": [publication_status(item) if isinstance(item, dict) else item
+                                  for item in data["items"]]}
     if "output_root" in data and data.get("delivery_state") in (None, "service_store"):
         data = {**data, "download_verified": data.get("verified", False),
                 "verified": False, "delivery_state": "unavailable",

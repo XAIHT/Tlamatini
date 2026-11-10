@@ -79,6 +79,41 @@ When all four metadata lookup slots are occupied, Jobs can return `lookup_state:
 
 ## Actions
 
+### Recover an unfinished download
+
+Read the current job and its revision before sending a recovery action. **Start**
+continues an unfinished stopped job; **Resume** continues a paused job; **Recheck**
+validates retained pieces and retries a failed job. A reported seed count is not a
+connected seed count, and restarting cannot guarantee that missing peers return.
+Do not repeatedly stop/recheck a healthy transfer just because its rate is zero.
+
+The workspace enables actions only for eligible selected jobs. A mixed selection
+leaves ineligible jobs unchanged and reports the skipped count. A finished download
+remains **completed** when its peer session is stopped; Start and Cancel are not
+offered for it. Its `desired_state` still records that the session was stopped.
+Use **Reseed** for intentional sharing, or **Recheck** for an integrity check.
+Stopped file-selection and source-list controls remain available after completion.
+
+The client reports `download_complete`, `restart_action` and `recovery_note` in
+status/list results. It separates an older service's stale `previous_error` from a
+current transfer error. It never converts a delivery failure into successful saving:
+the verified manifest and actual output path remain the evidence of delivery.
+
+An empty or truncated session response is retried at most twice before displaying
+a reconnect error. Torrent writes are never automatically replayed by this retry.
+
+The coordinated Jobs source correction yields a stalled slot after 180 seconds
+without payload progress **only when eligible queued work is blocked**. Partial
+files and running intent are retained. Retry waits at least 60 seconds and moves
+behind waiting work; the queue shows `queued · retry scheduled`. Progressing,
+checking, verifying, intentionally stopped and paused jobs are not rotated.
+Jobs also waits for libtorrent's disk-complete pause alert before hashing files.
+
+These scheduler/disk fixes require updating the separately installed Tlachihuani
+Jobs service. Updating either Tlamatini alone supplies the clearer reporting and
+controls, but does not replace Jobs. The 10 November source checks did not build,
+install or modify the live queue. See [the verification record](changes/2026-11-10-torrenter-recovery.md).
+
 On the Agentic Control Panel, **Wait for complete download** defaults to **No**. The node returns its receipt and starts its connected agents as soon as Jobs accepts the transfer. Choose **Yes** to keep it running until Jobs publishes a verified manifest for the selected files. Pausing preserves the wait. A stopped, cancelled or failed transfer ends the wait with an error. The YAML setting is `wait_for_completion: true` or `false`.
 
 Right-click the Torrenter node and open its log to see all available filenames, the selected files, sizes, full source magnet and the verified saved paths and hashes. Uploaded metadata has a generated magnet. The detailed activity file belongs to the account's flow. Chat results carry a separate machine-readable receipt.

@@ -10,6 +10,18 @@
 
 > Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
 
+## 2026-11-10 — Torrenter recovery and verified file evidence
+
+Read [the recovery record](../changes/2026-11-10-torrenter-recovery.md) before
+diagnosing a stopped or failed torrent. Completion and peer-session intent are
+different: preserve `completed_at`/`desired_state`, separate `previous_error`, and
+use Start, Resume or Recheck according to the current state and revision.
+Reported seeds do not prove connected peers. Keep the two editions' workspace
+assets identical and recovery guidance localized. The shared Jobs scheduler and
+disk-pause fixes require a separate service update; source tests do not prove an
+installed upgrade. Evidence: 64 automated checks, 48 headed-browser checks and
+432 independently matched existing Downloads files. No build or commit.
+
 ## 2026-11-08 — DeepSeek initial model and vision update
 
 Angela selected `deepseek-v4.1-flash:cloud` for the initial demo. Keep
