@@ -44,10 +44,20 @@ file was saved to Downloads.
 
 The workspace fills the browser viewport and keeps its footer at the bottom. The
 queue receives the unused height; selecting a transfer opens the details pane.
-**Preferences → Details pane height** adjusts that pane. Scrolling is retained
+**Columns & view → Details pane height** adjusts that pane. Scrolling is retained
 where the content actually exceeds the available pane or viewport.
 
 Native credential calls are internal IPC and do not allocate console windows.
+
+## Sort, filter and personalize the workspace
+
+Every data column is sortable; **Select** remains fixed. Click a header to toggle ascending/descending; Shift-click adds another sorting priority. The arrows and priority numbers describe the active order. Numeric values and dates sort by their raw values, with unknown values last. Seeds / peers compares seeds first, then peers. **Reset sorting** returns to Name ascending.
+
+Search matches all words across names, categories, tags, tracker hosts, paths and job IDs. Combine it with the sidebar filters and a progress-percentage range. **Clear filters** restores the full queue. The workspace reads all API pages before filtering or sorting, so transfers beyond row 250 remain available.
+
+**Columns & view** controls visible columns, column order and minimum width, compact rows and details height. Select cannot be hidden, and one data column must remain visible. Display preferences, sorting and page size are stored per account and browser. **Restore default view** resets display settings without changing transfers; **Preferences** still controls transfer defaults.
+
+Choose 25, 50, 100, 250 or All rows. The header checkbox selects the current page only; a banner identifies selections outside the current page after paging or filtering. Clear selection clears all checks. Click a row or press Enter to open its details, including when Name is hidden.
 Development verification still runs in a visible foreground console and headed
 Chrome. Full Tlamatini executables must be rebuilt to deliver frozen Python
 changes; updating Jobs alone does not replace either Tlamatini executable.

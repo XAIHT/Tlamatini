@@ -34,6 +34,14 @@ export default [
     js.configs.recommended,
 
     {
+        files: ["Tlamatini/agent/torrenter_workspace/*.js"],
+        languageOptions: {
+            ecmaVersion: 2022, sourceType: "script",
+            globals: { ...globals.browser, module: "readonly" },
+        },
+    },
+
+    {
         // Only lint our JS source files
         files: ["Tlamatini/agent/static/agent/js/**/*.js", "Tlamatini/agent/static/agent/interactor/*.js"],
 

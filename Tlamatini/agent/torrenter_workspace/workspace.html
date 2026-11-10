@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Torrenter · Tlachihuani</title><link rel="stylesheet" href="workspace.css"><script src="layout.js" defer></script><script src="workspace.js" defer></script></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Torrenter · Tlachihuani</title><link rel="stylesheet" href="workspace.css"><script src="table.js" defer></script><script src="layout.js" defer></script><script src="workspace.js" defer></script></head><body>
 <header>
   <div class="mark" aria-hidden="true">XT</div>
   <div class="workspace-title">
@@ -13,8 +13,28 @@
 </header>
 <main id="workspace" hidden><nav aria-label="Transfer actions"><button id="add">＋ Add torrent</button><button data-action="pause">Pause</button><button data-action="resume">Resume</button><button data-action="stop">Stop</button><button data-action="start">Start</button><button data-action="cancel">Cancel</button><button data-action="recheck">Recheck</button><button id="move">Move…</button><button data-action="reseed">Reseed</button><button id="prefs">Preferences</button><button id="remove">Remove record</button><button id="erase">Erase files…</button></nav>
 <p id="save-location" class="saved-location" role="status"></p>
-<div class="layout"><aside><h2>Queue</h2><label>Search <input id="search" type="search" placeholder="Torrent name"></label><label>Status <select id="filter"><option value="">All states</option></select></label><label>Category <select id="category"></select></label><label>Tag <select id="tag"></select></label><label>Tracker host <select id="tracker"></select></label><label>Activity <select id="activity"><option value="">All activity</option><option value="active">Transferring</option><option value="idle">Idle</option><option value="running">Desired running</option></select></label><p id="count"></p><p id="pending-metadata" role="status" hidden></p></aside>
-<div class="work"><div class="table" id="transfer-grid"><table><thead><tr><th>Select</th><th><button data-sort="name">Name</button></th><th><button data-sort="selected_bytes">Size</button></th><th>Progress</th><th><button data-sort="phase">Status</button></th><th>Seeds / peers</th><th>↓ Speed</th><th>↑ Speed</th><th>ETA</th><th>Ratio</th><th>Availability</th><th><button data-sort="queue_position">Queue</button></th><th>Completed</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="layout"><aside><h2>Queue</h2><label>Search <input id="search" type="search" placeholder="Name, tag, tracker, path…" aria-describedby="search-help"></label><p id="search-help" class="hint">All words, across your downloads.</p><label>Status <select id="filter"><option value="">All states</option></select></label><label>Category <select id="category"></select></label><label>Tag <select id="tag"></select></label><label>Tracker host <select id="tracker"></select></label><label>Activity <select id="activity"><option value="">All activity</option><option value="active">Transferring</option><option value="idle">Idle</option><option value="running">Desired running</option></select></label>
+<fieldset class="progress-filter"><legend>Progress %</legend><label>From<input id="progress-min" type="number" min="0" max="100" step="any" placeholder="0"></label><label>To<input id="progress-max" type="number" min="0" max="100" step="any" placeholder="100"></label></fieldset>
+<p id="filter-error" class="error hint" role="alert"></p><button id="clear-filters" type="button">Clear filters</button><p id="count" role="status"></p><p id="pending-metadata" role="status" hidden></p></aside>
+<div class="work">
+<div class="table-tools"><div><strong>Downloads</strong><p id="sort-summary" class="hint" aria-live="polite"></p></div><div class="table-tool-actions"><button id="show-columns" type="button" aria-haspopup="dialog">Columns &amp; view</button><button id="reset-sort" type="button">Reset sorting</button></div></div>
+<p id="selection-summary" class="selection-summary" hidden><span id="selection-count"></span> <button id="clear-selection" type="button">Clear selection</button></p>
+<div class="table" id="transfer-grid" tabindex="0" role="region" aria-label="Downloads table"><table><caption class="sr-only">Your torrent downloads. Click a column to sort. Shift-click adds a secondary sort. Unknown values stay last.</caption><thead><tr>
+<th scope="col"><label class="select-heading"><input type="checkbox" id="select-page" aria-label="Select all downloads on this page">Select</label></th>
+<th scope="col"><button data-sort="name">Name <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="selected_bytes">Size <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="progress">Progress <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="phase">Status <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="seeds">Seeds / peers <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="download_rate_bps">↓ Speed <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="upload_rate_bps">↑ Speed <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="eta_seconds">ETA <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="ratio">Ratio <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="availability">Availability <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="queue_position">Queue <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+<th scope="col"><button data-sort="completed_at">Completed <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+</tr></thead><tbody id="rows"></tbody></table></div>
+<div class="table-pager"><span id="page-summary" role="status"></span><label>Rows <select id="page-size"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="250">250</option><option value="0">All</option></select></label><button id="page-first" type="button" aria-label="First page">«</button><button id="page-prev" type="button" aria-label="Previous page">‹</button><span id="page-number"></span><button id="page-next" type="button" aria-label="Next page">›</button><button id="page-last" type="button" aria-label="Last page">»</button></div>
 <section class="inspect"><h2 id="selected">Transfer details</h2><div class="tabs" aria-label="Detail views"><button data-tab="general">General</button><button data-tab="trackers">Trackers</button><button data-tab="peers">Peers</button><button data-tab="web-seeds">HTTP sources</button><button data-tab="files">Content</button><button data-tab="manifest">Verified output</button></div><div id="details">Select a transfer.</div></section></div></div></main>
 <footer><output id="message" role="status">Local transfer workspace</output><span id="rates">REST v1 · loopback</span></footer>
 <dialog id="admit"><form method="dialog"><h2>Add a download</h2><label>Torrent file <input type="file" id="torrent" accept=".torrent,application/x-bittorrent"></label><label>or magnet URI <input type="text" id="magnet" placeholder="magnet:?xt=…"></label><button type="button" id="inspect">Inspect metadata</button><label>Storage root <select id="root"><option value="downloads">Downloads</option><option value="archive">Archive</option></select></label><div id="files"></div><label class="choice"><input type="checkbox" id="resume-boot" checked> Resume on host startup</label><label class="choice"><input type="checkbox" id="seed"> Seed after verification within provider limits</label><p id="admit-message" role="status"></p><button type="button" id="submit" disabled>Download selected files</button><button>Close</button></form></dialog>
@@ -23,6 +43,12 @@
 <label>Default upload limit (bytes/s, 0 = unlimited)<input id="up-default" type="number" min="0" max="1073741824"></label>
 <label class="choice"><input id="resume-default" type="checkbox">Resume new jobs on startup</label>
 <label class="choice"><input id="seed-default" type="checkbox">Seed new jobs after verification</label>
-<fieldset><legend>Workspace layout</legend><label>Column <select id="column"></select></label><button type="button" id="col-left">Move left</button> <button type="button" id="col-right">Move right</button>
-<label>Column width <input type="range" id="column-width" min="60" max="500"></label><label>Details pane height <input type="range" id="grid-height" min="20" max="60"></label></fieldset>
-<button id="save-defaults" type="button">Save preferences</button><button>Close</button></form></dialog></body></html>
+<p class="hint">Use Columns &amp; view above the table for display preferences.</p>
+<button id="save-defaults" type="button">Save preferences</button><button>Close</button></form></dialog>
+<dialog id="table-options" aria-labelledby="view-title"><form method="dialog"><h2 id="view-title">Make this workspace yours</h2><p class="hint">Changes apply immediately. Select stays fixed; keep at least one data column visible.</p>
+<fieldset><legend>Visible columns</legend><div id="column-visibility"></div><button type="button" id="show-all-columns">Show all columns</button></fieldset>
+<fieldset><legend>Order and spacing</legend><label>Column <select id="column"></select></label><div class="table-tool-actions"><button type="button" id="col-left">Move left</button><button type="button" id="col-right">Move right</button></div>
+<label>Minimum column width <output id="column-width-value"></output><input type="range" id="column-width" min="60" max="500"></label><button id="column-auto" type="button">Automatic width</button><label class="choice"><input id="compact-rows" type="checkbox">Compact rows</label>
+<label>Details pane height <output id="grid-height-value"></output><input type="range" id="grid-height" min="20" max="60"></label></fieldset>
+<p id="view-storage" class="hint" role="status">Your view is kept separately for this account and browser.</p><div class="table-tool-actions"><button type="button" id="reset-view">Restore default view</button><button>Done</button></div></form></dialog>
+</body></html>

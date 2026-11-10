@@ -122,7 +122,7 @@ ROOT_SOURCES = {
     "setup_recovery.py": "setup_recovery.py",
     **{
         "Tlamatini/agent/torrenter_workspace/" + name: "_internal/agent/torrenter_workspace/" + name
-        for name in ("workspace.html", "workspace.css", "layout.js", "workspace.js")
+        for name in ("workspace.html", "workspace.css", "table.js", "layout.js", "workspace.js")
     },
     "Tlamatini/agent/config.json": "config.json",
     "Tlamatini/agent/prompt.pmt": "prompt.pmt",

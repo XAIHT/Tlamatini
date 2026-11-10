@@ -1,9 +1,11 @@
 'use strict';
+/* global DeskLayout, TorrenterTable */
 const el = id => document.getElementById(id);
 const make = (tag, text) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; return node; };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-const bytes = n => n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GiB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MiB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KiB' : n + ' B';
-let identity = null, jobs = [], selected = '', sort = 'name', direction = 1, tab = 'general', inspection = null, refreshed = false, renderedJobs = null;
+const bytes = n => typeof n !== 'number' || !Number.isFinite(n) ? '—' : n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GiB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MiB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KiB' : n + ' B';
+let identity = null, jobs = [], selected = '', sorts = [{key:'name',direction:1}], tab = 'general', inspection = null, refreshed = false, renderedJobs = null;
+let currentPage = 1, pageCount = 1, visibleRows = [];
 const checked = new Set();
 let policy;
 let refreshError = false;
@@ -45,40 +47,85 @@ function options(id,items,label) {
   const select=el(id), current=select.value;
   select.replaceChildren(new Option(label,''));
   for (const item of [...new Set(items.filter(Boolean))].sort()) select.add(new Option(item,item));
-  if ([...select.options].some(o=>o.value===current)) select.value=current;
+  if(current && ![...select.options].some(o=>o.value===current)) select.add(new Option(current+' (0)',current));
+  select.value=current;
+}
+function selectionSummary() {
+  const visibleSelected=visibleRows.filter(job=>checked.has(job.job_id)).length;
+  el('select-page').checked=visibleRows.length>0 && visibleSelected===visibleRows.length;
+  el('select-page').indeterminate=visibleSelected>0 && visibleSelected<visibleRows.length;
+  el('select-page').disabled=!visibleRows.length;
+  el('selection-summary').hidden=!checked.size;
+  el('selection-count').textContent=checked.size+' selected'+(checked.size>visibleSelected?' · '+(checked.size-visibleSelected)+' outside this page':'');
+}
+function filters() {
+  return {search:el('search').value,status:el('filter').value,category:el('category').value,tag:el('tag').value,
+    tracker:el('tracker').value,activity:el('activity').value,minProgress:el('progress-min').value,maxProgress:el('progress-max').value};
 }
 function grid() {
-  options('filter',jobs.map(x=>x.phase),'All states');
+  options('filter',jobs.map(TorrenterTable.status),'All states');
   options('category',jobs.map(x=>x.category),'All categories');
   options('tag',jobs.flatMap(x=>x.tags),'All tags');
   options('tracker',jobs.flatMap(j=>j.tracker_hosts||[]),'All trackers');
-  const mode=el('activity').value;
-  const rows=jobs.filter(x=>(!el('tracker').value||(x.tracker_hosts||[]).includes(el('tracker').value)) && (!mode||(mode==='running'?x.desired_state==='running':mode==='active'?x.download_rate_bps+x.upload_rate_bps>0:x.download_rate_bps+x.upload_rate_bps===0)) && (!el('filter').value||x.phase===el('filter').value) && (!el('category').value||x.category===el('category').value) &&
-    (!el('tag').value||x.tags.includes(el('tag').value)) && x.name.toLowerCase().includes(el('search').value.toLowerCase()));
-  rows.sort((a,b)=>direction*(typeof a[sort]==='number'?a[sort]-b[sort]:String(a[sort]).localeCompare(String(b[sort]))));
+  const query=filters();
+  const invalidRange=!el('progress-min').validity.valid||!el('progress-max').validity.valid||
+    (query.minProgress!==''&&query.maxProgress!==''&&Number(query.minProgress)>Number(query.maxProgress));
+  el('filter-error').textContent=invalidRange?'Use 0–100%, with From no greater than To.':'';
+  const rows=TorrenterTable.sorted(invalidRange?[]:jobs.filter(job=>TorrenterTable.matches(job,query)),sorts);
+  const page=TorrenterTable.paginate(rows,currentPage,DeskLayout.snapshot().pageSize);
+  currentPage=page.page;pageCount=page.pages;visibleRows=page.rows;
+  const focused=document.activeElement, focusJob=focused.closest('#rows tr')?.dataset.jobId, focusKind=focused.dataset.focus;
   const list=el('rows'); list.replaceChildren(); el('count').textContent=rows.length+' of '+jobs.length+' downloads';
-  for (const job of rows) {
+  el('page-summary').textContent=page.first+'–'+page.last+' of '+rows.length;
+  el('page-number').textContent=currentPage+' / '+pageCount;
+  el('page-first').disabled=el('page-prev').disabled=currentPage===1;
+  el('page-last').disabled=el('page-next').disabled=currentPage===pageCount;
+  for (const job of page.rows) {
     const row=make('tr'), box=make('input'); box.type='checkbox'; box.checked=checked.has(job.job_id); box.setAttribute('aria-label','Select '+job.name);
-    box.onchange=()=>{if(box.checked) checked.add(job.job_id); else checked.delete(job.job_id);};
+    row.dataset.jobId=job.job_id;row.tabIndex=0;row.dataset.focus='row';row.setAttribute('aria-label',job.name);
+    box.dataset.focus='checkbox';
+    box.onchange=()=>{if(box.checked) checked.add(job.job_id); else checked.delete(job.job_id);selectionSummary();};
     box.onclick=e=>e.stopPropagation();
     row.append(make('td')); row.cells[0].append(box);
     const title=make('button',job.name); title.title=job.name; title.onclick=()=>{selected=job.job_id;grid(); reportDetails();};
+    title.dataset.focus='title';
+    row.onclick=event=>{if(event.target.closest('button,input'))return;selected=job.job_id;grid();reportDetails();};
+    row.onkeydown=event=>{if(event.target===row&&event.key==='Enter'){event.preventDefault();selected=job.job_id;grid();reportDetails();}};
     row.append(make('td')); row.cells[1].append(title);
     row.append(make('td',bytes(job.selected_bytes)));
-    const pct=job.selected_bytes?Math.min(100,100*job.verified_bytes/job.selected_bytes):0;
-    const meter=make('progress');meter.max=100;meter.value=pct;
+    const pct=TorrenterTable.progress(job);
+    const meter=make('progress');meter.max=100;meter.value=pct;meter.setAttribute('aria-label','Download progress for '+job.name);
     const progress=make('td');progress.append(meter,' '+pct.toFixed(1)+'%');row.append(progress);
-    for (const value of [(job.completed_at && (!job.delivery_state || job.delivery_state==='service_store') ? 'Service update required' : job.completed_at && job.delivery_state==='failed' ? 'Download verified · saving failed' : job.completed_at && job.delivery_state==='pending' ? 'Saving to Downloads…' : job.phase),job.seeds+' / '+job.peers,bytes(job.download_rate_bps)+'/s',bytes(job.upload_rate_bps)+'/s',job.eta_seconds==null?'—':Math.ceil(job.eta_seconds/60)+' min',job.ratio==null?'—':job.ratio.toFixed(2),job.availability==null?'—':job.availability.toFixed(2),job.queue_position+1,job.completed_at?new Date(job.completed_at*1000).toLocaleString():'—']) row.append(make('td',value));
+    for (const value of [TorrenterTable.status(job),(job.seeds??'—')+' / '+(job.peers??'—'),bytes(job.download_rate_bps)+'/s',bytes(job.upload_rate_bps)+'/s',job.eta_seconds==null||job.eta_seconds<0?'—':Math.ceil(job.eta_seconds/60)+' min',job.ratio==null?'—':job.ratio.toFixed(2),job.availability==null?'—':job.availability.toFixed(2),job.queue_position==null?'—':job.queue_position+1,job.completed_at?new Date(job.completed_at*1000).toLocaleString():'—']) row.append(make('td',value));
     row.setAttribute('aria-selected',String(selected===job.job_id));list.append(row);
   }
   if (!rows.length) { const td=make('td',jobs.length?'No matching downloads.':'No downloads yet. Use Add torrent to inspect a file or magnet.');td.colSpan=13;const tr=make('tr');tr.append(td);list.append(tr); }
   DeskLayout.arrange();
+  selectionSummary();
+  if(focusJob) {
+    const replacement=[...list.rows].find(row=>row.dataset.jobId===focusJob);
+    if(replacement)(focusKind==='row'?replacement:replacement.querySelector('[data-focus="'+focusKind+'"]'))?.focus({preventScroll:true});
+  }
   el('rates').textContent='↓ '+bytes(jobs.reduce((v,j)=>v+j.download_rate_bps,0))+'/s · ↑ '+bytes(jobs.reduce((v,j)=>v+j.upload_rate_bps,0))+'/s · '+new Date().toLocaleTimeString();
 }
 async function refresh() {
   if (!identity||refreshed) return;
   refreshed=true;
-  try { const page=await api('torrents?limit=250'); jobs=page.items;
+  try {
+    // Collect the entire owned queue before replacing it. A later-page failure
+    // leaves the last complete snapshot intact, never a silently truncated list.
+    const account=identity.profile, page=await api('torrents?limit=250');
+    const all=[...page.items], seen=new Set(); let cursor=page.next_cursor;
+    while(cursor!=null) {
+      if(!Number.isSafeInteger(cursor)||cursor<0||seen.has(cursor)||seen.size>=2000)throw new Error('Invalid queue pagination. Keeping the previous complete view.');
+      seen.add(cursor);
+      const next=await api('torrents?limit=250&cursor='+cursor);
+      all.push(...next.items);cursor=next.next_cursor;
+    }
+    if(!identity||identity.profile!==account)return;
+    jobs=[...new Map(all.map(job=>[job.job_id,job])).values()];
+    const liveIds=new Set(jobs.map(job=>job.job_id));
+    for(const id of checked)if(!liveIds.has(id))checked.delete(id);
     const waiting = Number(page.resolving_metadata) || 0;
     el('pending-metadata').hidden = !waiting;
     el('pending-metadata').textContent = waiting ? waiting + ' magnet inspection(s) awaiting a file list.' : '';
@@ -95,8 +142,19 @@ async function refresh() {
     return page.event_cursor; }
   finally { refreshed=false; }
 }
-for(const id of ['filter','search','category','tag','tracker','activity']) el(id).addEventListener('input',grid);
-document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{direction=sort===b.dataset.sort?-direction:1;sort=b.dataset.sort;DeskLayout.sortBy(sort,direction);grid();});
+for(const id of ['filter','search','category','tag','tracker','activity','progress-min','progress-max']) el(id).addEventListener('input',()=>{currentPage=1;grid();});
+el('clear-filters').onclick=()=>{for(const id of ['filter','search','category','tag','tracker','activity','progress-min','progress-max'])el(id).value='';currentPage=1;grid();};
+document.querySelectorAll('[data-sort]').forEach(button=>button.onclick=event=>{
+  const key=button.dataset.sort, old=sorts.find(rule=>rule.key===key);
+  const rule={key,direction:old?-old.direction:1};
+  sorts=event.shiftKey?(old?sorts.map(item=>item.key===key?rule:item):[...sorts,rule]):[rule];
+  currentPage=1;DeskLayout.sortBy(sorts);grid();
+});
+el('reset-sort').onclick=()=>{sorts=[{key:'name',direction:1}];currentPage=1;DeskLayout.sortBy(sorts);grid();};
+document.addEventListener('desk-layout-change',event=>{sorts=event.detail.sorts;currentPage=1;grid();});
+for(const [id,value] of [['page-first',()=>1],['page-prev',()=>currentPage-1],['page-next',()=>currentPage+1],['page-last',()=>pageCount]])el(id).onclick=()=>{currentPage=value();grid();el('transfer-grid').scrollTop=0;};
+el('select-page').onchange=event=>{for(const job of visibleRows){if(event.target.checked)checked.add(job.job_id);else checked.delete(job.job_id);}grid();};
+el('clear-selection').onclick=()=>{checked.clear();grid();};
 function targetJobs() {
   const ids=checked.size?checked:new Set([selected]);
   const matches=jobs.filter(j=>ids.has(j.job_id)); if(!matches.length) throw new Error('Select a download first.');return matches;
@@ -201,7 +259,7 @@ async function openWorkspace() {
   el('workspace-owner').textContent=identity.username;
   el('workspace-owner').parentElement.hidden=false;
   el('connection').textContent=spanish ? 'Sesión local' : 'Local session';
-  ({sort,direction}=DeskLayout.load(identity.profile));
+  ({sorts}=DeskLayout.load(identity.profile));
   el('workspace').hidden=false;
   await refresh(); message('Connected.');
 }

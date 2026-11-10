@@ -25,7 +25,7 @@ from .torrenter_bridge import profile_for
 
 
 _ASSETS = {"workspace.html": "text/html; charset=utf-8", "workspace.css": "text/css",
-           "layout.js": "text/javascript", "workspace.js": "text/javascript"}
+           "table.js": "text/javascript", "layout.js": "text/javascript", "workspace.js": "text/javascript"}
 _RESOURCES = frozenset(("torrents", "inspections", "operations", "events", "capabilities", "statistics",
                         "settings", "categories", "tags", "batch-operations", "content-deletion-previews",
                         "content-deletions"))
