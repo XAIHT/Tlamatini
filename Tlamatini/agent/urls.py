@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 
 from . import views, flow_file_views, model_brain_views, usage_views, terminal_views
-from . import canvas_file_views, interaction_settings, torrenter_views
+from . import canvas_file_views, interaction_settings, torrenter_views, host_voice_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -35,6 +35,10 @@ urlpatterns = [
     path("torrenter/workspace/<str:asset>", torrenter_views.workspace_asset),
     path("torrenter/sources/", torrenter_views.sources, name="torrenter_sources"),
     path('interaction-settings/', secure_get(csrf_protect(interaction_settings.settings_view)), name='interaction_settings'),
+    path('voice/host/settings/', secure_post(host_voice_views.settings_view), name='host_voice_settings'),
+    path('voice/host/speak/', secure_post(host_voice_views.speak_view), name='host_voice_speak'),
+    path('voice/host/status/', secure_get(host_voice_views.status_view), name='host_voice_status'),
+    path('voice/host/stop/', secure_post(host_voice_views.stop_view), name='host_voice_stop'),
     path('canvas/save/', secure_post(canvas_file_views.save), name='canvas_save'),
     path('canvas/read/', secure_post(canvas_file_views.read), name='canvas_read'),
     path('usage/', secure_get(usage_views.usage_view), name='usage'),

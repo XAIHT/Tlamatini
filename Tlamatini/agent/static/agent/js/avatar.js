@@ -162,7 +162,8 @@
           const last=lastBotAnswer(); const a=last?extractAnswer(last):'';
           if(a && !isStatusMsg(a)) text=a;      // read the ANSWER itself, verbatim
         }
-        prime(); speak(text);
+        // QUEUED: the completion never cuts off what she is still saying.
+        prime(); speak(text,{queue:true});
       }, 220);
     }
     function doCancelSpeak(){
@@ -307,7 +308,8 @@
       function onClick(){
         prime();
         let busy=false;
-        try{ busy=window.speechSynthesis.speaking||window.speechSynthesis.pending; }catch(e){ /* Treat an unavailable speech engine as idle. */ }
+        // Counts her host voice too, so a click also stops her on the speakers.
+        try{ busy=window.TLM_VOICE.isSpeaking(); }catch(e){ /* Treat an unavailable speech engine as idle. */ }
         if(busy){ stopSpeaking(); showBubble("Okay, I'll stop talking."); return; }
         announce(null,(isWorking()?busyPhrase():idlePhrase()),0);
       }

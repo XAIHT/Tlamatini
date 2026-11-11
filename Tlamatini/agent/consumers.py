@@ -156,6 +156,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
             )
             await self.accept()
             print("--- WebSocket connection accepted and successful.")
+            # An open chat page speaks for her; with none, her host voice does.
+            try:
+                from . import host_voice
+                host_voice.page_opened(user.id)
+                self._voice_page_user = user.id
+            except Exception as exc:  # noqa: BLE001 - the voice must never cost the chat
+                print(f"--- [HOST-VOICE] page tracking skipped: {exc}")
             self._ensure_connection_gauge_sink(user.id)
             await self._join_compact_mode_group()
 
@@ -859,6 +866,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):   # type: ignore
         print("--- WebSocket disconnected.")
+        if getattr(self, '_voice_page_user', None) is not None:
+            try:
+                from . import host_voice
+                host_voice.page_closed(self._voice_page_user)
+            except Exception:  # noqa: BLE001 - teardown must never raise
+                pass
+            self._voice_page_user = None
         if getattr(self, '_in_compact_group', False):
             try:
                 from . import compact_mode
@@ -1173,6 +1187,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 exec_report_entries=exec_report_entries,
                 exec_report_denied=exec_report_denied,
             )
+            # With no chat page open, she still tells the user the answer is ready.
+            try:
+                from . import host_voice
+                host_voice.answer_finished(conversation_user, llm_response)
+            except Exception as voice_err:  # noqa: BLE001 - the voice must never cost the answer
+                print(f"--- [HOST-VOICE] answer announcement skipped: {voice_err}")
 
             # ── Tier-2 orphan-process sweep ───────────────────────
             # Now that the user has their answer, run the broader

@@ -60,8 +60,7 @@
         } catch (error) { cancel({ id }); throw error; }
     }
     window.TlamatiniInteractionSpeech = { narrate, cancel, around };
-    document.addEventListener('visibilitychange', () => {
-        try { if (document.hidden) window.speechSynthesis?.pause(); else window.speechSynthesis?.resume(); }
-        catch { /* The bounded speech lifecycle reports unavailable engines. */ }
-    });
+    // No pause when the page is hidden: Windows reports a covered window as hidden,
+    // and pausing here silenced every voice of the site (Angela, 2026-11-11).
+    // voice_runtime.js keeps her talking and wakes a paused engine on its own.
 })();
