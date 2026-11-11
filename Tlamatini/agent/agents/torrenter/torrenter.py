@@ -11,7 +11,6 @@ import sys
 import time
 import uuid
 from pathlib import Path
-
 import yaml
 
 # Carried Python can have an isolated ._pth file.
@@ -224,36 +223,84 @@ def describe_assets(profile, route, log, response=None):
               read(route + "/peers").get("items"))
 
 
+# Jobs restarts its worker after an update or a crash; that short outage must not
+# end a long download. A failed save is retried by Jobs every 60 seconds.
+API_OUTAGE_SECONDS = 600
+DELIVERY_GRACE_SECONDS = 180
+STALL_SECONDS = 2 * 60 * 60
+ENDED_PHASES = {"cancelled", "stopped", "paused", "error", "failed"}
+USER_HALTED = {"paused", "stopped", "cancelled"}
+
+
 def wait_for_publication(profile, result, log):
     job = result["job_id"]
     path = "torrents/" + job
-    last = None
-    token = session(profile)
-    renewal = time.monotonic() + 220
+    last = seen = None
+    token = None
+    renewal = 0.0
+    outage = delivery_failed = None
+    moved = time.monotonic()
     log.write("Waiting for verified output", "job_id: " + job)
     while True:
-        if time.monotonic() >= renewal:
-            token = session(profile)
-            renewal = time.monotonic() + 220
-        _, state = request("GET", path, bearer=token)
+        now = time.monotonic()
+        try:
+            if token is None or now >= renewal:
+                token = session(profile)
+                renewal = now + 220
+            _, state = request("GET", path, bearer=token)
+            manifest = request("GET", path + "/manifest", bearer=token)[1] if state.get("completed_at") else None
+        except TorrentError as exc:
+            status = getattr(exc, "status", None)
+            if status == 401:
+                token = None  # The token expired early; mint a new one.
+            elif status is not None and status < 500 and status != 429:
+                raise  # Jobs answered and refused: not an outage.
+            if outage is None:
+                outage = now
+                log.write(f"{log.now()}  Jobs did not answer; retrying for up to {API_OUTAGE_SECONDS // 60} minutes",
+                          str(exc))
+            if now - outage >= API_OUTAGE_SECONDS:
+                raise TorrentError(f"Jobs did not answer for {API_OUTAGE_SECONDS // 60} minutes. The download "
+                                   "continues in Jobs; check it in the Torrenter workspace. " + job) from exc
+            time.sleep(5)
+            continue
+        if outage is not None:
+            log.write(f"{log.now()}  Jobs answers again")
+            outage = None
         report_selected_bytes(state)
         progress = (state["phase"], state.get("verified_bytes"), state.get("selected_bytes"))
         if progress != last:
             log.write(f"{log.now()}  {progress[0]}  {progress[1]} / {progress[2]} bytes"
                       f'  |  seeds={state.get("seeds")}  peers={state.get("peers")}  down={state.get("download_rate_bps")} B/s')
             last = progress
-        if state.get("completed_at"):
-            _, manifest = request("GET", path + "/manifest", bearer=token)
-            if manifest.get("delivery_state") in ("failed", "unavailable"):
-                raise TorrentError("The download is verified, but saving to Windows Downloads failed: "
-                                   + str(manifest.get("delivery_error", "Unknown delivery error.")))
+        if manifest is not None:
+            delivery = manifest.get("delivery_state")
+            error = str(manifest.get("delivery_error", "Unknown delivery error."))
+            if delivery == "unavailable":
+                raise TorrentError("The download is verified, but saving to Windows Downloads failed: " + error)
+            if delivery == "failed":
+                if delivery_failed is None:
+                    delivery_failed = now
+                    log.write(f"{log.now()}  Saving to Windows Downloads failed; Jobs retries it", error)
+                if now - delivery_failed >= DELIVERY_GRACE_SECONDS:
+                    raise TorrentError("The download is verified, but saving to Windows Downloads failed: " + error)
+            else:
+                delivery_failed = None
             if manifest.get("verified"):
                 log.publication(manifest)
                 result.update(status="completed", phase=state["phase"], verified=True)
                 result["response_body"] = {**result["response_body"], "manifest": manifest}
                 return
-        if state["phase"] in {"cancelled", "stopped", "error", "failed"}:
-            raise TorrentError("Download ended before verified publication. " + state["phase"] + " · " + job)
+        elif state["phase"] in ENDED_PHASES or state.get("desired_state") in USER_HALTED:
+            ended = state.get("desired_state") if state.get("desired_state") in USER_HALTED else state["phase"]
+            raise TorrentError("Download ended before verified publication. " + ended + " · " + job)
+        observed = (progress, manifest.get("delivery_state") if manifest else None)
+        if observed != seen or state.get("download_rate_bps"):
+            seen, moved = observed, now
+        elif now - moved >= STALL_SECONDS:
+            raise TorrentError(f"No download progress for {STALL_SECONDS // 3600} hours "
+                               f"({progress[0]}, {progress[1]} / {progress[2]} bytes). The download continues "
+                               "in Jobs; check its peers in the Torrenter workspace. " + job)
         time.sleep(2)
 
 

@@ -3,6 +3,17 @@
 const el = id => document.getElementById(id);
 const make = (tag, text) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; return node; };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Idempotency key for every Jobs mutation. crypto.randomUUID exists only in a
+// secure context, so a workspace opened over plain HTTP from a LAN address has
+// none; crypto.getRandomValues is available everywhere and gives the same v4 UUID.
+function operationKey() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+}
 const bytes = n => typeof n !== 'number' || !Number.isFinite(n) ? '—' : n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GiB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MiB' : n >= 1024 ? (n / 1024).toFixed(1) + ' KiB' : n + ' B';
 let identity = null, jobs = [], selected = '', sorts = [{key:'name',direction:1}], tab = 'general', inspection = null, refreshed = false, renderedJobs = null;
 let currentPage = 1, pageCount = 1, visibleRows = [];
@@ -188,30 +199,30 @@ async function applyToJobs(operation) {
   if(!targets.length)throw new Error('This action is not available for the selected download state.');
   if ((operation==='cancel'||operation==='remove')&&!confirm(operation+' '+targets.length+' download record(s)? Files will be retained.')) return;
   if(targets.length>1 && ['pause','resume','stop','start'].includes(operation)){
-    const result=await api('batch-operations','POST',{action:operation,jobs:targets.map(j=>({job_id:j.job_id,revision:j.revision}))},null,crypto.randomUUID());
+    const result=await api('batch-operations','POST',{action:operation,jobs:targets.map(j=>({job_id:j.job_id,revision:j.revision}))},null,operationKey());
     const failed=result.items.filter(x=>!x.ok); await refresh(); message((targets.length-failed.length)+' accepted · '+failed.map(x=>x.job_id+': '+x.error).join(' · ')+suffix,!!failed.length); return;
   }
   const errors=[];
   for (const job of targets) {
     try {
       const path='torrents/'+job.job_id;
-      if(operation==='remove') await api(path,'DELETE',undefined,job,crypto.randomUUID());
-      else await api(path+'/actions','POST',{action:operation},job,crypto.randomUUID());
+      if(operation==='remove') await api(path,'DELETE',undefined,job,operationKey());
+      else await api(path+'/actions','POST',{action:operation},job,operationKey());
     } catch(err){errors.push(job.name+': '+err.message);}
   }
   await refresh(); message((errors.length?errors.join(' · '):'Request recorded for '+targets.length+' download(s).')+suffix,!!errors.length);
 }
 document.querySelectorAll('[data-action]').forEach(b=>handle(b,()=>applyToJobs(b.dataset.action)));
-handle(el('move'),async()=>{const targets=targetJobs();if(targets.length!==1)throw new Error('Select one stopped download.');const job=targets[0];const destination=job.destination_root_id==='archive'?'downloads':'archive';if(!confirm('Move '+job.name+' to '+destination+'?'))return;const receipt=await api('torrents/'+job.job_id+'/actions','POST',{action:'move',destination_root_id:destination},job,crypto.randomUUID());message('Move receipt '+receipt.operation_id);await refresh();});
+handle(el('move'),async()=>{const targets=targetJobs();if(targets.length!==1)throw new Error('Select one stopped download.');const job=targets[0];const destination=job.destination_root_id==='archive'?'downloads':'archive';if(!confirm('Move '+job.name+' to '+destination+'?'))return;const receipt=await api('torrents/'+job.job_id+'/actions','POST',{action:'move',destination_root_id:destination},job,operationKey());message('Move receipt '+receipt.operation_id);await refresh();});
 handle(el('prefs'),async()=>{policy=await api('settings');const d=policy.defaults;el('down-default').value=d.download_limit;el('up-default').value=d.upload_limit;el('resume-default').checked=d.resume_on_boot;el('seed-default').checked=d.seed_after_completion;el('preferences').showModal();});
-handle(el('save-defaults'),async()=>{await api('settings','PATCH',{download_limit:Number(el('down-default').value),upload_limit:Number(el('up-default').value),resume_on_boot:el('resume-default').checked,seed_after_completion:el('seed-default').checked},policy,crypto.randomUUID());el('preferences').close();message('Profile preferences saved.');});
+handle(el('save-defaults'),async()=>{await api('settings','PATCH',{download_limit:Number(el('down-default').value),upload_limit:Number(el('up-default').value),resume_on_boot:el('resume-default').checked,seed_after_completion:el('seed-default').checked},policy,operationKey());el('preferences').close();message('Profile preferences saved.');});
 handle(el('remove'),()=>applyToJobs('remove'));
 handle(el('erase'),async()=>{
   const targets=targetJobs();if(targets.length!==1) throw new Error('Select exactly one stopped download to review its files.');
   const job=targets[0], pr=await api('content-deletion-previews','POST',{job_id:job.job_id},job);
   if(!pr.files.length) throw new Error('This job has no owned files to delete.');
   message('Review deletion '+pr.preview_id+' in XT → Services → Review erasure. Waiting for approval…');
-  const key=crypto.randomUUID();
+  const key=operationKey();
   for(let i=0;i<55;i++){
     await wait(2000);
     try {const receipt=await api('content-deletions','POST',{preview_id:pr.preview_id},job,key);message('Deletion receipt '+receipt.operation_id);return;}
@@ -238,7 +249,7 @@ async function details(){
     const dl=make('dl');
     for(const [label,value] of Object.entries({'Job ID':id,'Desired':job.desired_state,'Observed':TorrenterTable.status(job),'Verified':bytes(job.verified_bytes)+' / '+bytes(job.selected_bytes),'Queue position':job.queue_position+1,'Saved to':job.saved_to || job.destination_root_id,'Delivery':job.delivery_state || 'service_store','Delivery error':job.delivery_error || '—','Revision':job.revision,'Category':job.category||'Uncategorized','Tags':job.tags.join(', ')||'Untagged','Reason':job.completed_at&&['completed','stopped','paused'].includes(job.phase)?'—':job.error||'—','Recovery':job.recovery_note||(job.queue_reason==='stalled_retry'?'Yielded a stalled slot; retry is automatic.':job.phase==='waiting_for_peers'?'No connected peers. Reported seeds do not guarantee availability.':job.completed_at?'Download finished. Start is unnecessary; use Recheck only to verify the retained files.':'—')})){dl.append(make('dt',label),make('dd',value));}
     const edit=make('button','Edit labels and limits');
-    handle(edit,async()=>{const cat=prompt('Category',job.category);if(cat===null)return;const tags=prompt('Comma-separated tags',job.tags.join(', '));if(tags===null)return;const limit=prompt('Download limit in bytes/second (0 = unlimited)',String(job.download_limit));if(limit===null)return;const up=prompt('Upload limit in bytes/second (0 = unlimited)',String(job.upload_limit));if(up===null)return;const position=prompt('Queue position (1 = first)',String(job.queue_position+1));if(position===null)return;await api('torrents/'+id,'PATCH',{category:cat,tags:tags.split(',').map(x=>x.trim()).filter(Boolean),download_limit:Number(limit),upload_limit:Number(up),queue_position:Number(position)-1},job,crypto.randomUUID());await refresh();});
+    handle(edit,async()=>{const cat=prompt('Category',job.category);if(cat===null)return;const tags=prompt('Comma-separated tags',job.tags.join(', '));if(tags===null)return;const limit=prompt('Download limit in bytes/second (0 = unlimited)',String(job.download_limit));if(limit===null)return;const up=prompt('Upload limit in bytes/second (0 = unlimited)',String(job.upload_limit));if(up===null)return;const position=prompt('Queue position (1 = first)',String(job.queue_position+1));if(position===null)return;await api('torrents/'+id,'PATCH',{category:cat,tags:tags.split(',').map(x=>x.trim()).filter(Boolean),download_limit:Number(limit),upload_limit:Number(up),queue_position:Number(position)-1},job,operationKey());await refresh();});
     area.replaceChildren(dl,edit);return;
   }
   const data=await api('torrents/'+id+'/'+view);if(id!==selected||view!==tab)return;
@@ -251,9 +262,9 @@ async function details(){
   } else if(view==='files'){
     for(const file of data.items){const label=make('label');label.className='choice';const box=make('input');box.type='checkbox';box.checked=file.selected;box.value=file.id;box.disabled=!editable;label.append(box,file.path+' · '+bytes(file.size));label.append(filePriority(file.id,file.priority,!editable));list.append(label);}
     const save=make('button','Save file selection');save.disabled=!editable;
-    handle(save,async()=>{const ids=[...list.querySelectorAll('input:checked')].map(b=>Number(b.value));await api('torrents/'+id+'/files','PATCH',{selected_file_ids:ids,priorities:priorities(list)},job,crypto.randomUUID());await refresh();});list.append(save);
+    handle(save,async()=>{const ids=[...list.querySelectorAll('input:checked')].map(b=>Number(b.value));await api('torrents/'+id+'/files','PATCH',{selected_file_ids:ids,priorities:priorities(list)},job,operationKey());await refresh();});list.append(save);
   } else {for(const item of data.items) list.append(make('p',Object.entries(item).map(([k,v])=>k+': '+v).join(' · ')));if(!data.items.length)list.textContent='No entries in the current snapshot.';}
-  if((view==='trackers'||view==='web-seeds') && editable){const edit=make('button','Replace source list…');handle(edit,async()=>{const raw=prompt('Enter complete replacement URLs on separate lines. An empty list clears these sources.');if(raw===null)return;await api('torrents/'+id+'/'+view,'PATCH',{urls:raw.split(/\s+/).filter(Boolean)},job,crypto.randomUUID());await refresh();});list.append(edit);}
+  if((view==='trackers'||view==='web-seeds') && editable){const edit=make('button','Replace source list…');handle(edit,async()=>{const raw=prompt('Enter complete replacement URLs on separate lines. An empty list clears these sources.');if(raw===null)return;await api('torrents/'+id+'/'+view,'PATCH',{urls:raw.split(/\s+/).filter(Boolean)},job,operationKey());await refresh();});list.append(edit);}
   area.replaceChildren(list);
 }
 el('add').onclick=async()=>{try{const {defaults}=await api('settings');el('resume-boot').checked=defaults.resume_on_boot;el('seed').checked=defaults.seed_after_completion;}catch(err){message(err.message,true);return;}inspection=null;el('files').replaceChildren();el('submit').disabled=true;el('admit-message').textContent='';el('admit').showModal();};
@@ -273,7 +284,7 @@ handle(el('inspect'),async()=>{
 handle(el('submit'),async()=>{
   const ids=[...el('files').querySelectorAll('input:checked')].map(b=>Number(b.value));
   if(!inspection||!ids.length)throw new Error('Inspect a torrent and select files first.');
-  const result=await api('torrents','POST',{inspection_id:inspection.inspection_id,metadata_revision:inspection.metadata_revision,selected_file_ids:ids,resume_on_boot:el('resume-boot').checked,seed_after_completion:el('seed').checked,destination_root_id:el('root').value,priorities:priorities(el('files'))},null,inspection.key||(inspection.key=crypto.randomUUID()));
+  const result=await api('torrents','POST',{inspection_id:inspection.inspection_id,metadata_revision:inspection.metadata_revision,selected_file_ids:ids,resume_on_boot:el('resume-boot').checked,seed_after_completion:el('seed').checked,destination_root_id:el('root').value,priorities:priorities(el('files'))},null,inspection.key||(inspection.key=operationKey()));
   selected=result.job_id;el('admit').close();await refresh();message('Download accepted · '+result.job_id);
 });
 async function openWorkspace() {

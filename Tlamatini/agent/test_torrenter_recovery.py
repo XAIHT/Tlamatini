@@ -1,8 +1,17 @@
 # Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1
 """Recovery parity; real client normalization, no installed operations or database."""
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
 import unittest
 
 from .agents.torrenter.client import publication_status
+
+WORKSPACE_JS = Path(__file__).resolve().parent / "torrenter_workspace" / "workspace.js"
+UUID4 = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 
 
 class RecoveryTests(unittest.TestCase):
@@ -52,6 +61,36 @@ class RecoveryTests(unittest.TestCase):
         result = publication_status(self.state(phase='queued', desired_state='running', queue_reason='stalled_retry', retry_in_seconds=60))
         self.assertIsNone(result['restart_action'])
         self.assertEqual(publication_status(result), result)
+
+
+class WorkspaceOperationKeyTests(unittest.TestCase):
+    """Over plain HTTP from a LAN address the browser has no crypto.randomUUID."""
+
+    def source(self):
+        return WORKSPACE_JS.read_text(encoding="utf-8")
+
+    def test_every_mutation_key_comes_from_the_fallback_helper(self):
+        text = self.source()
+        self.assertEqual(text.count("crypto.randomUUID()"), 1)  # only inside operationKey
+        self.assertIn("typeof crypto.randomUUID === 'function'", text)
+        self.assertGreaterEqual(text.count("operationKey()"), 10)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js is not installed")
+    def test_key_is_a_v4_uuid_without_a_secure_context(self):
+        helper = re.search(r"function operationKey\(\) \{.*?\n\}", self.source(), re.S).group(0)
+        script = (
+            "const vm = require('vm'); const nodeCrypto = require('crypto');"
+            "const context = {crypto: {getRandomValues: a => nodeCrypto.randomFillSync(a)}};"
+            "vm.runInNewContext(" + json.dumps(helper) + ", context);"
+            "const keys = Array.from({length: 64}, () => vm.runInNewContext('operationKey()', context));"
+            "console.log(JSON.stringify(keys));"
+        )
+        run = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True, timeout=60,
+                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        keys = json.loads(run.stdout)
+        self.assertEqual(len(set(keys)), 64)
+        for key in keys:
+            self.assertRegex(key, UUID4)
 
 
 if __name__ == '__main__':
