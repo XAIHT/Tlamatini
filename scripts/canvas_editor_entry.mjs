@@ -57,6 +57,24 @@ function inspect() {
         guide: interactor.guide() };
 }
 
+// Capture only the requested excerpts, before a chat action can move focus.
+// File size is independent of selection size; offsets remain UTF-16.
+function explanationSnapshot() {
+    if (!view) throw new Error('Open a text file in the canvas first.');
+    const doc = view.state.doc;
+    const selected = view.state.selection.ranges.filter(range => !range.empty);
+    const ranges = selected.length ? selected : [{ from: 0, to: doc.length }];
+    if (ranges.length > 64 || ranges.reduce((sum, range) => sum + range.to - range.from, 0) > 262144) {
+        throw new Error('Select up to 256 Ki characters in at most 64 ranges to explain. Your file is kept unchanged.');
+    }
+    return { document_id: documentId, revision, filename: currentName, language: currentLanguage,
+        document_length: doc.length, scope: selected.length ? 'selection' : 'document',
+        excerpts: ranges.map(range => ({ from: range.from, to: range.to,
+            start_line: doc.lineAt(range.from).number,
+            end_line: doc.lineAt(Math.max(range.from, range.to - 1)).number,
+            text: doc.sliceString(range.from, range.to) })) };
+}
+
 const theme = EditorView.theme({
     '&': { height: '100%', color: '#dce4f3', backgroundColor: '#171c24', fontSize: '13px' },
     '&.cm-focused': { outline: 'none' },
@@ -222,7 +240,7 @@ function configureAppearance(settings) {
 window.TlamatiniTextEditor = {
     configureAppearance,
     mount, setDocument, destroy, historyState,
-    inspect, interactor,
+    inspect, explanationSnapshot, interactor,
     getText: () => view?.state.doc.toString() || '',
     undo: () => command(undo), redo: () => command(redo),
     indent: () => command(indentMore), outdent: () => command(indentLess),

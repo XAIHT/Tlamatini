@@ -937,7 +937,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
         print(f"--- [AskExecs] broker registered for user {user_id}")
         return broker
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False, interactor_client_id=""):
+    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False, interactor_client_id="", canvas_explanation=None):
+        if canvas_explanation is not None:
+            multi_turn_enabled = exec_report_enabled = acpx_enabled = ask_execs_enabled = step_by_step_enabled = False
         broker = None
         broker_key = conversation_user.id
         status_registered = False
@@ -964,7 +966,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             from .user_creation_wizard import handle_request, request_candidate
             exec_report_enabled = bool(exec_report_enabled) and bool(multi_turn_enabled)
             ask_execs_enabled = bool(ask_execs_enabled) and bool(multi_turn_enabled)
-            if request_candidate(message, user_id=broker_key, multi_turn_enabled=multi_turn_enabled):
+            if canvas_explanation is None and request_candidate(message, user_id=broker_key, multi_turn_enabled=multi_turn_enabled):
                 if ask_execs_enabled:
                     broker = self._register_exec_permission_broker(broker_key, run_epoch)
                 wizard_history = await self.load_recent_chat_history(conversation_user, limit=8)
@@ -1000,7 +1002,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     return
 
             # Check if rag_chain is ready
-            if self.rag_chain is None:
+            if self.rag_chain is None and canvas_explanation is None:
                 print("!!! ERROR: rag_chain is not initialized yet. Please wait for the agent to finish loading.")
                 await self.channel_layer.group_send(   # type: ignore
                     self.room_group_name,
@@ -1062,8 +1064,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # the ring).  Remember the toolbar flags for later at-rest rebuilds.
             from .context_governor import begin_turn
             begin_turn(broker_key, label=str(message or "")[:80])
-            self._gauge_flags = (bool(multi_turn_enabled), bool(acpx_enabled),
-                                 bool(step_by_step_enabled))
+            if canvas_explanation is None:
+                self._gauge_flags = (bool(multi_turn_enabled), bool(acpx_enabled),
+                                     bool(step_by_step_enabled))
 
             # ── Self-healing LIVE status broadcaster (Angela, 2026-07-06) ──
             # The multi-turn executor's self-healing invoker pushes first-person
@@ -1073,7 +1076,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # and never hung. Fire-and-forget emit scheduled onto this event
             # loop, keyed by user id; the executor worker thread looks it up.
             # Registered for every multi-turn request (independent of Ask-Execs).
-            if multi_turn_enabled:
+            if multi_turn_enabled or canvas_explanation is not None:
                 from .self_healing import register_status_broadcaster
                 _status_loop = asyncio.get_running_loop()
                 _status_channel_layer = self.channel_layer
@@ -1107,29 +1110,35 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if ask_execs_enabled and broker is None:
                 broker = self._register_exec_permission_broker(broker_key, run_epoch)
 
-            ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
-            chat_history = await self.load_recent_chat_history(conversation_user, limit=8)
-            llm_response = await ask_rag_async(
-                self.rag_chain,
-                {
-                    "input": message,
-                    "conversation_user_id": conversation_user.id,
-                    # This run's cancellation epoch — see agent/cancellation.py.
-                    "cancel_run_epoch": run_epoch,
-                    "multi_turn_enabled": bool(multi_turn_enabled),
-                    "exec_report_enabled": exec_report_enabled,
-                    "acpx_enabled": bool(acpx_enabled),
-                    "ask_execs_enabled": ask_execs_enabled,
-                    "step_by_step_enabled": bool(step_by_step_enabled),
-                },
-                chat_history=chat_history,
-                inet_enabled=self.inet_enabled
-            )
+            if canvas_explanation is not None:
+                from .interactor.explanation import explain
+                llm_response = await sync_to_async(explain, thread_sensitive=False)(
+                    canvas_explanation, user_id=broker_key, run_epoch=run_epoch,
+                )
+            else:
+                ask_rag_async = sync_to_async(ask_rag, thread_sensitive=False)
+                chat_history = await self.load_recent_chat_history(conversation_user, limit=8)
+                llm_response = await ask_rag_async(
+                    self.rag_chain,
+                    {
+                        "input": message,
+                        "conversation_user_id": conversation_user.id,
+                        # This run's cancellation epoch — see agent/cancellation.py.
+                        "cancel_run_epoch": run_epoch,
+                        "multi_turn_enabled": bool(multi_turn_enabled),
+                        "exec_report_enabled": exec_report_enabled,
+                        "acpx_enabled": bool(acpx_enabled),
+                        "ask_execs_enabled": ask_execs_enabled,
+                        "step_by_step_enabled": bool(step_by_step_enabled),
+                    },
+                    chat_history=chat_history,
+                    inet_enabled=self.inet_enabled
+                )
             # Pick up per-request metadata stored by ask_rag, KEYED by THIS user id so a
             # concurrent request (another tab / TeleTlamatini, a different user) can never
             # hand us its exec-report tables or its Create-Flow tool-call log. (re-audit [4])
             _meta_slot = f"last_request_meta::{conversation_user.id}"
-            _meta = global_state.get_state(_meta_slot) or {}
+            _meta = (global_state.get_state(_meta_slot) or {}) if canvas_explanation is None else {}
             tool_calls_log = _meta.get('tool_calls_log')
             multi_turn_used = _meta.get('multi_turn_used')
             exec_report_used = _meta.get('exec_report_enabled')
@@ -1142,10 +1151,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # (like _meta_slot) so a concurrent request can't hand us its survivor
             # list or clear ours before we read it. (re-audit [3])
             _orphan_slot = f"last_orphan_survivors::{conversation_user.id}"
-            tier1_orphans = global_state.get_state(_orphan_slot) or []
+            tier1_orphans = (global_state.get_state(_orphan_slot) or []) if canvas_explanation is None else []
             # Clear immediately to avoid leaking into the next request.
-            global_state.set_state(_meta_slot, None)
-            global_state.set_state(_orphan_slot, None)
+            if canvas_explanation is None:
+                global_state.set_state(_meta_slot, None)
+                global_state.set_state(_orphan_slot, None)
 
             # ── Stale-answer guard (Angela, 2026-07-14) ──
             # This run was CANCELLED and a NEWER run is already in flight. Broadcasting
@@ -1186,6 +1196,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 exec_report_enabled=bool(exec_report_used),
                 exec_report_entries=exec_report_entries,
                 exec_report_denied=exec_report_denied,
+                persist_artifacts=canvas_explanation is None,
             )
             # With no chat page open, she still tells the user the answer is ready.
             try:
@@ -1205,7 +1216,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # the browser without being held up by the sweep (~100ms
             # on a busy host).
             try:
-                await self._tier2_orphan_sweep(tier1_orphans)
+                if canvas_explanation is None:
+                    await self._tier2_orphan_sweep(tier1_orphans)
             except Exception as sweep_err:  # noqa: BLE001 — never block on cleanup
                 print(f"--- [Tier-2 reaper] sweep raised (non-fatal): {sweep_err}")
         except Exception as e:
@@ -1463,6 +1475,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             sys.stdout.flush()
         try:
             text_data_json = json.loads(text_data)
+            canvas_explanation = None
             message = text_data_json['message']
             multi_turn_enabled = bool(text_data_json.get('multi_turn_enabled', False))
             exec_report_enabled = bool(text_data_json.get('exec_report_enabled', False)) and multi_turn_enabled
@@ -1499,7 +1512,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             # ping) and rides the current turn. Anonymous binds to nothing, which
             # writes bare, untagged lines.
             if getattr(user, 'is_authenticated', False):
-                if type is None:
+                if type is None or type == 'canvas-explain':
                     log_identity.begin_turn(user.id, user.username)
                 else:
                     log_identity.bind(user.id, user.username)
@@ -1522,6 +1535,16 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     {'type': 'agent_message', 'message': constants.ERROR_NOT_AUTHENTICATED, 'username': 'Tlamatini'}
                 )
                 return
+
+            if type == 'canvas-explain':
+                from .interactor.explanation import PROMPT, validate
+                try:
+                    canvas_explanation = validate(text_data_json.get('canvas_explanation'))
+                except ValueError as exc:
+                    await self.agent_message({'username': 'Tlamatini', 'message': str(exc)})
+                    return
+                message = PROMPT
+                multi_turn_enabled = exec_report_enabled = acpx_enabled = ask_execs_enabled = step_by_step_enabled = False
 
             if type == 'exec-permission-response':
                 # The browser answered an Ask-Execs Proceed/Deny prompt. Route
@@ -2161,7 +2184,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             wizard_candidate = type is None and request_candidate(
                 message, user_id=user.id, multi_turn_enabled=multi_turn_enabled,
             )
-            if not global_state.get_state('rag_chain_ready') and not wizard_candidate:
+            if not global_state.get_state('rag_chain_ready') and not wizard_candidate and canvas_explanation is None:
                 print("!!! RAG chain not ready. Message rejected.")
                 # Self-heal: a not-ready chain (a build that failed, or a
                 # toggle-triggered rebuild that is mid-flight) would otherwise stay
@@ -2208,6 +2231,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 ask_execs_enabled=ask_execs_enabled,
                 step_by_step_enabled=step_by_step_enabled,
                 interactor_client_id=text_data_json.get('interactor_client_id', ''),
+                canvas_explanation=canvas_explanation,
             ))
         except Exception as e:
             print(f"!!! ERROR in receive method: {e}")

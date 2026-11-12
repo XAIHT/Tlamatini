@@ -27,6 +27,7 @@
     }
 
     function render() {
+        if (!inLongOperation && lastMessage === 'Explaining your selected text…') lastMessage = '';
         const guide = editor.interactor.guide();
         if (guided && !guide && lastMessage === 'Your turn · fill the marked field') lastMessage = 'Guided field closed · your changes are kept';
         guided = !!guide;
@@ -37,7 +38,7 @@
             : lastMessage || (!enabled ? 'Live editor paused' : clientId ? 'Live editor connected' : 'Connecting to live editor…');
         if (ui.status.textContent !== status) ui.status.textContent = status;
         ui.stop.disabled = !active && !guide;
-        ui.explain.disabled = !editor.active || !enabled || !clientId || !!inLongOperation;
+        ui.explain.disabled = !editor.active || !!inLongOperation || !!active || !!window.TlamatiniCanvasEditing?.busy;
         ui.card.hidden = !guide;
         if (!guide) return;
         ui.label.textContent = `Your turn · ${guide.label}`;
@@ -268,7 +269,18 @@
         send({ t: 'access', enabled }); render();
     });
     ui.stop.addEventListener('click', () => stop('Tutor stopped. Your editor content is kept.', true));
-    ui.explain.addEventListener('click', () => ask('Please read the fresh unsaved content in your text editor and explain my selection (or the current file if nothing is selected). Guide me without changing it.'));
+    ui.explain.addEventListener('click', () => {
+        if (ui.explain.disabled) return;
+        try {
+            const selection = { ...editor.explanationSnapshot(), dirty: !!window.TlamatiniCanvasEditing?.dirty };
+            if (!selection.excerpts.some(excerpt => excerpt.text.trim())) {
+                throw new Error('Select some text or open a nonempty file to explain.');
+            }
+            if (window.TlamatiniChat?.explainCanvas(selection)) lastMessage = 'Explaining your selected text…';
+            else lastMessage = 'Chat connection unavailable. Reconnect and try Explain selection again.';
+        } catch (error) { lastMessage = error.message; }
+        render();
+    });
     ui.ask.addEventListener('click', () => {
         const guide = editor.interactor.guide();
         if (guide) ask(`Read my live editor and give me another hint for “${guide.label}”. Do not fill it in for me.`);

@@ -449,8 +449,8 @@ def checks(page, context, window, capture, sent, errors, attempt):
         page.locator('#interactor-explain').click()
         page.wait_for_timeout(150)
         explanation = [json.loads(item) for item in sent if isinstance(item, str)]
-        assert any(item.get('interactor_client_id') == req.client_id and 'explain my selection' in json.dumps(item) for item in explanation)
-        checkpoint('Explain-selection-uses-normal-chat-and-keeps-range')
+        assert any(item.get('type') == 'canvas-explain' and item['canvas_explanation']['excerpts'][0]['from'] == selected['from'] for item in explanation)
+        checkpoint('Explain-selection-sends-exact-range-without-tools')
         page.evaluate('enableControlsAfterOperation()')
         turn()
         save()

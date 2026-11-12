@@ -32,8 +32,11 @@ guides the next learner-controlled field and waits. Typing does not save or run.
 COMPLETIONS AND CONTROL
 Suggestions use choices prepared for the current field, matched locally.
 Tab accepts; Ctrl+Right accepts one word; Esc dismisses. Suggestions are optional.
-Continue asks for a fresh read in a new chat turn. Another hint and Explain
-selection also use normal chat and preserve your existing message draft.
+Continue asks for a fresh read in a new chat turn. Another hint uses normal chat.
+Explain selection sends the exact selected unsaved text directly for explanation,
+or the current file if nothing is selected. It works regardless of the chat
+checkboxes, Live editor access or enabled tools, and preserves your message draft.
+It never edits, executes or saves code. Finish or cancel any active chat first.
 User typing, selection, Esc, Stop tutor or chat cancellation interrupts AI typing.
 A temporary hidden tab pauses/resumes once, with up to two extra minutes of
 grace. Timeout never automatically replays a partial edit. Explicit Preview or

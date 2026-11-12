@@ -411,6 +411,24 @@ function ReloadSkillRegistry(e) { // eslint-disable-line no-unused-vars
 // Chat form submit handler
 // ----------------------------------------------------------------
 
+// An explicit, read-only canvas request. It neither consumes the chat draft
+// nor depends on the tool/tutoring permissions or any chat mode checkbox.
+window.TlamatiniChat = {
+    explainCanvas(selection) {
+        if (inLongOperation || lapseLoadingContext) return false;
+        const sent = sendChatSocketMessage(JSON.stringify({
+            type: 'canvas-explain', message: 'Explain the selected canvas text without changing it.',
+            canvas_explanation: selection,
+        }));
+        if (!sent) return false;
+        userCancelledRun = false;
+        inLongOperation = true;
+        disableControlsDuringOperation();
+        document.dispatchEvent(new CustomEvent('tlm-chat-submitted', { detail: { canvasExplanation: true } }));
+        return true;
+    },
+};
+
 document.getElementById('chat-form').onsubmit = function (e) {
     e.preventDefault();
 

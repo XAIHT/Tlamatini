@@ -19,8 +19,13 @@ ordinary chat explain the field. A ghost suggestion appears only after a matchin
 prefix is typed. **Tab** accepts it, **Ctrl+Right** accepts a word, and **Esc**
 dismisses it. Suggestions can be disabled; alternative values are welcome.
 **Continue** sends an ordinary chat message requesting a fresh read and review.
-**Another hint** and **Explain selection** also use normal chat. A chat draft is
-never replaced by these buttons.
+**Another hint** also uses normal chat. **Explain selection** is an independent,
+read-only action: it captures the selected ranges, including unsaved edits, and
+sends those excerpts directly for explanation. With no selection it sends the
+current file. It works with every chat checkbox combination, with Live editor
+paused, and without the Interactor tool enabled. It does not change those settings
+or consume an existing chat draft. While another request is running, finish or
+cancel it before starting an explanation.
 
 User input, selection, Escape, Stop, chat cancellation, and disconnect interrupt
 AI typing. The typed prefix remains editable and undoable. Switching tabs,
@@ -44,6 +49,13 @@ explicit 262,144 UTF-16-unit limit; larger content is refused, never truncated.
 Selections and ranges are UTF-16 offsets, including correct emoji boundaries.
 The model's configured tool-result/context budget also applies: an oversized
 receipt ends editing with an explicit refusal rather than delivering a partial file.
+
+That tutoring receipt limit does not apply to **Explain selection**. Its size
+limit applies to the selected excerpts, not the surrounding file: up to 262,144
+UTF-16 units across 64 ranges, also subject to the configured model's actual
+context capacity. Explanations have no tools, file operations, generated-program
+storage, internet context, or dependency on a rebuilding RAG chain. Captured
+document text is data, never an instruction source. No text is silently clipped.
 
 Typing does not save or execute anything. Save writes through the canvas's native
 file capability, with its existing encoding, line-ending and disk-conflict
@@ -243,3 +255,7 @@ typing. A required before-typing narration can be stopped before any mutation. M
 voice support offers explicit Continue without voice or Stop. Shared speech respects
 mute/listening, excludes secret-marked content, and never replays a cancelled edit.
 See [the full reference](interaction-settings.md) for defaults, storage and evidence.
+
+2026-11-12: Explain selection is independent of chat checkboxes. See
+[the source verification record](changes/2026-11-12-canvas-selection-explanation.md)
+for the 58 tests and 256 checkbox combinations per edition.

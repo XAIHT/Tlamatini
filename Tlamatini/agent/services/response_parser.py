@@ -449,7 +449,7 @@ def _render_exec_denied_banner(exec_report_denied):
     return "".join(parts)
 
 
-async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None, exec_report_enabled=False, exec_report_entries=None, exec_report_denied=None):
+async def process_llm_response(llm_response, rag_chain, channel_layer, room_group_name, conversation_user=None, tool_calls_log=None, multi_turn_used=None, exec_report_enabled=False, exec_report_entries=None, exec_report_denied=None, persist_artifacts=True):
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
@@ -466,8 +466,9 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         snippetContent = snippet[1]
         extension = constants.EXTENSION_MAP.get(snippetLanguage, '.txt')
         snippetName = get_time_stamp() + "_" + snippetLanguage + extension
-        snippetName = _resolved_name(snippetName, await save_snippet(snippetName, snippetLanguage, snippetContent))
-        print("\n--- Saved snippet: "+snippetName)
+        if persist_artifacts:
+            snippetName = _resolved_name(snippetName, await save_snippet(snippetName, snippetLanguage, snippetContent))
+            print("\n--- Saved snippet: "+snippetName)
 
         # ALWAYS escape HTML entities for display to prevent browser rendering of tags
         # This fixes the issue where XML/HTML content was invisible
@@ -479,7 +480,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
              print(f"\n--- {snippetLanguage} snippet re-rendered as text for visibility")
 
     # Extract and save programs
-    programs = re.findall(constants.REGEX_NAMED_CODE_BLOCK, llm_response, flags=re.IGNORECASE)
+    programs = re.findall(constants.REGEX_NAMED_CODE_BLOCK, llm_response, flags=re.IGNORECASE) if persist_artifacts else []
     _seen_code_blocks = set()
     for program in programs:
         programName = program[1]
@@ -540,7 +541,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
 
     # Handle unnamed code blocks
     _seen_unnamed_blocks = set()
-    for m in re.finditer(constants.REGEX_UNNAMED_CODE_BLOCK, llm_response, flags=re.IGNORECASE):
+    for m in (re.finditer(constants.REGEX_UNNAMED_CODE_BLOCK, llm_response, flags=re.IGNORECASE) if persist_artifacts else []):
         programContent = m.group(1)
         # Same two guards as the named blocks above: never save/link an empty
         # block, and never write the identical block twice.
