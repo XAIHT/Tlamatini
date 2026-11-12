@@ -111,10 +111,10 @@ def editor_sections(section):
                     "path, new creates an empty file under Temp/interactor/<account>/<random>/ using the requested "
                     "filename. Existing files are never overwritten. Tlamatini types a short known segment, then "
                     "guide hands the next field to the learner and prevents further mutations in that turn.",
-                    "Continue sends a normal new chat request and reads again before reviewing the learner's "
-                    "answer. Another hint and Explain selection also use normal chat without replacing an existing "
-                    "draft. Typing does not save or execute code. The ordinary Use as context snapshot is separate "
-                    "from Interactor's fresh read of unsaved text.",
+                    "Continue and Another hint send normal tutoring requests. Explain selection uses a separate "
+                    "read-only request: it captures unsaved ranges without depending on chat checkboxes or Live "
+                    "editor, and preserves the draft. Typing does not save or execute code. The ordinary Use as "
+                    "context snapshot remains separate from Interactor's fresh reads.",
                 ], points=[
                     ("Read", "Exact unsaved text and selection, never a stale disk substitute."),
                     ("Type", "One small visible teaching segment; one undoable edit."),
@@ -158,30 +158,135 @@ def bridge_section(section):
 
 
 def wizard_section(section):
-    return section("wizard_intent", "INTENT GUARDS · v1.90.0", "A password prompt must not divert the wizard",
-                   "The account wizard launches createsuperuser through Executer and waits for input in its console.",
+    return section("wizard_intent", "ACCOUNT WIZARD", "Create the account in this running instance",
+                   "The known catalog card uses a native console handler rather than a model-generated command.",
                    body=[
-                       "The installed log showed two independent false positives. 'I will type it' referred to a "
-                       "password but reserved all commands for the user. A completion phrase plus the optional "
-                       "email field falsely created notification debt. These runtime guards overrode an initially "
-                       "correct Executer selection and diverted the wizard.",
-                       "Typing/entering ownership now requires a command object; ambiguous input is neutral. An "
-                       "explicit assistant launch of a named program lifts a prior lesson. Genuine user-runs "
-                       "tutorials still refuse command runners and keep Terminater's Enter disabled.",
-                       "A completion notification requires a positive outbound instruction tied to completion "
-                       "in the same sentence. Email fields, ordinary chat explanations, quoted examples, negations "
-                       "and the user's DONE reply do not authorize sending. Passwords stay out of chat. The catalog "
-                       "wizard creates an administrative superuser, not a restricted ordinary account.",
+                       "The handler launches createuserconsole, a narrow subclass of Django createsuperuser, "
+                       "with the current runtime and database using shell=False. Normal account, duplicate-name "
+                       "and password validation remain. Customized cards are preserved.",
+                       "Chat yields while the user enters username, optional email and password in the owned "
+                       "console. Passwords are neither chat content nor command arguments. Authentication, "
+                       "Ask Execs, cancellation and owned-process identity remain enforced.",
+                       "DONE/HECHO checks the newly persisted administrative account before reporting completion. "
+                       "Username and status followups belong only to that wizard conversation; successful "
+                       "completion retires its state. An email field or completion reply is not notification consent.",
+                       "On November 9, the final visible cohorts created and authenticated ten English and ten "
+                       "Spanish accounts, passing all 260 acceptance assertions. These are source-run results, "
+                       "separate from installed-package acceptance.",
                    ], points=[
-                       ("Launch", "Executer opens the interactive source or frozen command in a visible console."),
-                       ("Input", "Username, optional email and password belong to the user's console interaction."),
-                       ("Wait", "DONE / ERROR / NOWINDOW drive the next step; no automatic success claim."),
-                       ("Notify", "Only an explicit outbound request creates completion-notification debt."),
+                       ("Launch", "Use the exact known card, current runtime and database; no model-built command."),
+                       ("Input", "Keep username, optional email and password in the owned console."),
+                       ("Confirm", "Verify the new administrative account after DONE/HECHO."),
+                       ("Authorize", "Keep Ask Execs and cancellation; notification needs a separate request."),
                    ])
 
 
 def release_sections(section, facts):
     return [
+        section("release1935_selection", f"RELEASED · v{facts['version']}", "Explain exactly what is selected",
+                "The canvas button works independently of the chat toolbar and Live editor switch.",
+                body=[
+                    "Explain selection captures every selected range from the unsaved editor at click time. "
+                    "With no selection it explains the whole current file. Existing chat drafts, selections, "
+                    "documents and checkbox settings are preserved.",
+                    "The authenticated explanation request goes directly to the configured model without tools, "
+                    "history, loaded context, internet, compacting or self-modification instructions. It remains "
+                    "available while ordinary chat tooling is rebuilding. Cancellation, chat delivery and usage "
+                    "accounting still use the normal application services.",
+                    "Up to 64 ranges and 262,144 UTF-16 units are accepted, subject to the model's real context "
+                    "capacity. A large unselected file does not consume the selection budget; excerpts are never "
+                    "silently truncated. Interactor tutoring retains its separate complete-document contract.",
+                    "On November 12, 58 regressions and all 256 checkbox combinations passed in each edition. "
+                    "The configured model explained the unsaved selected value in both languages with zero tools. "
+                    "These dated source checks do not certify a newly installed executable.",
+                ], deck_points=[
+                    ("Select", "Capture exact unsaved ranges; no selection means the whole file."),
+                    ("Explain", "No checkbox dependency, tools, history or context side effects."),
+                    ("Preserve", "Keep the draft, document, selection and saved settings."),
+                    ("Bound", "64 ranges; 262,144 UTF-16 units; actual model capacity still applies."),
+                ]),
+        section("release1935_execution", f"RELEASED · v{facts['version']}", "Return when the launching script finishes",
+                "Executer no longer waits for inherited output pipes held by a detached child shell.",
+                body=[
+                    "A Windows start command launched the original 90-second Rust cube, but captured output "
+                    "arrived after the cube closed: subprocess capture waited for pipe EOF from the detached "
+                    "child even though the outer script had finished.",
+                    "The blocking-script path now directs stdout and stderr to unique retained files in its "
+                    "isolated run directory, waits for the direct script, and reads a bounded snapshot through "
+                    "separate read handles. Direct commands still block; explicitly detached children can continue. "
+                    "The fix adds no workflow loop budget or model-based progress guard.",
+                    "The November 12 replay used the same executable and embedded shaders through real MCP "
+                    "Executer, Windower and Shoter calls. Observed return time changed from 100.50 seconds to "
+                    "5.05 seconds in English and 5.06 seconds in Spanish, while the cube remained alive. "
+                    "All 65 selected regressions passed in each edition.",
+                    "The later final-response delivery gap in the original trace remains separately unresolved. "
+                    "This capture correction does not establish its cause or claim to fix every possible repeated task. "
+                    "The full replay evidence and limitations are in the November 12 Executer change record.",
+                ], deck_points=[
+                    ("Cause", "Inherited child pipe handles delayed delivery after the script exited."),
+                    ("Correction", "File-backed capture; wait for the direct script and read its snapshot."),
+                    ("Proof", "Same assets: about 100.50 seconds before, 5.05/5.06 seconds after."),
+                    ("Scope", "65 tests per edition; separate final-response stall remains unresolved."),
+                ]),
+        section("release1935_voice", f"RELEASED · v{facts['version']}", "Keep speaking when the window loses focus",
+                "Covered, hidden or minimized pages no longer pause speech or impose a 100-second message limit.",
+                body=[
+                    "The shared speech queue retries a failed browser chunk and can hand remaining text to "
+                    "Windows host speech when the browser cannot continue. Closing or reloading a page hands off "
+                    "remaining ordinary chat speech; interactive narration does not use that page-close handoff.",
+                    "Host speech uses account-scoped settings and controls, keeps the female-voice policy and "
+                    "the Spanish edition's language requirement, and creates no extra console. Silent mode, "
+                    "Escape, clicking the avatar and cancellation remain explicit ways to stop speech.",
+                    "Tlamatini must remain running and an appropriate audio voice must be available. A retry can "
+                    "repeat part of a chunk, and the host request limit remains 20,000 text characters. "
+                    "See the voice-playback guide for behavior, recovery and implementation limits.",
+                ], deck_points=[
+                    ("Continue", "Keep speaking when a page is covered, hidden or minimized."),
+                    ("Recover", "Retry browser chunks, then hand remaining text to Windows speech."),
+                    ("Control", "Explicit mute, Escape, avatar click and cancellation still stop speech."),
+                    ("Limits", "Application and audio support must remain available; host text is bounded."),
+                ]),
+        section("release1935_downloads", f"RELEASED · v{facts['version']}", "Follow downloads with truthful state",
+                "Sortable account views, recovery guidance and bounded completion waits make progress inspectable.",
+                body=[
+                    "The workspace supports sorting, multiple sort keys, filters, paging and saved per-account "
+                    "views. A verified completed download remains completed when its peer session stops. "
+                    "Historical verification errors are separated from current failures; actions apply only "
+                    "to eligible selections and report skipped jobs.",
+                    "A completion wait ends on pause, stop or cancellation. It tolerates an API outage for up "
+                    "to 600 seconds, gives a delivery failure 180 seconds to recover, renews an expired "
+                    "credential, and stops waiting after two hours without progress. Ending the wait does not "
+                    "cancel the underlying Jobs transfer.",
+                    "Empty or truncated session JSON reads receive bounded retries; torrent mutations are "
+                    "never replayed automatically. Read the current revision before recovery and verify the "
+                    "delivered path and SHA-256 manifest. Coordinated engine scheduling and disk-flush fixes "
+                    "require the separate Tlachihuani Jobs service update.",
+                ], deck_points=[
+                    ("Inspect", "Sort, filter and page the account's queue; preserve saved views."),
+                    ("Trust", "Keep completed status; distinguish old errors from current failures."),
+                    ("Wait", "Pause/stop/cancel end the wait; timeouts do not cancel the transfer."),
+                    ("Verify", "Use current revisions and delivered file hashes; service updates are separate."),
+                ]),
+        section("release1935_requests", f"RELEASED · v{facts['version']}", "Resolve narrow requests directly",
+                "Account creation and pure directory-access questions use their explicit application contracts.",
+                body=[
+                    "The known account-wizard catalog card launches the current runtime's native createuserconsole "
+                    "command against its own database. Chat yields for private console input; Ask Execs and "
+                    "cancellation still apply. DONE/HECHO verifies a newly persisted administrative account "
+                    "before completion is reported. Customized cards are preserved.",
+                    "A pure question about allowed directories reads the current path-guard snapshot without "
+                    "a classifier or disk scan. It grants no new permission. A mixed request continues through "
+                    "normal processing rather than being mistaken for a directory-listing request.",
+                    "Central defaults use deepseek-v4.1-flash:cloud for text and mistral-large-4:cloud plus "
+                    "gemma4:cloud for vision; configured choices remain the settings authority. Orpheus "
+                    "3b-ft-q8 remains the speech model. On November 9, the wizard's final visible cohorts "
+                    "created and authenticated 20 accounts with 260 assertions across the two editions.",
+                ], deck_points=[
+                    ("Create", "Known wizard card uses the current runtime and private console input."),
+                    ("Confirm", "Verify the persisted new account before reporting completion."),
+                    ("List", "Pure access questions use existing allowed roots; no scan or new grant."),
+                    ("Configure", "Central text and vision defaults respect explicit model settings."),
+                ]),
         section("release1924", f"RELEASED · v{facts['version']}", "Matching versions before the build starts",
                 "One predicted application version for English and Spanish, with explicit release identity.",
                 body=[
@@ -244,8 +349,8 @@ def release_sections(section, facts):
                     ("History", "Each run and each user reads only its own conversation."),
                     ("Decisions", "'## YES - ...' equals YES; 'Yesterday' does not."),
                     ("Routing", "'Using the bot' sends as the bot; short tool names still run."),
-                    ("Inventory", f"{facts['agents']} agents; {facts['tools']} tools; {facts['migrations']} migrations; "
-                     f"{facts['js']} JS modules; {facts['css']} stylesheets."),
+                    ("Release inventory", "86 agents; 110 tools; 220 migrations; "
+                     "64 JS modules; 29 stylesheets."),
                 ]),
         section("release191", "CARRIED FROM v1.91.0", "Real settings for editor and terminal behavior",
                 "Tag a771d27c, dated October 23, 2026, and published on GitHub that day.",
@@ -263,8 +368,8 @@ def release_sections(section, facts):
                     ("Dialog", "Pacing, teaching, terminal behavior, narration, appearance and draft previews."),
                     ("Runtime", "Real settings snapshots, revision checks and cancellable narration receipts."),
                     ("Compatibility", "Legacy explicit flows keep their values; new flows can inherit defaults."),
-                    ("Inventory", f"{facts['agents']} agents; {facts['tools']} tools; {facts['migrations']} migrations; "
-                     f"{facts['js']} JS modules; {facts['css']} stylesheets."),
+                    ("Release inventory", "86 agents; 110 tools; 220 migrations; "
+                     "64 JS modules; 29 stylesheets."),
                 ]),
         section("release190", "CARRIED FROM v1.90.0", "Edit, teach and preserve the learner's control",
                 "v1.89.0 introduced editing and native saving; v1.90.0 carries Interactor and the intent corrections.",
@@ -279,8 +384,8 @@ def release_sections(section, facts):
                     ("Editing", "Native Save As, exact source, undo history and conflict-aware persistence."),
                     ("Tutoring", "Fresh unsaved reads, small typing segments, learner fields and local suggestions."),
                     ("Recovery", "Bounded tab-visibility pauses and usable narrow-canvas layout."),
-                    ("Inventory", f"{facts['agents']} agents; {facts['wrapped']} wrapped; {facts['tools']} built-in tools; "
-                     f"{facts['migrations']} migrations. Counts describe the inspected source."),
+                    ("Release inventory", "86 agents; 67 wrapped; 110 built-in tools; "
+                     "219 migrations. Counts from the October 2026 review."),
                 ]),
         section("editor_evidence", "DATED VERIFICATION", "Keep source, model and frozen evidence separate",
                 "These are recorded runs from October 21–22, not tests silently rerun by documentation generation.",

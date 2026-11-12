@@ -1,6 +1,6 @@
 # Torrenter
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
 Torrenter is a Tlamatini workflow agent and the wrapped chat tool `chat_agent_torrenter`. It controls downloads in the separately installed Tlachihuani Jobs Windows service at `http://127.0.0.1:12064/api/v1`. Jobs owns the transfer, files and journal. You can close chat, the ACP or the browser and reconnect to the same job.
 
@@ -114,11 +114,29 @@ Jobs service. Updating either Tlamatini alone supplies the clearer reporting and
 controls, but does not replace Jobs. The 10 November source checks did not build,
 install or modify the live queue. See [the verification record](changes/2026-11-10-torrenter-recovery.md).
 
-On the Agentic Control Panel, **Wait for complete download** defaults to **No**. The node returns its receipt and starts its connected agents as soon as Jobs accepts the transfer. Choose **Yes** to keep it running until Jobs publishes a verified manifest for the selected files. Pausing preserves the wait. A stopped, cancelled or failed transfer ends the wait with an error. The YAML setting is `wait_for_completion: true` or `false`.
+On the Agentic Control Panel, **Wait for complete download** defaults to **No**. The node returns its receipt and starts its connected agents as soon as Jobs accepts the transfer. Choose **Yes** to keep it running until Jobs publishes a verified manifest for the selected files. Pausing, stopping, cancelling or failing an unfinished transfer ends this wait with an error. The YAML setting is `wait_for_completion: true` or `false`.
+
+### Completion waits and recovery
+
+A download node waiting for completion finishes only after a verified delivery
+manifest arrives. During that wait, a temporary Jobs outage is retried for up to
+10 minutes; an expired token is renewed, while an explicit refusal is returned.
+A failed delivery receives up to 3 minutes for Jobs to repair it. If there is no
+phase, byte-count or delivery-state change and no reported download traffic for
+2 hours, the agent ends its wait with the job ID and recovery guidance.
+
+These limits end the agent’s wait; they do not cancel the transfer or delete its
+files in Jobs. Check the existing job in the workspace before deciding what to
+do next. A paused unfinished job ends the wait rather than holding the flow open.
+A verified download whose publication failed is not reported as saved.
+
+Workspace writes generate a cryptographically random UUID even when the browser
+does not expose `crypto.randomUUID` on its current origin. They keep the existing
+revision and idempotency checks; the fallback does not relax authentication.
 
 Right-click the Torrenter node and open its log to see all available filenames, the selected files, sizes, full source magnet and the verified saved paths and hashes. Uploaded metadata has a generated magnet. The detailed activity file belongs to the account's flow. Chat results carry a separate machine-readable receipt.
 
-Pass an `action` and an `arguments` object to the chat tool. On a canvas node put the same JSON object in the **arguments** field. Each invocation makes one logical Jobs request. A bounded wait polls the current job for up to 30 seconds. Continue observing with its job ID.
+Pass an `action` and an `arguments` object to the chat tool. On a canvas node put the same JSON object in the **arguments** field. The `wait` action polls the current job for up to 30 seconds. Continue observing with its job ID. This short status request is separate from an ACP download node with `wait_for_completion: true`.
 
 | Intent | Actions | Fields or behavior |
 |---|---|---|

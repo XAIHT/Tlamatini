@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 When asked for automated tests, the user wants them HARD and REAL: cover **with-errors AND without-errors AND overflows** (fork-bomb / mass-spawn / huge-output), drive the REAL code (run the actual agent as a subprocess / call the real functions — do NOT mock the thing under test), and reproduce the ACTUAL incident byte-faithfully (e.g. the truncated `cat-art.py` ending in an unterminated f-string). Verbatim: "make the testing harder, cause your test usually dont catch real scenarios, work harder, till beyond excelence, beyond perfection, beyond god."

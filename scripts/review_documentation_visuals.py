@@ -70,12 +70,16 @@ def main():
         stale=re.findall(r".{0,70}(?:latest released version|current release|CURRENT RELEASE).{0,120}",full,re.I)
         report[kind]={"pages":len(document),"outside_page":bounds,"current_claims":stale}
         sheets(paths,kind)
-    slides=sorted((ROOT/"build/documentation_refresh/renders/ppt-fallback").glob("s*.png"))
+    verification_path = ROOT/"build/documentation_refresh/dossier_verification.json"
+    verification = json.loads(verification_path.read_text(encoding="utf-8"))
+    native = verification.get("pptx_native", {}).get("available", False)
+    slide_folder = "ppt" if native else "ppt-fallback"
+    slides=sorted((ROOT/"build/documentation_refresh/renders"/slide_folder).glob("s*.png"))
+    expected = verification.get("pptx", {}).get("slides", 0)
+    if len(slides) != expected:
+        raise RuntimeError(f"Expected {expected} slide renders, found {len(slides)} in {slide_folder}")
     if slides:
         sheets(slides,"slides",columns=2,rows=3,width=1000)
-        verification_path = ROOT/"build/documentation_refresh/dossier_verification.json"
-        verification = json.loads(verification_path.read_text(encoding="utf-8"))
-        native = verification.get("pptx_native", {}).get("available", False)
         report["slides"]={"rendered":len(slides), "nativePowerPoint":native,
                           "renderer":"Microsoft PowerPoint" if native else "bundled artifact-tool; native Office unavailable"}
     (OUT/"visual-audit.json").write_text(json.dumps(report,indent=2),encoding="utf-8")

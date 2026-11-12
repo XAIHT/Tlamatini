@@ -1,8 +1,8 @@
 # Combined English and Spanish releases
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
-## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+## Carried from v1.92.4 — Matching builds, explicit release identity and readable Markdown
 
 The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](changes/2026-11-08-v1.92.4.md).
 

@@ -1,6 +1,6 @@
 # Troubleshooting and Diagnostics
 
-> Latest released version: **[v1.92.4](../../../../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../../../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 ## Diagnostic Tools

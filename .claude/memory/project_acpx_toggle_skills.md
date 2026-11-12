@@ -12,7 +12,7 @@ originSessionId: a7ef3d92-e7e0-467f-b90e-d5d919750e38
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 The chat toolbar now exposes three checkboxes side-by-side: **Multi-Turn**, **Exec Report**, **ACPX**. The third sends `acpx_enabled` on every WebSocket frame.

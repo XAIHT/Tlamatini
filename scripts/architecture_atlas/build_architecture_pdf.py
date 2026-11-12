@@ -3,7 +3,7 @@
 """Rebuild Tlamatini-Architecture.pdf in one step.
 
 1. gen_architecture.py writes Temp/architecture/Tlamatini-Architecture.tex from
-   application files tracked in git; database history is summarized. The atlas lists exactly what `git ls-files`
+   all files tracked in git, including migration history. The atlas lists exactly what `git ls-files`
    returns, so `git add` new files BEFORE rebuilding.
 2. A private copy of Tlamatini's own LaTeXer pool agent typesets that .tex with
    pdflatex into <repo>/Tlamatini-Architecture.pdf (same launch recipe as
@@ -72,7 +72,7 @@ def say(msg):
 def git_files():
     out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"], capture_output=True, check=True).stdout
     return [f for f in out.decode("utf-8", "replace").split("\0")
-            if f and not f.startswith("Tlamatini/agent/migrations/")]
+            if f]
 
 
 def step_generate():

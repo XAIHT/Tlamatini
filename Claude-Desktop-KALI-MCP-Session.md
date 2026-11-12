@@ -8,7 +8,7 @@
 -->
 # Claude Desktop ↔ Kali Linux MCP — Complete Setup Guide
 
-> Latest released version: **[v1.92.4](docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 **Who this document is for:** Anyone (human or Claude AI) setting up or maintaining the bridge between Claude Desktop on Windows 11 and a Kali Linux VM. You do not need to understand the code — just follow the numbered steps and look for `==OK==` after each one. If you see `==FAIL==`, something went wrong on that step and you should not continue until it is fixed.

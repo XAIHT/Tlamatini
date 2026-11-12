@@ -8,7 +8,13 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
+
+## 2026-11-12 — Selection explanation and output capture
+
+[Released version 1.93.5](../changes/2026-11-12-v1.93.5.md) includes checkbox-independent selection explanation and the [Executer capture fix](../changes/2026-11-12-executer-output-capture.md). A detached START application can retain inherited output handles after the outer CMD exits. Pipe capture waited for their EOF; regular capture files and separate readers now return a snapshot when the outer process finishes without moving the child's write position. Direct commands still block normally. Replays with the same Rust executable returned in about five seconds while the cube stayed open. No generic repetition limit was added, and the separate final-response delivery stall was not declared resolved.
+
+Voice playback introduced on November 11 continues in covered or minimized windows; see the [voice contract](../voice-playback.md).
 
 ## 2026-11-10 — Torrenter recovery and verified file evidence
 

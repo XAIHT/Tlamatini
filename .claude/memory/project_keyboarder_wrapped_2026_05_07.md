@@ -12,7 +12,7 @@ originSessionId: 63bc7c5f-89b5-4e8f-910d-9a3a70bdb9a3
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 2026-05-07: Added `chat_agent_keyboarder` so Multi-Turn can drive desktop UI (open notepad → screenshot/verify → type via Keyboarder).

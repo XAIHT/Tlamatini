@@ -443,7 +443,8 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
         f"**The latest released version is {version}.** The application, user guides, "
         "PDF dossier and PowerPoint deck all use this one release version.",
         f"This edition documents commit `{rel['head_short']}` and the complete release, "
-        "including matching release builds, dependency isolation and lossless Markdown loading.",
+        "including selection explanations, Executer capture, background speech, truthful downloads "
+        "and native account creation.",
     ]
     points = [("Latest released version", version),
               ("Documented commit", rel["head_short"]),
@@ -470,9 +471,8 @@ def collect_facts() -> dict:
     tracked = tracked_paths()
     untracked = untracked_paths()
     inventory = sorted(set(tracked) | set(untracked))
-    # Database history remains executable for upgrades, but public documentation
-    # summarizes it rather than republishing obsolete product catalog entries.
-    tree_paths = [path for path in tracked if not path.startswith("Tlamatini/agent/migrations/")]
+    # Inventory history as files without presenting retired catalog entries as active.
+    tree_paths = list(tracked)
     languages, files, binary, missing = line_inventory(inventory)
     agents = workflow_agents()
     names = display_names(agents)

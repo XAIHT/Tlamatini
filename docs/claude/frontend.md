@@ -8,7 +8,13 @@
 -->
 # Tlamatini — Frontend Architecture
 
-> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
+
+## Selection and voice in 1.93.5
+
+**Explain selection** captures the editor's current text and ranges at click time. Its dedicated event preserves the composer draft and does not depend on Multi-Turn, ACPX, Compact, Self-modify, Ask Execs, Exec report, Step-by-Step, Internet or Live editor. The response explains the read-only snapshot without asking a tool to reread the whole file. See [canvas](../canvas-editing.md) and [Interactor](../interactor.md).
+
+Avatar speech and narration share the [voice playback](../voice-playback.md) controller, with browser playback and a Windows host handoff. Hiding or minimizing the window does not mean stopping voice; stop and mute are explicit actions. This leaves the safety pause for hidden-editor mutations unchanged.
 
 ## Carried from v1.92.3 — Downloads, updates and build isolation
 

@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # 2026-10-03 — Prompt Flow commentary/input separation
 
-> Latest released version: **[v1.92.4](2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](2026-11-12-v1.93.5.md)**.
 
 
 Source changes, uncommitted. No release executable, installer or database mechanics were rebuilt or changed. The checkout was clean before this request. The adjacent `2026-10-03-prompt-commentary-input.patch` captures the complete changed blocks and the new visible browser harness for a precise manual rollback. Do not reset the working tree or reverse unrelated later edits.

@@ -1,6 +1,6 @@
 # Torrenter recovery and truthful status — 10 November 2026
 
-Latest released version remains **1.92.4**. This record covers development
+Release recorded for this 2026-11-10 change: **1.92.4**. This record covers development
 corrections and their verification; it does not certify a new installed package.
 
 ## What changed

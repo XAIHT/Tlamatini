@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Editing and saving canvas files
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
 Introduced in v1.89.0 (2026-10-21), carried by v1.91.0 with configurable editor behavior. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
 
@@ -21,6 +21,26 @@ context read the edited source. HTML and SVG remain source text, never an active
 web page. PDF remains the complete PDF viewer: Save exports its original bytes
 as a copy and preserves the viewed document and prepared context. Flow files and
 images retain their existing dedicated routing.
+
+## Explain the selected text
+
+Select one or more ranges and click **Explain selection**. Tlamatini explains
+that exact click-time text, including unsaved edits. With no selected range, she
+explains the current file. An existing chat draft and the editor selection stay
+in place; the action does not edit or save the file.
+
+The button works independently of Multi-Turn, Exec Report, ACPX, Ask Execs,
+Step-by-Step, Compact mode, Self-modify and Add internet context. Live editor
+may be paused and the Interactor tool may be disabled. The explanation uses no
+tools, conversation history or previously loaded context, and does not wait for
+a checkbox-triggered context rebuild. Its result appears in the ordinary chat.
+
+A small selection is sent without the rest of a large file. Up to 64 ranges and
+262,144 UTF-16 units are accepted in total, subject to the configured model's
+context capacity. An oversized selection produces a clear message; it is never
+silently shortened. Code outside the supplied excerpts is not available to the
+explanation. See [Interactor](interactor.md) and the
+[12 November verification](changes/2026-11-12-canvas-selection-explanation.md).
 
 ## Where Save writes
 

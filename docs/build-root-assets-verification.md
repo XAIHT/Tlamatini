@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Required runtime files: packaging repair and verification
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
 ## Carried from v1.92.3 — Downloads, updates and build isolation
 

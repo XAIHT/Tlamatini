@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 2026-05-31: Successor to the removed Notifier toast ([[project_native_toast]]). User wanted a "blinking taskbar icon when an app needs attention" on (a) Ask-Execs approval prompts in agent_page.html and (b) Notifier notifications (chat + ACP).

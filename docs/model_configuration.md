@@ -1,6 +1,6 @@
 # Model configuration
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
 
 Config → Models manages **38 model, engine and voice settings** for core services
@@ -356,3 +356,7 @@ or all agents' external actions (89 then; 85 since the 2026-10-18 pruning) were 
 ## Image/video error reporting and recovery (2026-09-26)
 
 Image/video model failures accumulate in one shared, themed, non-modal fatal-error dialog with an audible notification. Tlamatini keeps running: preserve its retry/tactic ladder, cancellation controls and configured flow recovery routes. Keep the configured model identities; never report a surviving observer or raw concatenation as successful analysis. Dismiss hides the dialog while retaining its history; new failures reopen it. See [the shared behavior and verification contract](visual-analysis-errors.md).
+
+## Requests that do not need model classification
+
+A standalone request for the available directories returns the active path-guard roots directly. It does not scan the disk, grant permissions, or ask a model to infer a path. Mixed requests continue through normal access checks. See [Available directories](available-directories.md).

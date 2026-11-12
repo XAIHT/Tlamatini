@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Account-wizard verification — 2026-11-09
 
-Latest released version: **1.92.4**. [Account-wizard usage](user-creation-wizard.md).
+Release recorded at verification on 2026-11-09: **1.92.4**. [Account-wizard usage](user-creation-wizard.md).
 
 ## Final visible acceptance cohort
 

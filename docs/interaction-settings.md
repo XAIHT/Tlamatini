@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Live Editor and Terminater settings
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
 Since v1.92.0, the maximum is 250 WPM for each control. Live Editor defaults to 100 WPM and Terminater to 50.
 
@@ -158,3 +158,7 @@ your choices again. Invalid values reveal their tab and field. Save failure reta
 the draft; it does not silently report success. Behavioral settings affect subsequent
 actions, shell/advisor defaults affect new terminals, and appearance updates existing
 views. See [the v1.91.0 release record](changes/2026-10-23-v1.91.0.md).
+
+## Voice playback beyond the focused page
+
+Covering or minimizing the browser no longer deliberately pauses shared speech. Browser failures can hand remaining text to Windows speech on the Tlamatini host, with the same mode and voice preferences. Interaction narration still follows its own cancellation and tab-ownership rules; page closure does not hand it off as independent chat speech. See [Voice playback](voice-playback.md) for controls, host requirements and limits.

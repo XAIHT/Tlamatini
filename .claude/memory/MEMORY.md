@@ -1,7 +1,14 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
-## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+## v1.93.5 — Canvas selection, continuous voice and correct execution
+
+- **Explain selection** uses the selected unsaved text captured when you click, preserves the chat draft and works with every checkbox combination, including Live editor off. A small selection does not require sending the whole file. [Canvas](../../docs/canvas-editing.md).
+- Voice can continue when the window is covered or minimized. Browser speech retries interrupted chunks and can hand remaining text to Windows host playback. Stop and mute remain under your control. [Voice](../../docs/voice-playback.md).
+- Executer returns when the outer command finishes even if a separately launched application remains open. Directly executed programs still wait for completion. [Fix and evidence](../../docs/changes/2026-11-12-executer-output-capture.md).
+- Torrenter adds clearer sorting and progress; account creation and [allowed-directory queries](../../docs/available-directories.md) have defined routes. [Full changes and tests](../../docs/changes/2026-11-12-v1.93.5.md).
+
+## Carried from v1.92.4 — Matching builds, explicit release identity and readable Markdown
 
 The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](../../docs/changes/2026-11-08-v1.92.4.md).
 

@@ -829,7 +829,7 @@ def agenda_slide(deck: Deck, chapters):
     deck.header(sc, "CONTENTS", "What this dossier covers",
                 "Nine chapters from identity to inventory, and the application file tree at the end.")
     items = [(ch.numeral, ch.title, ch.tagline, ch.accent) for ch in chapters]
-    items.append(("A", "The application file tree", "Application files; database history is summarized.", "gold"))
+    items.append(("A", "The application file tree", "Every tracked file, including migration history.", "gold"))
     cols = 2
     per_col = math.ceil(len(items) / cols)
     gap = 0.4
@@ -1107,7 +1107,7 @@ def tree_slides(deck: Deck, tree_text: str):
         text(sc, MX, 0.42, 9.5, 0.36, one(f"APPENDIX A  ·  APPLICATION FILE TREE  ·  {page + 1} / {total}",
                                           "sans-semibold", 11, "copper", spacing=2.0), label="tree kicker")
         text(sc, MX, 0.80, CONTENT_W, 0.42, one(f"{deck.facts['tree_count']:,} listed files at commit "
-                                                f"{deck.facts['head_short']}; {deck.facts['tree_history_count']} database-history files summarized.",
+                                                f"{deck.facts['head_short']}; includes database migration history.",
                                                 "sans", 13, "light_muted"), label="tree lede")
         for col in range(TREE_COLS):
             part = chunk[col * per_col:(col + 1) * per_col]
@@ -1184,7 +1184,7 @@ def build_pptx(facts: dict, chapters, output) -> int:
     from dossier_content import Chapter
 
     appendix = Chapter("tree", "A", "The application file tree",
-                       f"{facts['tree_count']:,} application files, with {facts['tree_history_count']} database-history files summarized.", [],
+                       f"{facts['tree_count']:,} tracked files, including database migration history.", [],
                        accent="gold")
     sc = divider_slide(deck, appendix)
     deck.chrome(sc, "Appendix A")

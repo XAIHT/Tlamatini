@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 2026-05-26: Added **STM32er** (agent #68) on BOTH canvas + Multi-Turn (`chat_agent_stm32er`). It bridges the **STM32 Template Project MCP** (`C:\Development\STM32TemplateProjectMCP`, repo github.com/XAIHT/STM32TemplateProjectMCP) — a FastMCP **stdio** server (`mcp/stm32_mcp_server.py`) exposing **23 tools** that scaffold→author→build→flash→observe STM32F4 firmware via the STM32CubeIDE-bundled toolchain (no IDE GUI).

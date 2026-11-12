@@ -12,7 +12,7 @@ originSessionId: 156f0765-c90e-440e-a266-922659ec55f5
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 **2026-06-04 update — WhatsTlamatini parity DONE + both bots adapted to "Ask Execs".** WhatsTlamatini now has the same `acpx_enabled` end-to-end wiring as TeleTlamatini (it previously carried none), and BOTH bots were hardened against everything since Ask Execs (2026-05-29):

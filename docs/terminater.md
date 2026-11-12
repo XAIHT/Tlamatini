@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Terminater — visible, user-supervised terminals
 
-> Latest released version: **[v1.92.4](changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
 
 > **Status: released in [v1.88.0](changes/2026-10-20-v1.88.0.md)** (tagged 2026-10-20),
 > carried in [v1.91.1](changes/2026-10-27-v1.91.1.md). See [the change record](changes/2026-10-19-terminater.md).

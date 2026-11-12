@@ -730,7 +730,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["Open · Save", "Open a canvas file; menu Save chooses a destination with native Save As."],
                 ["Views", "Show Canvas or Terminals; Reset layout restores the workspace."],
                 ["Context", "Load a directory or file as context, and set file-type omissions."],
-                ["Panels", "Agentic Control Panel, Prompt Flow Panel and, for staff, the Admin Panel. "
+                ["Panels", "Agentic Control Panel, Prompt Flow Panel, Torrenter Sources, Torrenter Workspace and, for staff, Admin Panel. "
                  "It stays usable while she is busy."],
                 ["ACPX-Skills", "Browse, configure, diagnose and reload the skill catalog."],
                 ["External", "The External MCPs dialog: catalog, activation and runtime readiness."],
@@ -1803,19 +1803,19 @@ def build_chapters(f: dict) -> list[Chapter]:
     ])
 
     release = Chapter("release", "VIII", "Current Release",
-        f"Latest released version {f['version']} — downloads, editing, updates and Windows execution.",
+        f"Latest released version {f['version']} — selections, execution capture, speech, downloads and direct requests.",
         accent="gold", sections=[
         Section("release188", "CARRIED FROM v1.88.0", "Terminals you can watch, and a private release that carries your data",
             "Tlamatini v1.88.0 introduced Terminater; its tag was created on October 20.",
             body=[
-                f"Terminater is workflow agent number {f['agents']}. It raises real CMD and PowerShell terminals in a new "
+                "Terminater is workflow agent number 86. It raises real CMD and PowerShell terminals in a new "
                 "Terminals area (Views → Terminals, or Ctrl+`) on the chat, Agentic Control Panel and Prompt Flow Panel "
                 "pages. Tlamatini types every key like a person, about 50 words per minute and never pasted, waits for the "
                 "command, reads its whole output and reports the exit code. Esc takes the keyboard; a command can hand it "
                 "to you on purpose with <<USER:hint>>.",
                 f"A command that stops answering is flagged hung and can be aborted without losing the terminal; one that "
                 f"exits with an error is a red Exec Report row even though the terminal worked. One hub in the Django "
-                f"process owns the shells, so closing a page never closes one. It is wrapped chat agent number {f['wrapped']}, "
+                f"process owns the shells, so closing a page never closes one. It is wrapped chat agent number 67, "
                 f"the eighth Prompt Flow Panel operation, and has three safe cards in the Catalog of Prompts.",
                 "The build now proves it inside the frozen app: check_terminater drives a real PowerShell, a real cmd.exe, "
                 "the shipped pool agent under the carried Python and a WebSocket round trip, and packaging stops if it "

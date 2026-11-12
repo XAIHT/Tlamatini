@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Exec Report (Per-Agent Execution Tables on the Final Answer)
 
-> Latest released version: **[v1.92.4](../changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
 
 ## Carried from v1.92.3 — Downloads, updates and build isolation
 

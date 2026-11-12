@@ -6,7 +6,7 @@ description: Validate a real Tlamatini Windows release through clean installatio
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Tlamatini release validation
 
-> Latest released version: **[v1.92.4](../../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 Test the deliverable the user will run. A source test, registry helper test,

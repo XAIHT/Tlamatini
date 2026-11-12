@@ -7,7 +7,7 @@ In a headed, real Chrome on the desktop it shows:
 
 1. the real PDF in Chrome's own viewer, at the pages you name, and
 2. every PDF page and every slide exactly as the dossier verifier rendered
-   them (PyMuPDF for the PDF, PowerPoint's own export for the slides),
+   them (PyMuPDF for the PDF, native PowerPoint or the recorded fallback for slides),
    scrolled one by one at a pace a person can watch.
 
 Shoter, Tlamatini's own agent, photographs the WHOLE desktop at each
@@ -68,7 +68,9 @@ def preflight() -> tuple[list[Path], list[Path]]:
     if REPORT.stat().st_mtime < max(PDF.stat().st_mtime, PPTX.stat().st_mtime):
         problems.append("the verification report is older than the documents; rerun refresh_project_docs.py")
     pages = sorted((RENDERS / "pdf").glob("p*.png"))
-    slides = sorted((RENDERS / "ppt").glob("s*.png"))
+    native = report.get("pptx_native", {}).get("available", False)
+    slide_folder = "ppt" if native else "ppt-fallback"
+    slides = sorted((RENDERS / slide_folder).glob("s*.png"))
     if len(pages) != report.get("pdf", {}).get("pages"):
         problems.append(f"{len(pages)} PDF renders for {report.get('pdf', {}).get('pages')} pages")
     if len(slides) != report.get("pptx", {}).get("slides"):

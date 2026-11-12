@@ -65,7 +65,7 @@ def n2(x):
 
 # ----------------------------------------------------------------------------- inventory
 ALL_FILES = sorted([f for f in git("ls-files", "-z").split("\0") if f], key=lambda p: p.lower())
-FILES = [f for f in ALL_FILES if not f.startswith(A + "migrations/")]
+FILES = list(ALL_FILES)
 PATHSET = set(FILES)
 HEAD = git("rev-parse", "--short", "HEAD").strip()
 # Angela's requested release is authoritative, even before packaging/tagging.
@@ -2198,7 +2198,7 @@ def sheet_torrenter():
     ], h=72, size=15, tsize=14)
     box(sh.body, 12, TOP - 82, 193, "Lintelligence", "3. Submit and follow the job", [
         "Submit selected IDs and the metadata revision. Reuse the operation key on an uncertain retry.",
-        "An ACP node can continue on admission or wait for verified publication. Pausing preserves the wait.",
+        "An ACP node can wait for publication. Pausing/stopping the download ends the wait; timeouts do not cancel Jobs.",
     ], h=72, size=15, tsize=14)
     box(sh.body, 215, TOP - 82, 193, "Lpersistence", "4. Verify the delivered copy", [
         "Read the path and SHA-256 from the published manifest. The destination is Windows Downloads or the edition’s content_generated folder.",
@@ -2212,6 +2212,65 @@ def sheet_torrenter():
         "Isolate build environments by requirements fingerprint. The OS lock covers preparation and use.",
         "Executer preserves shell assignments such as PLAYWRIGHT_BROWSERS_PATH and applies the configured command timeout.",
     ], h=72, size=15, tsize=14)
+    return sh
+
+
+def sheet_current_release():
+    sh = new_sheet("Canvas, speech and execution",
+                   f"Latest released version {TAG}", "presentation")
+    cards = [
+    [
+        "Explain selection",
+        "Lpresentation",
+        [
+            "The button captures fresh unsaved selection ranges. No chat checkbox combination disables this explanation request.",
+            "A small selection excludes the rest of a large document. The request preserves the chat draft and editor selection."
+        ]
+    ],
+    [
+        "Executer output capture",
+        "Lplatform",
+        [
+            "The blocking script captures stdout/stderr in unique regular files and waits for the direct script process.",
+            "Detached START children may keep running. Direct commands still block. The returned snapshot is fixed; retained files accept late writes."
+        ]
+    ],
+    [
+        "Voice while minimized",
+        "Ltransport",
+        [
+            "Browser speech continues when the page is covered or minimized; Windows receives remaining text if the browser fails.",
+            "Stop and mute cancel the account queue. Closing a page hands off pending chat speech, not interactive narration."
+        ]
+    ],
+    [
+        "Download state and delivery",
+        "Lintegration",
+        [
+            "Jobs expose sorting, current progress and verified destination paths. A reconnect follows the existing job.",
+            "Pausing/stopping the download ends its completion wait. Timeouts end only the wait; credentials and transient failures can recover."
+        ]
+    ],
+    [
+        "Directories and account setup",
+        "Lintelligence",
+        [
+            "A pure available-directory question returns the current allowed roots without scanning disk or calling a classifier.",
+            "The known card opens createuserconsole in this instance; DONE verifies the newly persisted administrative account."
+        ]
+    ],
+    [
+        "Recorded verification",
+        "Lquality",
+        [
+            "November 12: 58 canvas tests and 256 checkbox combinations per edition; 65 Executer-related tests per edition.",
+            "Same Rust executable: capture returned in about 5 seconds while the cube ran. The separate final-response stall remains unresolved."
+        ]
+    ]
+]
+    for i, (title, color, lines) in enumerate(cards):
+        box(sh.body, 12 if i % 2 == 0 else 215, TOP - 82 * (i // 2),
+            193, color, title, lines, h=72, size=14, tsize=14)
     return sh
 
 
@@ -2503,6 +2562,7 @@ sheet_lifecycle()
 sheet_live_editor()
 sheet_interaction_settings()
 sheet_torrenter()
+sheet_current_release()
 sheet_release_builds()
 autofit(sheet_intelligence, BOTTOM + 1.5)
 sheet_agents()
@@ -2535,7 +2595,7 @@ def fill_cover():
     text_node(o, 14, 238, r"Complete Architecture Atlas", size=26, color="black!80")
     text_node(o, 14, 226.5, r"\itshape eXtended Artificial Intelligence, Humanly Tempered \textperiodcentered{} ``one who knows''", size=12, color="black!65")
     text_node(o, 14, 218, r"Created by \textbf{Angela L\'opez Mendoza} \textperiodcentered{} XAIHT", size=11.5, color="black!75")
-    text_node(o, 14, 211, esc("Release %s \u00b7 commit %s (%s) \u00b7 atlas generated %s from application files tracked in git; database history is summarized" % (TAG, HEAD, COMMIT_DATE, TODAY)), size=8, color="black!60")
+    text_node(o, 14, 211, esc("Release %s \u00b7 commit %s (%s) \u00b7 atlas generated %s from every file tracked in git, including migration history" % (TAG, HEAD, COMMIT_DATE, TODAY)), size=8, color="black!60")
     kpis = [
         ("{:,}".format(len(FILES)), "listed application files"),
         ("{:,}".format(TOTAL_LOC), "lines of text"),

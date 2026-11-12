@@ -1134,7 +1134,7 @@ class ChapterOpener(FullPage):
         y = y - 16 - gh - 40
         titles = [s.title for s in ch.sections]
         if ch.key == "release":
-            titles = [s.title for s in ch.sections if s.key in {"release1923", "release1911", "release191", "release190", "lineage", "identity_release"}]
+            titles = [s.title for s in ch.sections if s.key in {"release1935_selection", "release1935_execution", "release1935_voice", "release1935_downloads", "release1935_requests", "lineage", "identity_release"}]
         if titles:
             draw_text(canv, 64, y, "IN THIS CHAPTER", "sans-semibold", 7.4, "gold", space=2.2)
             y -= 12
@@ -1434,7 +1434,7 @@ def about_flow(facts, st: Styles) -> list:
         "Nothing here is typed from memory. Counts, versions, commits, the language inventory and the file "
         "tree were derived from Git and the source files when this edition was generated, and the generator "
         "then reopened this document to prove that no text overflows or is clipped and that the file tree "
-        "matches its declared application scope. Database history is summarized; configuration values, credentials and private addresses are never "
+        "matches every Git-tracked path, including migration history; configuration values, credentials and private addresses are never "
         "reproduced.",
     ]:
         flow.append(para(text, st.body, "sans"))
@@ -1479,7 +1479,7 @@ def build_pdf(facts: dict, chapters, output) -> int:
     from dossier_content import Chapter
 
     appendix = Chapter("tree", "A", "The Application File Tree",
-                       f"{facts['tree_count']:,} application files, with {facts['tree_history_count']} database-history files summarized. "
+                       f"{facts['tree_count']:,} tracked files, including database migration history. "
                        "Directories are shown in jade.", [], accent="gold")
     story += [NextPageTemplate("dark"), PageBreak(),
               ChapterOpener(appendix, st, "appendix_tree", "Appendix A  ·  The application file tree"),

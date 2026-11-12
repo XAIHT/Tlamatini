@@ -8,9 +8,16 @@
 -->
 # Tlamatini
 
-> Latest released version: **[v1.92.4](docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](docs/changes/2026-11-12-v1.93.5.md)**.
 
-## v1.92.4 — Matching builds, explicit release identity and readable Markdown
+## v1.93.5 — Canvas selection, continuous voice and correct execution
+
+- **Explain selection** uses the selected unsaved text captured when you click, preserves the chat draft and works with every checkbox combination, including Live editor off. A small selection does not require sending the whole file. [Canvas](docs/canvas-editing.md).
+- Voice can continue when the window is covered or minimized. Browser speech retries interrupted chunks and can hand remaining text to Windows host playback. Stop and mute remain under your control. [Voice](docs/voice-playback.md).
+- Executer returns when the outer command finishes even if a separately launched application remains open. Directly executed programs still wait for completion. [Fix and evidence](docs/changes/2026-11-12-executer-output-capture.md).
+- Torrenter adds clearer sorting and progress; account creation and [allowed-directory queries](docs/available-directories.md) have defined routes. [Full changes and tests](docs/changes/2026-11-12-v1.93.5.md).
+
+## Carried from v1.92.4 — Matching builds, explicit release identity and readable Markdown
 
 The combined builder predicts both editions’ actual emitted version before building, pins one matching number, runs Private/Public pairs in parallel with `--self-modify`, and archives verified ZIPs by edition, type and minute. The application log identifies its embedded release type. Dependency setup stays in isolated, application-owned caches and stops safely when no healthy environment exists. Readable Markdown with occasional control characters opens without losing its original bytes; binary content is still refused. See the [1.92.4 release notes](docs/changes/2026-11-08-v1.92.4.md).
 
@@ -492,14 +499,14 @@ Open, Clear and Refresh ask before discarding edits. Unsaved buffers are held in
 1. Tlamatini reads the exact unsaved editor buffer and selection. If no path was provided, she creates the requested filename under Temp/interactor in an account-specific unique directory; an existing file is not overwritten.
 2. She types a short known segment, for example `FROM `, then hands the next field to you and explains which base image suits your Java runtime. The handoff stops further editor mutations in that chat turn.
 3. As you type, optional ghost text matches your prefix against choices prepared for this field. **Tab** accepts the suggestion, **Ctrl+Right** accepts a word and **Escape** dismisses it. You can type a different value.
-4. **Continue** sends a new chat turn and reads the live buffer again before reviewing your work. **Another hint** and **Explain selection** also use normal chat while preserving an existing composer draft.
+4. **Continue** starts a fresh tutoring turn and reads the live buffer again; **Another hint** keeps the normal chat route. **Explain selection** uses a dedicated read-only request with the unsaved selection captured at click time. It preserves the draft and works with every checkbox combination, including Live editor off.
 5. Save when you want the buffer persisted. Typing is not saving and does not execute code.
 
 The model prepares field choices once; matching is local, with no model request per keystroke. New questions still have normal chat/model latency. User input, selection, Escape, Stop, cancellation or disconnection interrupts AI typing and keeps the typed prefix editable. A temporarily hidden or occluded tab pauses for up to two extra minutes, then resumes at the next character when visible; a timeout never replays text. Switching to Markdown Preview or hiding the canvas returns control.
 
-Live tutoring accepts at most 262,144 UTF-16 units; a smaller configured tool-result/context budget can refuse a read. Oversized or stale content is refused explicitly, never silently truncated. For permissions and dated source/frozen evidence, see [Canvas editing](docs/canvas-editing.md) and [Interactor](docs/interactor.md).
+Live tutoring accepts at most 262,144 UTF-16 units; a smaller configured tool-result/context budget can refuse a read. Explain selection projects the selected ranges only, so the entire file does not consume the selection budget; without a selection it uses the full document. Input that exceeds its applicable limit is refused explicitly, never silently truncated. For permissions and dated evidence, see [Canvas editing](docs/canvas-editing.md) and [Interactor](docs/interactor.md).
 
-The [account-creation wizard](docs/user-creation-wizard.md) is separate from editor tutoring: it opens the interactive createsuperuser console and keeps passwords out of chat. It creates an administrative superuser. Saying that you will type a password does not reserve all commands for you, and an optional email field does not authorize an outbound notification.
+The [account wizard](docs/user-creation-wizard.md) uses an integrated handler to open this instance’s `createuserconsole`, without model-generated commands. Enter the username, optional email and password only in that console. It creates an administrative superuser. **DONE** checks the newly created account in the database; **NOWINDOW** focuses the existing console. Ask Execs retains its pre-launch approval. Chat reports status without Notifier or credential screenshots.
 
 
 ## Terminals you can watch: Terminater
@@ -1002,7 +1009,7 @@ When the migrations finish and you have a superuser, run the server (chapter 7).
 
 ### Path B — Pre-built one-click installer (end users)
 
-This book covers **v1.92.4**. Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing. The source tag is not itself proof of a published or accepted package.
+This book covers **v1.93.5**. Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint. Obtain the intended package from [Tlamatini Releases](https://github.com/XAIHT/Tlamatini/releases) and verify its version before installing.
 
 1. Open the unzipped folder.
 2. Double-click **`Installer.exe`**.
@@ -2844,7 +2851,7 @@ Requires `pkg.zip` and `Uninstaller.exe` from steps 1 and 2. Builds `install.py`
 
 ## 48. Versioning
 
-Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH` — but the **single source of truth is a git tag**, not a number sitting in any source file. You never hand-edit a version anywhere. You tag, then you build, and the three build scripts in §47 each bake the resolved value into the artefact they produce.
+Tlamatini follows [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH`. The latest released version is **1.93.5**. Keep current documentation and manifests synchronized with that one version; the build resolves the same number from an explicit override or the Git tag and embeds it in all three artifacts described in §47.
 
 ### What the three numbers mean
 
@@ -2858,14 +2865,14 @@ Pre-releases use the standard SemVer suffixes — `2.0.0-alpha.1`, `2.0.0-beta.1
 
 ```powershell
 git status                                          # clean tree, on main
-git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.92.4 is taken)
+git tag -a vMAJOR.MINOR.PATCH -m "Release MAJOR.MINOR.PATCH: <one-liner>"   # annotated tag, an unused version (1.93.5 is taken)
 git push origin vMAJOR.MINOR.PATCH
 python build.py
 python build_uninstaller.py
 python build_installer.py
 ```
 
-All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.92.4/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The latest released version is `1.92.4`; pass `--version 1.92.4` to the complete wrappers to pin that number. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
+All three build scripts pick the tag up from `git describe --tags` automatically. The final artefact lands in `dist/Tlamatini_Release_v1.93.5/`, named for the version so the file you hand to a user is unambiguous before they even unzip it. The latest released version is `1.93.5`; pass `--version 1.93.5` to the complete wrappers to pin that number. Tlamatini deliberately never puts a `.devN`, `+gSHA` or `.dirty` suffix into its version string — it always reports the base tag, which is the designed behaviour described in `VERSIONING.md`. That is exactly why the five commands above start with `git status` on a clean tree: a release cut from a dirty tree would ship a version number that says nothing about what is actually inside it.
 
 ### Where the version shows up in a running install
 
@@ -2873,8 +2880,8 @@ The build computes the version once and bakes it into four surfaces:
 
 - **`Tlamatini/agent/_version.py`** — generated at build time, gitignored, read at runtime by `agent.version.get_version()`. This is what every in-process surface reads.
 - **Win32 `VERSIONINFO`** — `Tlamatini.exe`, `Installer.exe`, and `Uninstaller.exe` all carry the version in their resource fork. Right-click the file → Properties → Details → ProductVersion.
-- **Release folder name** — `dist/Tlamatini_Release_v1.85.0/`.
-- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.85.0` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.85.0","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
+- **Release folder name** — `dist/Tlamatini_Release_v1.93.5/`.
+- **Runtime surfaces** — the About dialog renders `Tlamatini v{{ version }}` (Django context processor); after the release tag/build, the startup banner prints `--- [VERSION] Tlamatini 1.93.5` to both the console and `tlamatini.log`; `GET /agent/version/` returns `{"version":"1.93.5","commit":"abc1234","date":"…","source":"generated"}` as an **open** endpoint suitable for a health-check.
 
 If the four surfaces ever disagree, your build was run with a stale `$env:TLAMATINI_VERSION` or against an out-of-date `_version.py` — clear them and re-run `build.py`.
 
@@ -2901,7 +2908,7 @@ There are four sources of the version, in precedence order:
 3. `git describe --tags --abbrev=0 --match 'v[0-9]*'` against the working tree — the bare base tag, no distance/dirty suffix (the normal path).
 4. The sentinel `0.0.0+unknown` (lowest — only fires when there is no git at all).
 
-`build.py` exports `$env:TLAMATINI_VERSION` after it resolves, so `build_installer.py` and `build_uninstaller.py` in the same shell see exactly the same value — the three artefacts cannot disagree. Even on an untagged commit, the git-derived dev version stays consistent across all three.
+`build.py` exports `$env:TLAMATINI_VERSION` after it resolves, so `build_installer.py` and `build_uninstaller.py` in the same shell see exactly the same value — the three artefacts cannot disagree. Even on an untagged commit, the resolved release version stays consistent across all three.
 
 The full contract — including the recovery path for a mis-tagged release, the runtime resolver internals, the file-by-file integration map, and the FAQ — lives in [`VERSIONING.md`](VERSIONING.md) at the repo root.
 
@@ -2929,7 +2936,7 @@ When an end user runs `Installer.exe`:
 4. The last screen names the folders it kept; files Windows still holds are removed right after the uninstaller closes.
 5. Since v1.82.0 the removal runs inside the same recovery transaction (`setup_recovery.py`): a verified recovery copy is prepared before files are removed, a file that stays locked for five seconds is named (with the program holding it when Windows can tell, which is never closed for you), and the removal stops before deleting anything; Installed Apps is checked to be really gone, and only Tlamatini's own registry values and shortcut are touched (`setup_windows.py`).
 
-⚠️ The uninstaller is not part of an in-app update: **About ▸ Check for updates** keeps the `Uninstaller.exe` already installed. A new Installer replaces it.
+**About ▸ Check for updates** atomically replaces `Uninstaller.exe` when the verified update package supplies it; compatible older packages without a successor retain the installed copy.
 
 ## 51. Frozen-mode behavior
 

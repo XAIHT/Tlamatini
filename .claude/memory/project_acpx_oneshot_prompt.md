@@ -12,7 +12,7 @@ originSessionId: ccfb8f0a-8b12-4ab6-acd1-f6af3336f728
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 2026-05-04: Switched `claude`, `gemini`, `cursor`, `qwen`, `codex` in

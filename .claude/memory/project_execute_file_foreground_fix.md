@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.92.4](../../docs/changes/2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
 
 
 2026-05-29: Definitive, log-evidenced diagnosis of the recurring "create a script then run it in a foreground window → window never opens, Tlamatini says OK" incident. This SUPERSEDES the discarded [[feedback_dont_overbuild_exec_safety]] series (which fixed the wrong layer).

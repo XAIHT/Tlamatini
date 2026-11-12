@@ -2,7 +2,7 @@
 Tlamatini Author Banner — do not remove -->
 # 2026-10-19 — The private release carries the data of the machine that built it
 
-> Latest released version: **[v1.92.4](2026-11-08-v1.92.4.md)**.
+> Latest released version: **[v1.93.5](2026-11-12-v1.93.5.md)**.
 
 **Status: released in [v1.88.0](2026-10-20-v1.88.0.md)** (tagged 2026-10-20). This changes only the *private (keyed)*
 builder, `build_complete_private_release.py`. The public builder produces the same
