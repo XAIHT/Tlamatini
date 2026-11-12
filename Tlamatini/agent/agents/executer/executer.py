@@ -549,6 +549,40 @@ def quote_playwright_cache_assignment(script: str) -> str:
     )
 
 
+def _run_script_with_capture(cmd, script_path: str, timeout: float):
+    """Wait for the script, not EOF from detached descendants holding its output.
+
+    Regular capture files preserve CMD's explicit ``start`` semantics. Pipes
+    make communicate() wait for EVERY inherited writer, even after the script
+    exits. Keep the files in this run's directory so later child output remains
+    available; the returned strings are a snapshot at script completion.
+    """
+    import tempfile
+
+    capture_dir = os.path.dirname(os.path.abspath(script_path))
+    with tempfile.NamedTemporaryFile(mode="wb", prefix="executer_stdout_", suffix=".txt",
+                                     dir=capture_dir, delete=False) as stdout_file, \
+            tempfile.NamedTemporaryFile(mode="wb", prefix="executer_stderr_", suffix=".txt",
+                                         dir=capture_dir, delete=False) as stderr_file:
+        stdout_path, stderr_path = stdout_file.name, stderr_file.name
+        logging.info("stdout capture (retained): %s", stdout_path)
+        logging.info("stderr capture (retained): %s", stderr_path)
+        result = subprocess.run(cmd, shell=True, stdout=stdout_file, stderr=stderr_file,
+                                cwd=os.getcwd(), timeout=timeout)
+
+    def snapshot(path):
+        # A separate handle is essential: seeking the inherited writer would
+        # change a live child's file position. Bound the read to the current
+        # size so a continuously writing descendant cannot extend the read.
+        with open(path, "rb") as stream:
+            size = os.fstat(stream.fileno()).st_size
+            return stream.read(size).decode("utf-8", errors="replace")
+
+    logging.info("Script exited; captured output is a snapshot. Detached children may still append.")
+    return subprocess.CompletedProcess(result.args, result.returncode,
+                                       snapshot(stdout_path), snapshot(stderr_path))
+
+
 def execute_script(script_content: str, non_blocking: bool = False,
                     execute_forked_window: bool = False) -> bool:
     """
@@ -743,17 +777,9 @@ def execute_script(script_content: str, non_blocking: bool = False,
             logging.info("🪟 Forked window mode: Launching script in new console...")
             return _execute_in_forked_window(script_path)
 
-        # BLOCKING MODE: Wait for script to complete (original behavior)
-        result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            cwd=os.getcwd(),
-            timeout=_TIMEOUT  # 5 minute timeout
-        )
+        # Wait for the outer script. An explicit `start` child can outlive it
+        # without withholding the script's already-produced output.
+        result = _run_script_with_capture(cmd, script_path, _TIMEOUT)
         
         # Log stdout if present
         if result.stdout:
