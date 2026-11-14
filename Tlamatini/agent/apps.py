@@ -144,6 +144,17 @@ class AgentConfig(AppConfig):
         # (REQ-S2-PUB-001/002/003). Fail-open. See docs/companion-app-discovery.md.
         _schedule_companion_discovery()
 
+        # The account adapter lives inside this application; RC owns its server.
+        # No management command or reloader parent starts this worker.
+        import os
+        if _discovery_publish_eligible(' '.join(sys.argv).lower(), os.environ.get('RUN_MAIN')):
+            try:
+                from .remote_controller_bridge import start_adapter
+                start_adapter()
+            except Exception:
+                import logging
+                logging.exception("Remote-Controller account adapter could not start")
+
         from .context_governor import register_usage_sink
         from .usage_tracking import enqueue_usage
         register_usage_sink(enqueue_usage)

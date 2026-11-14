@@ -453,6 +453,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     """
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
+    source_response = llm_response
     if _LOG_FULL_ANSWERS:
         print("\n--- The Original LLM response is: <<<<<\n"+llm_response+"\n>>>>>")
     else:
@@ -669,6 +670,12 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     answer_message_id = await save_message(bot_user, llm_response, conversation_user=conversation_user)
 
     if channel_layer:
+        # The owned RC transport displays inert text. Give it the original
+        # answer before HTML rendering can consume literal angle brackets.
+        # Normal channels and the stored rich answer keep their existing path.
+        capture_source = getattr(channel_layer, 'capture_source_answer', None)
+        if callable(capture_source):
+            capture_source(room_group_name, source_response, ''.join(system_section_parts))
         broadcast_msg = {'type': 'agent_message', 'message': llm_response, 'username': 'Tlamatini', 'message_id': answer_message_id}
         if tool_calls_log:
             broadcast_msg['tool_calls_log'] = tool_calls_log

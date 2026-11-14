@@ -26,6 +26,7 @@ from build_runtime_assets import (
     capture_source_payload,
     copy_root_sources,
     ignore_runtime_state,
+    validate_migration_dependencies,
     validate_source_assets,
     verify_collected_static,
     verify_package,
@@ -505,6 +506,12 @@ _FROZEN_TERMINATER_MODULES = (
     "agent.management.commands.check_terminater",
 )
 
+_FROZEN_REMOTE_CONTROLLER_MODULES = (
+    "agent.remote_controller_views", "agent.remote_controller_bridge",
+    "agent.remote_controller_runtime", "agent.remote_controller_guard",
+    "agent.migrations.0224_remote_controller",
+)
+
 _FROZEN_TORRENTER_MODULES = (
     "agent.management.commands.enroll_torrenter", "agent.torrenter_tool", "agent.torrenter_views",
     "agent.torrenter_bridge", "agent.agents.torrenter.client", "agent.agents.torrenter.contract", "agent.agents.torrenter.sources",
@@ -560,6 +567,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     *_FROZEN_PROMPT_FLOW_PANEL_MODULES,
     *_FROZEN_TERMINATER_MODULES,
     *_FROZEN_TORRENTER_MODULES,
+    *_FROZEN_REMOTE_CONTROLLER_MODULES,
     *_FROZEN_ACCOUNT_WIZARD_MODULES,
 )
 
@@ -1243,6 +1251,7 @@ def main():
     # Resolve inputs relative to this script even when invoked from elsewhere.
     repo_root = Path(__file__).resolve().parent
     os.chdir(repo_root)
+    run_step("Checking local migration dependencies", validate_migration_dependencies, repo_root)
     run_step("Checking required runtime source assets", validate_source_assets, repo_root)
 
     # ── Resolve and emit version artefacts FIRST ─────────────────────
@@ -1558,6 +1567,7 @@ def main():
         *(f'--hidden-import={module}' for module in _FROZEN_PROMPT_FLOW_PANEL_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_TERMINATER_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_TORRENTER_MODULES),
+        *(f'--hidden-import={module}' for module in _FROZEN_REMOTE_CONTROLLER_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_ACCOUNT_WIZARD_MODULES),
         *(f'--hidden-import={module}' for module in _FROZEN_PYWIN32_EXTENSIONS),
         # ── The agent.* modules NOTHING ELSE NAMES (Angela review, 2026-08-16) ──
@@ -2408,6 +2418,12 @@ def _release_build_lock():
 
 
 if __name__ == "__main__":
+    # Check source parents before even provisioning the sealed build environment.
+    try:
+        validate_migration_dependencies(Path(__file__).resolve().parent)
+    except RuntimeError as exc:
+        print(f"ERROR: migration preflight failed: {exc}", flush=True)
+        sys.exit(1)
     # Freeze with the SEALED build Python, never this machine's everyday one
     # (build_env.py): installing or removing a library here cannot change a release.
     run_in_sealed_env(__file__)

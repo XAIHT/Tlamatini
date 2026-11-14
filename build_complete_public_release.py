@@ -101,7 +101,7 @@ import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
-from build_runtime_assets import create_release_archive, verify_package
+from build_runtime_assets import create_release_archive, validate_migration_dependencies, verify_package
 from versioning import resolve_build_version
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -777,6 +777,14 @@ def main(argv=None) -> int:
                          "pre-flight found private material in this tree. You are "
                          "asserting every reported item is safe to publish.")
     args = ap.parse_args(argv)
+
+    try:
+        count = validate_migration_dependencies(REPO_ROOT)
+    except RuntimeError as exc:
+        print(f"ERROR: migration preflight failed: {exc}", flush=True)
+        return 1
+    print(f"Migration preflight: {count} local migration sources checked.", flush=True)
+
     # --no-self-modify is the explicit form of the DEFAULT and always wins, so a
     # wrapper (or muscle memory) can force the small-prompt build unambiguously.
     if args.no_self_modify:

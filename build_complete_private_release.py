@@ -48,7 +48,7 @@ import time
 import unicodedata
 from pathlib import Path
 
-from build_runtime_assets import create_release_archive, verify_package
+from build_runtime_assets import create_release_archive, validate_migration_dependencies, verify_package
 from versioning import resolve_build_version
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -482,6 +482,13 @@ def main(argv=None) -> int:
                     help="explicit form of the DEFAULT (no source tree, no "
                          "self-knowledge); overrides --self-modify if both given.")
     args = ap.parse_args(argv)
+
+    try:
+        count = validate_migration_dependencies(REPO_ROOT)
+    except RuntimeError as exc:
+        print(f"ERROR: migration preflight failed: {exc}", flush=True)
+        return 1
+    print(f"Migration preflight: {count} local migration sources checked.", flush=True)
 
     py = args.python
     assert_system_python(py)

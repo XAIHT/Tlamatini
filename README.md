@@ -57,6 +57,14 @@
 
 > Latest released version: **[v1.93.5](docs/changes/2026-11-12-v1.93.5.md)**.
 
+## Remote-Controller integration · 13 November 2026
+
+The current source adds **Panels → Tlachihuani · Remote-Controller** for explicit
+account activation, with account-bound chat, execution approvals, cancellation and
+XT's installed-application launch broker. Torrenter remains independent. Connections
+are local-only; network transport, RC voice and final installed acceptance remain
+gated. Read [the account and connection guide](docs/remote-controller.md).
+
 ## v1.93.5 — Canvas selection, continuous voice and correct execution
 
 - **Explain selection** uses the selected unsaved text captured when you click, preserves the chat draft and works with every checkbox combination, including Live editor off. A small selection does not require sending the whole file. [Canvas](docs/canvas-editing.md).

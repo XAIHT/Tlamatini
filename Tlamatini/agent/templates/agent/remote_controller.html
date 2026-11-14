@@ -1,0 +1,52 @@
+{% load static %}<!doctype html>
+<!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
+<html lang="{{ copy.language }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ copy.title }} · Tlachihuani · Tlamatini</title>
+  <link rel="stylesheet" href="{% static 'agent/css/ui_tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'agent/css/remote_controller.css' %}">
+  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}">
+</head>
+<body>
+<main>
+  <nav aria-label="Tlamatini"><a href="{% url 'agent_page' %}">← {{ copy.back }}</a><a href="{% url 'remote_controller' %}">{{ copy.refresh }}</a></nav>
+  <header><p class="eyebrow">{{ copy.eyebrow }}</p><h1>{{ copy.title }}</h1><p class="lead">{{ copy.intro }}</p></header>
+  {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+  {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
+  <div class="cards">
+    <section aria-labelledby="service-title">
+      <p class="eyebrow">TLACHIHUANI-RC SERVER</p><h2 id="service-title">{{ copy.service }}</h2>
+      <p class="state {% if service_ready %}active{% endif %}" id="service-state">{{ service_label }}</p>
+      <p>Right-click the XT icon → Remote-Controller to start, stop or restart the server.</p><p class="muted">{{ copy.local_profile }}</p>
+    </section>
+    <section aria-labelledby="account-title">
+      <p class="eyebrow">{{ copy.edition }}</p><h2 id="account-title">{{ copy.account }}</h2>
+      <p class="account-name">{{ request.user.get_username }}</p>
+      <p class="state {% if profile.enabled %}active{% endif %}" id="account-state">{% if profile.enabled %}{{ copy.enabled }}{% else %}{{ copy.disabled }}{% endif %}</p>
+      {% if pending_revocation %}<p class="notice error">{{ copy.pending }}</p>{% endif %}
+      {% if profile.enabled %}
+      <p>{{ copy.enabled_help }}</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="disable">
+        <p class="muted" id="disable-help">{{ copy.disable_help }}</p>
+        <button class="secondary" type="submit" aria-describedby="disable-help">{{ copy.disable }}</button>
+      </form>
+      {% else %}
+      <p>{{ copy.disabled_help }}</p>
+      {% if pending_revocation %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="disable"><button class="secondary" type="submit">{{ copy.retry }}</button></form>
+      {% endif %}
+      <form method="post" autocomplete="off">{% csrf_token %}<input type="hidden" name="action" value="enable">
+        <label for="current-password">{{ copy.password }}</label>
+        <input id="current-password" type="password" name="password" autocomplete="current-password" maxlength="4096" required aria-describedby="consent">
+        <p class="muted" id="consent">{{ copy.consent }}</p><button type="submit">{{ copy.enable }}</button>
+      </form>
+      {% endif %}
+    </section>
+  </div>
+  <section class="steps" aria-labelledby="steps-title"><h2 id="steps-title">{{ copy.steps }}</h2>
+    <ol><li>{{ copy.step_one }}</li><li>{{ copy.step_two }}</li><li>{{ copy.step_three }}</li></ol>
+  </section>
+  <footer>{{ copy.independence }}</footer>
+</main>
+</body></html>

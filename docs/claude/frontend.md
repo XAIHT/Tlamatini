@@ -10,6 +10,19 @@
 
 > Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
 
+## Remote-Controller account page · 13 November 2026
+
+**Panels → Tlachihuani · Remote-Controller** opens the authenticated local account
+page in a separate tab and stays accessible while chat is busy. Its template and
+scoped stylesheet use the shared tokens, with `dialog_theme.css` last. Enable
+requires the current password; Disable saves local denial before requesting
+service revocation and honestly reports pending retries. Keep the selected
+account and edition visible. This page does not control SCM or approve devices;
+those controls remain in XT. See [the integration contract](../remote-controller.md).
+Keep its `Referrer-Policy: same-origin`: ordinary form submissions must retain the
+same-origin information needed by the explicit origin/CSRF checks. A blanket
+`no-referrer` policy caused real browser forms to send `Origin: null` and fail.
+
 ## Selection and voice in 1.93.5
 
 **Explain selection** captures the editor's current text and ranges at click time. Its dedicated event preserves the composer draft and does not depend on Multi-Turn, ACPX, Compact, Self-modify, Ask Execs, Exec report, Step-by-Step, Internet or Live editor. The response explains the read-only snapshot without asking a tool to reread the whole file. See [canvas](../canvas-editing.md) and [Interactor](../interactor.md).

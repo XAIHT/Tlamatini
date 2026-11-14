@@ -14,6 +14,21 @@
 
 > Latest released version: **[v1.93.5](docs/changes/2026-11-12-v1.93.5.md)**.
 
+## Remote-Controller integration · 13 November 2026
+
+Angela explicitly authorized both main applications. Preserve English/Spanish
+behavioral parity, immutable edition/account identities and Torrenter independence.
+The local account page requires authentication, loopback, same-origin POST, CSRF
+and the current password to enable access. Remote chat reuses AgentConsumer with
+owned cancellation and exact-request execution consent; it must not borrow another
+tab's broker or permit overlapping desktop/remote runs for one account. Keep the
+internal native helper noninteractive and the ordinary main console intact.
+
+Read [Remote-Controller](docs/remote-controller.md) for the source implementation,
+module/migration carriage and dated test limits. Network transport, independently
+trusted delivery, voice and installed end-to-end acceptance remain gates. Do not
+run the destructive main build or change database backup/restore mechanics.
+
 ## v1.93.5 — Canvas selection, continuous voice and correct execution
 
 - **Explain selection** uses the selected unsaved text captured when you click, preserves the chat draft and works with every checkbox combination, including Live editor off. A small selection does not require sending the whole file. [Canvas](docs/canvas-editing.md).

@@ -15,6 +15,8 @@ from django.views.decorators.http import require_POST
 
 from . import views, flow_file_views, model_brain_views, usage_views, terminal_views
 from . import canvas_file_views, interaction_settings, torrenter_views, host_voice_views
+from . import remote_mobile_views
+from . import remote_controller_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
 
 
@@ -29,6 +31,11 @@ def secure_post(view_func):
 
 
 urlpatterns = [
+    path("remote-controller/", remote_controller_views.account, name="remote_controller"),
+    path("mobile/files/", remote_mobile_views.files, name="mobile_files"),
+    path("mobile/canvas/selection/", remote_mobile_views.canvas_selection, name="mobile_canvas_selection"),
+    path("mobile/canvas/save/", remote_mobile_views.canvas_save, name="mobile_canvas_save"),
+    path("remote-controller/session/", remote_controller_views.session_identity, name="remote_controller_identity"),
     path("torrenter/workspace/", torrenter_views.workspace, name="torrenter_workspace"),
     path("torrenter/workspace/session/", torrenter_views.workspace_session),
     path("torrenter/workspace/api/v1/<path:route>", torrenter_views.workspace_api),

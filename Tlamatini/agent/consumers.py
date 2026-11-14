@@ -132,6 +132,8 @@ class AgentConsumer(AsyncWebsocketConsumer):
         return constants.say(template, constants.display_name(user))
 
     async def connect(self):
+        from .remote_controller_guard import register_chat_loop
+        register_chat_loop(asyncio.get_running_loop())
         print("--- WebSocket connect initiated.")
         user = self.scope.get('user')
         if user is None or not user.is_authenticated:
@@ -937,7 +939,23 @@ class AgentConsumer(AsyncWebsocketConsumer):
         print(f"--- [AskExecs] broker registered for user {user_id}")
         return broker
 
-    async def queue_llm_retrieval(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False, interactor_client_id="", canvas_explanation=None):
+    async def queue_llm_retrieval(self, message, conversation_user, *args, **options):
+        # Desktop and Remote-Controller share one account-owned execution lane.
+        from .remote_controller_guard import claim_chat, release_chat
+        self._rc_chat_claim_refused = False
+        if not claim_chat(conversation_user.id, self):
+            self._rc_chat_claim_refused = True
+            await self.channel_layer.group_send(self.room_group_name, {
+                'type': 'agent_message', 'username': 'Tlamatini',
+                'message': 'This account is already answering a request. Wait or cancel that request first.',
+            })
+            return
+        try:
+            return await self._queue_llm_retrieval_owned(message, conversation_user, *args, **options)
+        finally:
+            release_chat(conversation_user.id, self)
+
+    async def _queue_llm_retrieval_owned(self, message, conversation_user, multi_turn_enabled=False, exec_report_enabled=False, acpx_enabled=False, ask_execs_enabled=False, step_by_step_enabled=False, interactor_client_id="", canvas_explanation=None):
         if canvas_explanation is not None:
             multi_turn_enabled = exec_report_enabled = acpx_enabled = ask_execs_enabled = step_by_step_enabled = False
         broker = None
@@ -2166,6 +2184,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 return
 
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):
+                from .remote_controller_guard import chat_busy, owns_chat
+                if chat_busy(user.pk) and not owns_chat(user.pk, self):
+                    await self.agent_message({'username': 'Tlamatini', 'message': 'This account is already answering a request. Wait or cancel that request first.'})
+                    return
                 print("--- User message saved to DB.")
                 greeting_id = await self.save_message(user, message, conversation_user=user)
                 await self.channel_layer.group_send(   # type: ignore
@@ -2181,6 +2203,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 return
             
             from .user_creation_wizard import request_candidate
+            from .remote_controller_guard import chat_busy, owns_chat
+            if chat_busy(user.pk) and not owns_chat(user.pk, self):
+                await self.agent_message({'username': 'Tlamatini', 'message': 'This account is already answering a request. Wait or cancel that request first.'})
+                return
             wizard_candidate = type is None and request_candidate(
                 message, user_id=user.id, multi_turn_enabled=multi_turn_enabled,
             )

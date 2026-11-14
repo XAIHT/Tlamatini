@@ -73,6 +73,7 @@ class ReleaseVersionPinningTests(unittest.TestCase):
                 "REPO_ROOT": root,
                 "DIST": root / "dist",
                 "assert_system_python": Mock(),
+                "validate_migration_dependencies": Mock(return_value=1),
                 "run": Mock(side_effect=dispatch),
                 "assert_self_modify_payload": Mock(),
                 "newest_release_dir": Mock(return_value=root / "dist" / "Tlamatini_Release_v1.89.0"),

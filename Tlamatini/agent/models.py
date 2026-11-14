@@ -10,6 +10,8 @@
 import uuid
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 class AgentMessage(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -118,6 +120,35 @@ class AgentProcess(models.Model):
 class TorrenterProfile(models.Model):
     user = models.OneToOneField(User, primary_key=True, on_delete=models.CASCADE)
     account = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
+
+class RemoteControllerProfile(models.Model):
+    """Explicit account consent and identities independent of Torrenter."""
+    user = models.OneToOneField(User, primary_key=True, on_delete=models.CASCADE)
+    account = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    adapter = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    enabled = models.BooleanField(default=False)
+    binding_id = models.CharField(max_length=32, blank=True, default="")
+
+
+class RemoteControllerRevocation(models.Model):
+    """Durable removal intent, retained after its local user has been deleted."""
+    binding_id = models.CharField(primary_key=True, max_length=32)
+    account = models.UUIDField(editable=False)
+    adapter = models.UUIDField(editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+@receiver(post_delete, sender=RemoteControllerProfile,
+          dispatch_uid="remote_controller_profile_revocation")
+def _remember_deleted_remote_controller_profile(sender, instance, using, **kwargs):
+    # Django emits this inside the deletion transaction. No external service
+    # is contacted, and the intent outlives the deleted account's foreign key.
+    if instance.binding_id:
+        RemoteControllerRevocation.objects.using(using).get_or_create(
+            binding_id=instance.binding_id,
+            defaults={"account": instance.account, "adapter": instance.adapter},
+        )
 
 
 class ChatAgentRun(models.Model):

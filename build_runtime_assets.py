@@ -23,6 +23,7 @@ MAX_RELEASE_ZIP_BYTES = 1_990_000_000  # decimal GB, not GiB; user release ceili
 STATIC_SOURCE = "Tlamatini/agent/static"
 PDFJS = "agent/vendor/pdfjs/"
 REQUIRED_STATIC = (
+    "agent/css/remote_controller.css",
     "agent/js/interaction_settings.js", "agent/js/interaction_speech.js",
     "agent/js/voice_runtime.js", "agent/css/interaction_settings.css",
     # Views must retain the real canvas loaders, divider state and avatar lock.
@@ -87,6 +88,8 @@ SOURCE_TREES = (
     ("security", "security"),
 )
 ROOT_SOURCES = {
+    "docs/remote-controller.md": "docs/remote-controller.md",
+    "Tlamatini/agent/templates/agent/remote_controller.html": "_internal/agent/templates/agent/remote_controller.html",
     "Tlamatini/agent/templates/agent/interactor.html": "_internal/agent/templates/agent/interactor.html",
     "Tlamatini/agent/templates/agent/interaction_settings.html": "_internal/agent/templates/agent/interaction_settings.html",
     "docs/interactor.md": "docs/interactor.md",
@@ -229,6 +232,53 @@ def validate_preservation_contract(repo):
     if not state_dirs or not state_dirs.issubset(expected):
         raise RuntimeError("Runtime-state directories are not covered by the preservation contract")
     return names
+
+
+def validate_migration_dependencies(repo):
+    """Check literal local migration parents without importing Django or any app.
+
+    This is an early source-input check, not a database health check. Django's
+    real migration graph and migrate remain authoritative later in the build.
+    Numeric filenames differ between editions; match the complete node name.
+    """
+    directory = Path(repo) / "Tlamatini/agent/migrations"
+    files = sorted(p for p in directory.glob("*.py") if p.name[0].isdigit())
+    if not files:
+        raise RuntimeError(f"No application migration sources found: {directory}")
+    nodes = {}
+    for path in files:
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        except (OSError, SyntaxError, UnicodeError) as exc:
+            raise RuntimeError(f"Cannot read migration source {path.name}: {exc}") from exc
+        migration = next((n for n in tree.body
+                          if isinstance(n, ast.ClassDef) and n.name == "Migration"), None)
+        if migration is None:
+            raise RuntimeError(f"Migration class missing: {path.name}")
+        nodes[path.stem] = migration
+    missing = []
+    for name, migration in nodes.items():
+        for statement in migration.body:
+            targets = statement.targets if isinstance(statement, ast.Assign) else (
+                [statement.target] if isinstance(statement, ast.AnnAssign) else [])
+            if not any(isinstance(t, ast.Name) and t.id == "dependencies" for t in targets):
+                continue
+            value = statement.value
+            if not isinstance(value, (ast.List, ast.Tuple)):
+                continue  # Dynamic dependencies are checked by Django, never guessed.
+            for entry in value.elts:
+                try:
+                    dependency = ast.literal_eval(entry)
+                except (ValueError, TypeError):
+                    continue  # Includes swappable_dependency(settings.AUTH_USER_MODEL).
+                if (isinstance(dependency, (tuple, list)) and len(dependency) == 2
+                        and dependency[0] == "agent" and isinstance(dependency[1], str)
+                        and dependency[1] not in {"__first__", "__latest__"}
+                        and dependency[1] not in nodes):
+                    missing.append(f"agent.{name} requires missing agent.{dependency[1]}")
+    if missing:
+        raise RuntimeError("Invalid migration dependencies:\n  " + "\n  ".join(missing))
+    return len(nodes)
 
 
 def validate_source_assets(repo, *, check_tracked=True):

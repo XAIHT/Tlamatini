@@ -31,6 +31,7 @@
                         <h1 class="card-title mb-4 big-white-text">Welcome, {{ user.username }}!</h1>
                         <p class="card-text white-text">You have successfully logged in.</p>
                         <div class="entry-actions"><a href="{% url 'agent_page' %}" id="go-to-chat" class="btn btn-primary big-white-text-button">Go to Chat</a>
+                        <a href="{% url 'remote_controller' %}" id="setup-remote-controller" class="btn btn-secondary big-white-text-button">Set up Tlamatini-RC</a>
                         <a href="{% url 'logout' %}" class="btn btn-secondary big-white-text-button">Logout</a></div>
                     </div>
                 </div>
