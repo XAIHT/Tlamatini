@@ -17,6 +17,8 @@ class AgentMessage(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     conversation_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='agent_messages', null=True)
     message = models.TextField()
+    # Trusted parser/tool artifact snapshots; never reconstructed from model HTML.
+    response_files = models.JSONField(default=list, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

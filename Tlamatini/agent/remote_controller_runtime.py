@@ -20,6 +20,7 @@ from .remote_controller_guard import chat_loop, owns_chat, release_chat, reserve
 
 MAX_TEXT_BYTES = 12000
 MAX_PROGRESS_BYTES = 16000
+MAX_RESULT_BYTES = 30000
 
 MODE_DEFAULTS = {
     "multi_turn_enabled": True, "exec_report_enabled": True,
@@ -318,12 +319,34 @@ class RuntimeSession:
                      else _assistant_text(event.get("message")))
             text, truncated = _bounded_text(value)
             payload = {"type": "message", "text": text, "truncated": truncated}
+            # The desktop history already owns the canonical HTML formatting.
+            # Keep it intact instead of asking RC to reinterpret raw Markdown.
+            from .remote_response_files import content_ticket, render_response
+            rendered = await asyncio.to_thread(render_response, self.user.pk,
+                                               message_id if final else None,
+                                               str(event.get("message") or ""))
+            rich = {**payload, "format": "html", "html": rendered, "truncated": False}
+            if _wire_size(rich) <= MAX_RESULT_BYTES - 1024:
+                payload = rich
+            else:
+                payload["truncated"] = True
+                ticket = await asyncio.to_thread(content_ticket, self.user.pk,
+                                                     message_id if final else None,
+                                                     str(event.get("message") or ""))
+                if ticket:
+                    payload["content_ticket"] = ticket
             if final:
                 payload["message_id"] = message_id
                 self._final_message = dict(payload)
                 self._source_answer = None
             self._immediate_message = dict(payload)
-            await self._emit(payload)
+            # Progress has a smaller envelope. Never slice HTML mid-tag.
+            progress = dict(payload)
+            if _wire_size(progress) > MAX_PROGRESS_BYTES - 512:
+                progress.pop("html", None)
+                progress.pop("format", None)
+                progress["truncated"] = True
+            await self._emit(progress)
 
     async def respond_permission(self, request_id: str, decision: str) -> bool:
         if (self._closed or self._cancel_requested or decision not in {"proceed", "deny"}
@@ -452,6 +475,8 @@ class RuntimeSession:
                 raise RuntimeFault("chat_no_answer")
             self.status = "completed"
             return {"text": answer["text"], "truncated": answer["truncated"],
+                    **({"html": answer["html"], "format": "html"} if "html" in answer else {}),
+                    **({"content_ticket": answer["content_ticket"]} if "content_ticket" in answer else {}),
                     "message_id": answer.get("message_id"), "cancelled": False,
                     "options": dict(self.options)}
         except asyncio.CancelledError:

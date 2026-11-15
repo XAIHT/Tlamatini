@@ -149,9 +149,9 @@ automatic redispatch; the owning adapter may reconcile its actual result later.
 
 `remote_controller_runtime.py` reuses `AgentConsumer`, with the ownership guard in
 `remote_controller_guard.py`. Remote chat forwards the six explicitly selected
-execution modes. The owned channel also captures the original model answer
-before rich rendering, preserving literal markup as inert text while retaining
-system-report and denial text. The normal rich message remains unchanged.
+execution modes. The owned channel retains a literal-text fallback and forwards the same prepared
+HTML used by the main chat history. RC sanitizes active markup while preserving
+response presentation and the separate execution report.
 Only the owned consumer's output is forwarded. Runtime/source packaging must carry
 these modules, `services/response_parser.py`, the profile
 migration, page/styles and this guide together.
@@ -179,3 +179,23 @@ uninstall with 1,475 matching runtime files. English retains the tested `0255`
 runtime; Spanish was updated to `spanish-20261114-0457` after a one-shot Spanish
 instruction-recognition fix (247/247 Spanish source checks). See the installed
 acceptance record above for exact build identities, provenance and deferred LAN work.
+
+## Rich RC responses and downloads · 14 November 2026
+
+RC uses the main chat’s formatted response for live replies and loaded history.
+On RC, choose **Save file** to download a response attachment to the device using
+the browser. This replaces **Load in canvas** on the mobile workspace as well.
+A failed download remains retryable; loading recent conversation refreshes expired
+links. The download limit is 64 MiB.
+
+Migration 0225_remote_response_files adds trusted attachment records to saved
+messages. Generated programs/snippets and supported successful file-producing
+tools supply exact identities and SHA-256 snapshots. A model-written link or file
+name is not permission. Legacy attachments without ownership records must be
+regenerated. Files that changed after the response are refused. Neither database
+backup/restore nor Torrenter lifetime is changed.
+
+Package remote_response_files.py, the migration, response parser, tool-result
+hooks and matching Tlachihuani RC assets together. Rebuild/install the main
+English/Spanish applications before the matching controller. Source evidence is
+in C:/Development/XAIHT/repo/Tlachihuani/docs/verification/2026-11-14-rc-rich-responses.md.

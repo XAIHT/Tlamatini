@@ -197,11 +197,23 @@ def _history(profile):
             item = {"id": row.pk, "text": text,
                     "role": "assistant" if assistant else "user",
                     "created_at": row.timestamp.isoformat()}
+            if assistant:
+                from .remote_response_files import content_ticket, render_response
+                rendered = render_response(profile.user_id, row.pk, row.message,
+                                           row=row, profile=current)
+                rich = {**item, "format": "html", "html": rendered}
+                if _wire_size(rich) <= 18000:
+                    item = rich
+                    cut = False
+                else:
+                    cut = True
+                    item["content_ticket"] = content_ticket(profile.user_id, row.pk, row.message, profile=current)
+            item["truncated"] = cut
             if _wire_size({"messages": messages + [item], "truncated": True}) > 24000:
                 truncated = True
                 break
             messages.append(item)
-            truncated = truncated or cut
+            truncated = truncated or (cut and "content_ticket" not in item)
         messages.reverse()
         return {"messages": messages, "truncated": truncated}
     finally:

@@ -29,8 +29,10 @@ _LOG_FULL_ANSWERS = (
 
 # Database operations wrapped for async
 @sync_to_async
-def save_message(user, message, conversation_user=None):
-    return AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message).pk  # message_id for the Drop button
+def save_message(user, message, conversation_user=None, response_files=None):
+    from ..remote_response_files import record_artifacts
+    artifacts = record_artifacts(response_files or [])
+    return AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message, response_files=artifacts).pk  # message_id for the Drop button
 
 # ── NAME-COLLISION GUARD (Angela, 2026-09-06) ────────────────────────────────
 # Program / snippet names are built as `<UTC timestamp to the SECOND>_<name>`
@@ -454,6 +456,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     Process the LLM response: extract snippets/programs, save to DB, clean response, and broadcast.
     """
     source_response = llm_response
+    generated_artifacts = []
     if _LOG_FULL_ANSWERS:
         print("\n--- The Original LLM response is: <<<<<\n"+llm_response+"\n>>>>>")
     else:
@@ -469,6 +472,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         snippetName = get_time_stamp() + "_" + snippetLanguage + extension
         if persist_artifacts:
             snippetName = _resolved_name(snippetName, await save_snippet(snippetName, snippetLanguage, snippetContent))
+            generated_artifacts.append({"kind": "snippet", "name": snippetName, "content": snippetContent})
             print("\n--- Saved snippet: "+snippetName)
 
         # ALWAYS escape HTML entities for display to prevent browser rendering of tags
@@ -518,6 +522,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             finalProgramName = get_time_stamp() + "_" + programName
             
             finalProgramName = _resolved_name(finalProgramName, await save_program(finalProgramName, lang, program2Save))
+            generated_artifacts.append({"kind": "program", "name": finalProgramName, "content": program2Save})
             if rag_chain:
                 rag_chain.setLastProgramName(finalProgramName)
             print("\n--- Saved program: "+finalProgramName)
@@ -532,6 +537,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             finalProgramName = get_time_stamp() + "_" + programName
             
             finalProgramName = _resolved_name(finalProgramName, await save_program(finalProgramName, 'by-extension', program2Save))
+            generated_artifacts.append({"kind": "program", "name": finalProgramName, "content": program2Save})
             if rag_chain:
                 rag_chain.setLastProgramName(finalProgramName)
             print("\n--- Saved program: "+finalProgramName)
@@ -559,6 +565,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
             contentInner = programCodeInAposLang.group(2)
             program2Save = contentInner.replace('```', '')
             programName = _resolved_name(programName, await save_program(programName, programCodeInAposLang.group(1), program2Save))
+            generated_artifacts.append({"kind": "program", "name": programName, "content": program2Save})
             if rag_chain:
                 rag_chain.setLastProgramName(programName)
             print("\n--- Saved program: "+programName)
@@ -566,6 +573,7 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
         else:
             program2Save = programContent.replace('```', '')
             programName = _resolved_name(programName, await save_program(programName, 'by-extension', program2Save))
+            generated_artifacts.append({"kind": "program", "name": programName, "content": program2Save})
             if rag_chain:
                 rag_chain.setLastProgramName(programName)
             print("\n--- Saved program: "+programName)
@@ -667,7 +675,12 @@ async def process_llm_response(llm_response, rag_chain, channel_layer, room_grou
     # independently of the SUCCESS/FAILURE verdict above.
     print("\n--- We take the parsed/processed response by the LLM and save it to the DB")
     bot_user, _ = await get_or_create_bot_user()
-    answer_message_id = await save_message(bot_user, llm_response, conversation_user=conversation_user)
+    # Only executor-captured successful outputs can grant file download access.
+    for tool_call in tool_calls_log or []:
+        if isinstance(tool_call, dict) and tool_call.get("success") is True:
+            generated_artifacts.extend(tool_call.get("response_files") or [])
+    answer_message_id = await save_message(bot_user, llm_response, conversation_user=conversation_user,
+                                           response_files=generated_artifacts)
 
     if channel_layer:
         # The owned RC transport displays inert text. Give it the original

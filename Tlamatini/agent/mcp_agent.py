@@ -1376,11 +1376,26 @@ class MultiTurnToolAgentExecutor:
 
         display_name = _tool_name_to_agent_display(tool_name)
         if display_name is not None:
+            # Only actual successful structured tool output can authorize a
+            # received file. Model prose, supplied arguments and guessed paths
+            # are never attachment authority. The helper pins exact file bytes
+            # now; response_parser binds that snapshot to the owning message.
+            response_files = []
+            if call_success:
+                try:
+                    from .remote_response_files import capture_tool_files
+                    parsed_result = result if isinstance(result, dict) else json.loads(result_str)
+                    if isinstance(parsed_result, dict):
+                        response_files = capture_tool_files(tool_name, parsed_result)
+                except Exception as exc:  # Missing attachments must not lose a chat answer.
+                    logger.warning("Response file capture unavailable for %s (%s)",
+                                   tool_name, type(exc).__name__)
             self._tool_calls_log.append({
                 "tool_name": tool_name,
                 "args": dict(tool_input) if isinstance(tool_input, dict) else {},
                 "success": call_success,
                 "agent_display_name": display_name,
+                "response_files": response_files,
             })
 
         # ── Exec report capture ──

@@ -1566,6 +1566,7 @@ def _find_missing_required_config_paths(config, config_path, agent_script_path):
 # Multi-Turn LLM see e.g. ``output_path`` as a first-class field instead
 # of having to grep the log_excerpt for a saved-file path.
 _PROMOTE_SECTION_FIELDS_BY_TEMPLATE_DIR: dict = {
+    "file_creator": ("output_path", "bytes", "output_sha256", "status"),
     "shoter": ("output_path", "output_dir", "filename", "all_screens", "coordinate_space",
                "capture_left", "capture_top", "capture_width", "capture_height",
                "image_width", "image_height", "captured_at", "monitors_json"),

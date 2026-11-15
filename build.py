@@ -509,7 +509,9 @@ _FROZEN_TERMINATER_MODULES = (
 _FROZEN_REMOTE_CONTROLLER_MODULES = (
     "agent.remote_controller_views", "agent.remote_controller_bridge",
     "agent.remote_controller_runtime", "agent.remote_controller_guard",
+    "agent.remote_response_files",
     "agent.migrations.0224_remote_controller",
+    "agent.migrations.0225_response_files",
 )
 
 _FROZEN_TORRENTER_MODULES = (

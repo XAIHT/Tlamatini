@@ -898,7 +898,7 @@ class ConversationHistoryTests(TestCase):
     @staticmethod
     def row(key, text, username="Account one"):
         return SimpleNamespace(pk=key, message=text, user=SimpleNamespace(username=username),
-                               timestamp=datetime(2026, 11, 13, tzinfo=timezone.utc))
+                               conversation_user_id=1, response_files=[], timestamp=datetime(2026, 11, 13, tzinfo=timezone.utc))
 
     def test_history_queries_only_own_conversation(self):
         self.rows = [self.row(2, "Reply", "Tlamatini"), self.row(1, "Question")]

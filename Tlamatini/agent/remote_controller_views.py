@@ -33,7 +33,7 @@ TEXT = {
     "pending": "Remote access is disabled here. Service revocation will finish when Remote-Controller is reachable.",
     "enabled_help": "Approved devices can use the permissions you grant in XT. Remote chat uses this account’s history and execution approvals.",
     "disabled_help": "Enable this account before creating a device invitation in XT.",
-    "password": "Confirm your current Tlamatini password", "enable": "Enable this account",
+    "password": "<REDACTED>", "enable": "Enable this account",
     "disable": "Disable remote access", "retry": "Retry service revocation",
     "consent": "Enabling makes this account available in XT. It does not approve a device or start a service.",
     "disable_help": "Disabling cancels this account’s remote work and revokes its device access. Tlamatini stays open.",

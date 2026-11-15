@@ -129,6 +129,14 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.answer = "A real consumer fixture reply."
         self.source_answer = None
         self.system_html = ''
+        from . import remote_response_files
+        for name, replacement in {
+            "_profile": lambda uid: types.SimpleNamespace(user_id=uid, account=uuid.UUID(int=1), binding_id="2" * 32),
+            "_message": lambda uid, mid: types.SimpleNamespace(pk=mid, conversation_user_id=uid, message=self.answer, response_files=[]),
+        }.items():
+            patcher = patch.object(remote_response_files, name, side_effect=replacement)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.permission_id = "a" * 32
         self.broker = _Broker()
         case = self
@@ -260,10 +268,11 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         _, answer = await self.run_session()
         self.assertEqual(answer['text'], '<b>safe</b>\nDone\nExecution interrupted')
 
-    async def test_source_answer_remains_wire_bounded(self):
+    async def test_long_plain_fallback_does_not_mark_complete_html_truncated(self):
         self.source_answer = '<>&' * 12000 + '\nEND-RESPONSE'
         _, answer = await self.run_session()
-        self.assertTrue(answer['truncated'])
+        self.assertFalse(answer['truncated'])
+        self.assertEqual(answer['html'], self.answer)
         self.assertLessEqual(runtime._wire_size(answer['text']), runtime.MAX_TEXT_BYTES)
 
     async def test_source_answer_from_foreign_room_is_ignored(self):

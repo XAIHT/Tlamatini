@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 
 from . import views, flow_file_views, model_brain_views, usage_views, terminal_views
 from . import canvas_file_views, interaction_settings, torrenter_views, host_voice_views
+from . import remote_response_files
 from . import remote_mobile_views
 from . import remote_controller_views
 from .pdf_context_views import prepare_pdf_context_view, pdf_context_status_view, cancel_pdf_context_view
@@ -31,6 +32,9 @@ def secure_post(view_func):
 
 
 urlpatterns = [
+    path("remote-controller/response-content/", remote_response_files.response_content, name="remote_response_content"),
+    path("mobile/response-file/", secure_get(remote_response_files.mobile_download), name="mobile_response_file"),
+    path("remote-controller/response-file/", remote_response_files.download, name="remote_response_file"),
     path("remote-controller/", remote_controller_views.account, name="remote_controller"),
     path("mobile/files/", remote_mobile_views.files, name="mobile_files"),
     path("mobile/canvas/selection/", remote_mobile_views.canvas_selection, name="mobile_canvas_selection"),

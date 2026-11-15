@@ -58,7 +58,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
             request = self.factory.get("/remote-controller/", HTTP_HOST="127.0.0.1:8000",
                                        REMOTE_ADDR=address)
         else:
-            payload = data if data is not None else {"action": action, "password": "current-secret"}
+            payload = data if data is not None else {"action": action, "password": "rc-unit-test-only"}
             request = self.factory.generic(
                 method or "POST", "/remote-controller/", urlencode(payload, doseq=True),
                 content_type="application/x-www-form-urlencoded", HTTP_HOST="127.0.0.1:8000",
@@ -126,7 +126,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
     def test_enable_confirms_current_password_and_owns_binding(self):
         response = views.account(self.request("enable"))
         self.assertEqual(response.status_code, 200)
-        self.user.check_password.assert_called_once_with("current-secret")
+        self.user.check_password.assert_called_once_with("rc-unit-test-only")
         self.bind.assert_called_once_with(self.profile)
         self.assertTrue(self.profile.enabled)
         self.assertEqual(self.profile.binding_id, "1" * 32)
@@ -149,7 +149,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
         self.user.check_password.assert_not_called()
 
     def test_oversized_password_is_refused_before_hashing(self):
-        response = views.account(self.request("enable", data={"action": "enable", "password": "a" * 4097}))
+        response = views.account(self.request("enable", data={"action": "enable", "password": "<REDACTED>" * 4097}))
         self.assertEqual(response.status_code, 403)
         self.user.check_password.assert_not_called()
         self.bind.assert_not_called()
@@ -186,12 +186,12 @@ class RemoteControllerAccountTests(SimpleTestCase):
         self.unbind.assert_not_called()
 
     def test_browser_cannot_select_another_account(self):
-        data = {"action": "enable", "password": "current-secret", "account_id": "2" * 32}
+        data = {"action": "enable", "password": "<REDACTED>", "account_id": "2" * 32}
         self.assertEqual(views.account(self.request("enable", data=data)).status_code, 400)
         self.bind.assert_not_called()
 
     def test_duplicate_action_is_refused(self):
-        data = {"action": ["enable", "disable"], "password": "current-secret"}
+        data = {"action": ["enable", "disable"], "password": "<REDACTED>"}
         self.assertEqual(views.account(self.request("enable", data=data)).status_code, 400)
         self.bind.assert_not_called()
 
@@ -267,7 +267,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
         self.bind.assert_not_called()
 
     def test_body_bound_is_enforced(self):
-        data = {"action": "enable", "password": "a" * 8200}
+        data = {"action": "enable", "password": "<REDACTED>" * 8200}
         self.assertEqual(views.account(self.request("enable", data=data)).status_code, 403)
         self.user.check_password.assert_not_called()
 
