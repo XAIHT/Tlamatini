@@ -633,7 +633,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         display_name="Talker",
         purpose=(
             "TEXT-TO-SPEECH (TTS): SPEAK text aloud through the speakers using an OLLAMA "
-            "connection that runs a neural TTS model (default Orpheus-3b-FT). Use it for 'say "
+            "connection that runs a neural TTS model (default legraphista/Orpheus:latest). Use it for 'say "
             "this out loud', 'read this aloud', 'speak <text>', 'pronounce <word>', 'voice this "
             "in Spanish', 'read it back with a laugh'. The synthesis sibling of the media family "
             "— chat_agent_audioplayer plays an existing FILE, Talker GENERATES speech from text. "
@@ -659,7 +659,7 @@ WRAPPED_CHAT_AGENT_SPECS: tuple[ChatWrappedAgentSpec, ...] = (
         example_request=(
             "Speak 'Hello, welcome to Tlamatini' out loud, OR speak with "
             "input_text='Bienvenue', voice='leah', language='fr', emotion='laugh', "
-            "volume_percent=120 and model='Orpheus-3b-FT' (FEMALE voices only — a male "
+            "volume_percent=120 and model='legraphista/Orpheus:latest' (FEMALE voices only — a male "
             "voice is forbidden by design)"
         ),
         aliases=("talker", "speak", "say", "text to speech", "tts", "read aloud", "pronounce", "voice"),

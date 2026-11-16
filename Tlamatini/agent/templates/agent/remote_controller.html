@@ -4,9 +4,9 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ copy.title }} · Tlachihuani · Tlamatini</title>
-  <link rel="stylesheet" href="{% static 'agent/css/ui_tokens.css' %}">
-  <link rel="stylesheet" href="{% static 'agent/css/remote_controller.css' %}">
-  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}">
+  <link rel="stylesheet" href="{% static 'agent/css/ui_tokens.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/remote_controller.css' %}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{% static 'agent/css/dialog_theme.css' %}?v={{ STATIC_VERSION }}">
 </head>
 <body>
 <main>
@@ -18,7 +18,7 @@
     <section aria-labelledby="service-title">
       <p class="eyebrow">TLACHIHUANI-RC SERVER</p><h2 id="service-title">{{ copy.service }}</h2>
       <p class="state {% if service_ready %}active{% endif %}" id="service-state">{{ service_label }}</p>
-      <p>Right-click the XT icon → Remote-Controller to start, stop or restart the server.</p><p class="muted">{{ copy.local_profile }}</p>
+      <p>{{ copy.service_help }}</p><p class="muted">{{ copy.local_profile }}</p>
     </section>
     <section aria-labelledby="account-title">
       <p class="eyebrow">{{ copy.edition }}</p><h2 id="account-title">{{ copy.account }}</h2>
@@ -37,7 +37,7 @@
       <form method="post">{% csrf_token %}<input type="hidden" name="action" value="disable"><button class="secondary" type="submit">{{ copy.retry }}</button></form>
       {% endif %}
       <form method="post" autocomplete="off">{% csrf_token %}<input type="hidden" name="action" value="enable">
-        <label for="current-password">{{ copy.password }}</label>
+        <label for="current-password">{{ copy.password_label }}</label>
         <input id="current-password" type="password" name="password" autocomplete="current-password" maxlength="4096" required aria-describedby="consent">
         <p class="muted" id="consent">{{ copy.consent }}</p><button type="submit">{{ copy.enable }}</button>
       </form>

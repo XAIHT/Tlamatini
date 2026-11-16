@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # TEXT-TO-SPEECH (TTS): speaks `input_text` aloud through a system audio OUTPUT
 # device (speakers) by driving an OLLAMA connection that runs a neural TTS model
-# (default `Orpheus-3b-FT`). The model emits audio *tokens*; Talker decodes them
+# (default `legraphista/Orpheus:latest`). The model emits audio *tokens*; Talker decodes them
 # to a 24 kHz waveform with the SNAC neural codec, saves a WAV, and plays it.
 #
 # The "voice" sibling of the media-I/O family: Shoter = screen, Camcorder =
@@ -30,9 +30,9 @@ ollama_url: "http://localhost:11434"
 # Empty ("") sends no Authorization header (a plain local Ollama needs none).
 ollama_token: ""
 
-# The TTS model to run in Ollama. DEFAULT `Orpheus-3b-FT`. The canonical
+# The TTS model to run in Ollama. DEFAULT `legraphista/Orpheus:latest`. The canonical
 # Ollama registry tags for this model (legraphista/Orpheus) are:
-#   legraphista/Orpheus:latest        (~2.4 GB, q4_k_m)
+#   legraphista/Orpheus:latest        (~2.4 GB, q4_k_m; the default)
 #   legraphista/Orpheus:3b-ft-q8      (~4.0 GB, highest quality)
 #   legraphista/Orpheus:3b-ft-q4_k_m  (~2.4 GB, balanced)
 #   legraphista/Orpheus:3b-ft-q2_k    (~1.6 GB, smallest)

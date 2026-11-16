@@ -323,12 +323,41 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.last_frame)
         self.assertFalse(guard.chat_busy(self.user.pk))
 
+    async def test_unchanged_self_modify_choice_does_not_rewrite_the_setting(self):
+        for enabled in (False, True):
+            writes = []
+            setting = types.SimpleNamespace(
+                state=lambda enabled=enabled: {"self_modify": enabled, "self_modify_available": True,
+                                               "self_modify_locked": False},
+                set_self_modify=lambda value, reason, writes=writes: writes.append(value) or {"ok": True},
+            )
+            with self.subTest(enabled=enabled), patch.dict(sys.modules, {"agent.compact_mode": setting}):
+                session = runtime.RuntimeSession(self.user, self.collect, {"self_modify_enabled": enabled})
+                answer = await session.run("Keep the current self modification choice")
+                self.assertEqual(writes, [])
+                self.assertIs(answer["options"]["self_modify_enabled"], enabled)
+
+    async def test_changed_self_modify_choice_is_written_once(self):
+        writes = []
+        setting = types.SimpleNamespace(
+            state=lambda: {"self_modify": False, "self_modify_available": True, "self_modify_locked": False},
+            set_self_modify=lambda value, reason: writes.append((value, reason)) or {"ok": True},
+        )
+        with patch.dict(sys.modules, {"agent.compact_mode": setting}):
+            session = runtime.RuntimeSession(self.user, self.collect, {"self_modify_enabled": True})
+            await session.run("Turn self modification on")
+        self.assertEqual(writes, [(True, f"Remote-Controller user {self.user.pk}")])
+
     def test_mode_validation_rejects_unknown_or_nonboolean_fields(self):
         for invalid in ({"command": "anything"}, {"acpx_enabled": "false"}, {"multi_turn_enabled": 1}, [], True):
             with self.subTest(invalid=invalid), self.assertRaises(runtime.RuntimeFault):
                 runtime.execution_options(invalid)
         with self.assertRaisesRegex(runtime.RuntimeFault, "multiturn_required"):
             runtime.execution_options({"multi_turn_enabled": False, "acpx_enabled": True})
+        # Step-by-step paces a Multi-Turn run, exactly as on the desktop.
+        with self.assertRaisesRegex(runtime.RuntimeFault, "multiturn_required"):
+            runtime.execution_options({"multi_turn_enabled": False, "step_by_step_enabled": True})
+        self.assertFalse(runtime.execution_options({"multi_turn_enabled": False})["step_by_step_enabled"])
 
     async def test_original_positional_queue_api_keeps_remote_permission_flags(self):
         self.behavior = "positional"

@@ -37,7 +37,8 @@ def execution_options(value=None):
         raise RuntimeFault("invalid_execution_options")
     result = {**MODE_DEFAULTS, **value}
     if not result["multi_turn_enabled"]:
-        for key in ("exec_report_enabled", "acpx_enabled", "ask_execs_enabled"):
+        for key in ("exec_report_enabled", "acpx_enabled", "ask_execs_enabled",
+                    "step_by_step_enabled"):
             if value.get(key) is True:
                 raise RuntimeFault("multiturn_required")
             result[key] = False
@@ -312,6 +313,14 @@ class RuntimeSession:
             else:
                 self._permission_ids.add(request_id)
             await self._emit(safe)
+        elif kind == "exec_permission_resolved":
+            detail = event.get("detail") or {}
+            request_id, decision = detail.get("request_id"), detail.get("decision")
+            if (isinstance(request_id, str) and re.fullmatch(r"[0-9a-f]{32}", request_id)
+                    and decision in {"proceed", "deny"}):
+                self._permission_ids.discard(request_id)
+                await self._emit({"type": "permission", "request_id": request_id,
+                                  "decision": decision})
         elif kind == "agent_message" and event.get("username") == "Tlamatini":
             message_id = event.get("message_id")
             final = isinstance(message_id, int) and not isinstance(message_id, bool) and message_id > 0
@@ -400,12 +409,22 @@ class RuntimeSession:
             raise RuntimeFault("account_busy")
         if "self_modify_enabled" in self.options:
             from . import compact_mode
-            changed = await asyncio.to_thread(
-                compact_mode.set_self_modify, self.options["self_modify_enabled"],
-                f"Remote-Controller user {self.user.pk}",
-            )
-            if not changed.get("ok"):
-                raise RuntimeFault("self_modify_" + str(changed.get("refused") or "unavailable"))
+            wanted = self.options["self_modify_enabled"]
+            observe = getattr(compact_mode, "state", None)
+            current = await asyncio.to_thread(observe) if callable(observe) else None
+            # Write the shared desktop switch only when this request changes
+            # it. A choice that is already in effect must not rewrite it.
+            unchanged = (isinstance(current, dict)
+                         and bool(current.get("self_modify")) is wanted
+                         and (not wanted or (current.get("self_modify_available")
+                                             and not current.get("self_modify_locked"))))
+            if not unchanged:
+                changed = await asyncio.to_thread(
+                    compact_mode.set_self_modify, wanted,
+                    f"Remote-Controller user {self.user.pk}",
+                )
+                if not changed.get("ok"):
+                    raise RuntimeFault("self_modify_" + str(changed.get("refused") or "unavailable"))
         consumer.rag_chain = global_state.get_state(f"rag_chain_{self.user.pk}")
         if consumer.rag_chain is None:
             session_state = await consumer.get_session_state(self.user)

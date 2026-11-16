@@ -924,16 +924,45 @@ class AgentConsumer(AsyncWebsocketConsumer):
         channel_layer = self.channel_layer
         room_group_name = self.room_group_name
 
+        # Slow is not "no" (2026-11-16): a busy server still delivers the prompt,
+        # so execution keeps waiting for the answer. Only a delivery that really
+        # fails denies this exact request.
+        delivery_seconds = getattr(self, 'EXEC_PROMPT_DELIVERY_SECONDS', 30.0)
+
         def emit(detail):
-            asyncio.run_coroutine_threadsafe(
+            import concurrent.futures
+            delivery = asyncio.run_coroutine_threadsafe(
                 channel_layer.group_send(
                     room_group_name,
                     {'type': 'exec_permission_request', 'detail': detail},
                 ),
                 loop,
             )
+            try:
+                delivery.result(timeout=delivery_seconds)
+            except concurrent.futures.TimeoutError:
+                request_id = (detail or {}).get('request_id')
+                print("--- [AskExecs] approval prompt is slow to reach the browser; still waiting for the answer")
 
-        broker = ExecPermissionBroker(emit, run_user_id=user_id, run_epoch=run_epoch)
+                def deny_if_undelivered(future):
+                    if future.cancelled() or future.exception() is not None:
+                        print("--- [AskExecs] approval prompt never reached the browser; denying it")
+                        broker.resolve(request_id, 'deny')
+                delivery.add_done_callback(deny_if_undelivered)
+
+        def on_resolved(detail):
+            # request_permission runs in the executor thread. Finish delivery
+            # before another tool opens an approval or the run completes.
+            asyncio.run_coroutine_threadsafe(
+                channel_layer.group_send(
+                    room_group_name,
+                    {'type': 'exec_permission_resolved', 'detail': detail},
+                ),
+                loop,
+            ).result(timeout=5)
+
+        broker = ExecPermissionBroker(emit, run_user_id=user_id, run_epoch=run_epoch,
+                                      on_resolved=on_resolved)
         register_broker(user_id, broker)
         self._active_broker = broker
         print(f"--- [AskExecs] broker registered for user {user_id}")
@@ -945,9 +974,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
         self._rc_chat_claim_refused = False
         if not claim_chat(conversation_user.id, self):
             self._rc_chat_claim_refused = True
-            await self.channel_layer.group_send(self.room_group_name, {
-                'type': 'agent_message', 'username': 'Tlamatini',
-                'message': 'This account is already answering a request. Wait or cancel that request first.',
+            # Tell only the tab that asked. The tab that is answering keeps
+            # its own busy state instead of receiving a final-looking line.
+            await self.agent_message({
+                'username': 'Tlamatini', 'message': self._say(constants.MSG_ACCOUNT_BUSY),
             })
             return
         try:
@@ -1410,6 +1440,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
             }))
         except Exception as e:
             print(f"Error in exec_permission_request: {e}")
+
+    async def exec_permission_resolved(self, event):
+        """Retire only the matching approval in every tab of this account."""
+        await self.send(text_data=json.dumps({
+            'type': 'exec-permission-resolved',
+            'detail': event.get('detail') or {},
+        }))
 
     async def _tier2_orphan_sweep(self, tier1_survivors):
         """Post-answer orphan-process sweep + user notification.
@@ -2186,7 +2223,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             if re.match(constants.REGEX_GREETING, message, flags=re.IGNORECASE):
                 from .remote_controller_guard import chat_busy, owns_chat
                 if chat_busy(user.pk) and not owns_chat(user.pk, self):
-                    await self.agent_message({'username': 'Tlamatini', 'message': 'This account is already answering a request. Wait or cancel that request first.'})
+                    await self.agent_message({'username': 'Tlamatini', 'message': self._say(constants.MSG_ACCOUNT_BUSY)})
                     return
                 print("--- User message saved to DB.")
                 greeting_id = await self.save_message(user, message, conversation_user=user)
@@ -2205,7 +2242,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
             from .user_creation_wizard import request_candidate
             from .remote_controller_guard import chat_busy, owns_chat
             if chat_busy(user.pk) and not owns_chat(user.pk, self):
-                await self.agent_message({'username': 'Tlamatini', 'message': 'This account is already answering a request. Wait or cancel that request first.'})
+                await self.agent_message({'username': 'Tlamatini', 'message': self._say(constants.MSG_ACCOUNT_BUSY)})
                 return
             wizard_candidate = type is None and request_candidate(
                 message, user_id=user.id, multi_turn_enabled=multi_turn_enabled,

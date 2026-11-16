@@ -41,7 +41,7 @@ Config → Live Editor & Terminater (v1.91.0) adds account interaction preferenc
 | Ender (`ender`) | 3 | 0 | 0: `output_agents` | ordinary |
 | ESP32er (`esp32er`) | 22 | 10 | 0: `target_agents` | ordinary |
 | ESPHomer (`esphomer`) | 21 | 10 | 0: `target_agents` | ordinary |
-| Executer (`executer`) | 5 | 0 | 0: `target_agents` | ordinary |
+| Executer (`executer`) | 6 | 0 | 0: `target_agents` | ordinary |
 | File-Creator (`file_creator`) | 6 | 0 | 0: `target_agents` | ordinary |
 | File-Extractor (`file_extractor`) | 8 | 2 | 0: `target_agents` | ordinary |
 | File-Interpreter (`file_interpreter`) | 7 | 3 | 0: `target_agents` | ordinary |
@@ -98,7 +98,7 @@ Config → Live Editor & Terminater (v1.91.0) adds account interaction preferenc
 | Telegrammer (`telegrammer`) | 11 | 6 | 0: `target_agents` | ordinary |
 | TeleTlamatini (`teletlamatini`) | 6 | 0 | 0: `target_agents` | long_running |
 | Terminater (`terminater`) | 42 | 31 | 0: `target_agents` | ordinary |
-| Torrenter (`torrenter`) | 4 | 15 | 0: `target_agents` | ordinary |
+| Torrenter (`torrenter`) | 5 | 15 | 0: `target_agents` | ordinary |
 | Unrealer (`unrealer`) | 8 | 6 | 0: `target_agents` | ordinary |
 | Video-Analyzer (`video_analyzer`) | 27 | 30 | 0: `target_agents` | ordinary |
 | VideoPlayer (`videoplayer`) | 10 | 22 | 0: `target_agents` | ordinary |

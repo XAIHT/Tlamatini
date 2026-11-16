@@ -75,8 +75,10 @@ class ExecPermissionBroker:
     _WAIT_TICK_SECONDS = 0.25
 
     def __init__(self, emit: Callable[[Dict[str, Any]], None],
-                 run_user_id: Any = None, run_epoch: Optional[int] = None):
+                 run_user_id: Any = None, run_epoch: Optional[int] = None,
+                 on_resolved: Optional[Callable[[Dict[str, Any]], None]] = None):
         self._emit = emit
+        self._on_resolved = on_resolved
         # This run's cancellation identity (Angela, 2026-07-14). Both default to None
         # → legacy boolean-only behaviour, so existing constructions/tests are
         # unaffected. Without them a Cancel raised WHILE a Proceed/Deny prompt is
@@ -117,30 +119,30 @@ class ExecPermissionBroker:
 
         payload = dict(detail or {})
         payload["request_id"] = request_id
+        decision = "deny"
         try:
-            self._emit(payload)
-        except Exception as exc:  # noqa: BLE001 — emit must never raise into executor
-            logger.error("[ExecPermissionBroker] emit failed (%s); denying.", exc)
-            with self._lock:
-                self._pending.pop(request_id, None)
-            return "deny"
-
-        try:
+            try:
+                self._emit(payload)
+            except Exception as exc:  # noqa: BLE001
+                logger.error("[ExecPermissionBroker] emit failed (%s); denying.", exc)
+                return decision
             while True:
                 if pending.event.wait(self._WAIT_TICK_SECONDS):
-                    break
-                # Wake periodically to honour a mid-flight Cancel or a close.
+                    with self._lock:
+                        decision = pending.decision or "deny"
+                    return decision
                 if is_generation_cancelled(self._run_user_id, self._run_epoch):
-                    logger.info("[ExecPermissionBroker] cancel detected; denying %s", request_id)
-                    return "deny"
-                with self._lock:
-                    if self._closed:
-                        return "deny"
+                    self.resolve(request_id, "deny")
         finally:
             with self._lock:
                 self._pending.pop(request_id, None)
-
-        return pending.decision or "deny"
+            # Retire this exact prompt in every observing window before execution
+            # resumes, including denial, cancellation and request teardown.
+            if self._on_resolved is not None:
+                try:
+                    self._on_resolved({"request_id": request_id, "decision": decision})
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("[ExecPermissionBroker] resolution notification failed: %s", exc)
 
     def resolve(self, request_id: str, decision: str) -> bool:
         """Resolve a pending request from the browser's response frame.
@@ -150,7 +152,7 @@ class ExecPermissionBroker:
         normalized = "proceed" if str(decision).strip().lower() == "proceed" else "deny"
         with self._lock:
             pending = self._pending.get(request_id)
-            if pending is None:
+            if self._closed or pending is None or pending.decision is not None:
                 return False
             pending.decision = normalized
             pending.event.set()
@@ -174,25 +176,20 @@ class ExecPermissionBroker:
             self._auto_proceed = bool(enabled)
             if not self._auto_proceed:
                 return
-            pending_items = list(self._pending.values())
-        # Unblock anything already waiting as "proceed" (mirrors close(), which
-        # unblocks pending as "deny"). Done outside the lock; setting the event
-        # is thread-safe and request_permission re-checks under its own lock.
-        for pending in pending_items:
-            if pending.decision is None:
-                pending.decision = "proceed"
-            pending.event.set()
+            for pending in self._pending.values():
+                if pending.decision is None:
+                    pending.decision = "proceed"
+                    pending.event.set()
 
     def close(self) -> None:
         """Resolve every still-pending request to ``deny`` and stop accepting
         new ones. Idempotent."""
         with self._lock:
             self._closed = True
-            pending_items = list(self._pending.values())
-        for pending in pending_items:
-            if pending.decision is None:
-                pending.decision = "deny"
-            pending.event.set()
+            for pending in self._pending.values():
+                if pending.decision is None:
+                    pending.decision = "deny"
+                    pending.event.set()
 
 
 def register_broker(key: Any, broker: ExecPermissionBroker) -> None:

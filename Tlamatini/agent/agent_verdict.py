@@ -135,7 +135,7 @@ WORK_COMPLETED_STATUSES = frozenset({
     # generic completions
     "success", "ok", "done", "complete", "completed",
     # authoring / building
-    "created", "edited", "written", "compiled", "built", "scaffolded",
+    "created", "appended", "edited", "written", "compiled", "built", "scaffolded",
     "installed", "cleaned", "saved", "merged",
     # transport / delivery
     "sent", "delivered", "forwarded", "accepted", "duplicate",

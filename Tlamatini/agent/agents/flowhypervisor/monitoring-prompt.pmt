@@ -683,7 +683,7 @@ AUDIOPLAYER / VIDEOPLAYER SPECIAL NOTES (playback agents — SILENCE IS THE JOB)
 
 TALKER SPECIAL NOTES (text-to-speech via Ollama):
   - Talker SYNTHESISES speech: it sends `input_text` to an OLLAMA neural TTS
-    model (Config > Models: talker_model; initial legraphista/Orpheus:3b-ft-q8), decodes the returned audio tokens to a WAV
+    model (Config > Models: talker_model; initial legraphista/Orpheus:latest), decodes the returned audio tokens to a WAV
     with the SNAC codec, plays it on the speakers, then ALWAYS triggers
     `target_agents`. It is the voice-synthesis sibling of AudioPlayer (which
     plays an existing file). Observational/output in flow semantics; the wrapped

@@ -2547,6 +2547,12 @@ chatSocket.onmessage = function (e) {
     }
     // Ask-Execs: the backend is blocked waiting for the user to approve the
     // next Multi-Turn tool execution. Pop the modal Proceed/Deny dialog.
+    if (data.type === 'exec-permission-resolved') {
+        if (typeof resolveExecPermissionDialog === 'function') {
+            resolveExecPermissionDialog(data.detail || {});
+        }
+        return;
+    }
     if (data.type === 'exec-permission-request') {
         // Flash the Tlamatini.exe taskbar button + log an uppercase banner so
         // the user notices the pending approval even with the browser minimized.
@@ -2742,11 +2748,17 @@ chatSocket.onopen = function () {
 };
 
 chatSocket.onerror = function (_e) {
+    if (typeof dismissExecPermissionDialogSilently === 'function') {
+        dismissExecPermissionDialogSilently('disconnected');
+    }
     console.error('Chat socket reported an error');
     applyDisconnectedSocketUi('Live connection problem. Use Reconnect or refresh before continue.');
 };
 
 chatSocket.onclose = function (_e) {
+    if (typeof dismissExecPermissionDialogSilently === 'function') {
+        dismissExecPermissionDialogSilently('disconnected');
+    }
     console.error('Chat socket closed unexpectedly');
     applyDisconnectedSocketUi('Live connection lost. Use Reconnect or refresh before continue.');
 };

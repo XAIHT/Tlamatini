@@ -16,6 +16,11 @@ from django.views.decorators.http import require_http_methods
 from . import path_guard
 from .remote_controller_views import _local_request, _profile_for
 
+def _say(english, spanish):
+    """This edition's wording for a message shown on the phone."""
+    from .remote_controller_bridge import EDITION
+    return spanish if EDITION == "spanish" else english
+
 
 def _authorized(request):
     profile = _profile_for(request.user)
@@ -41,13 +46,13 @@ def _resolve(value, *, directory=False):
 @require_http_methods(['GET'])
 def files(request):
     if not _authorized(request):
-        return JsonResponse({'error': 'Remote access is disabled for this account.'}, status=403)
+        return JsonResponse({'error': _say('Remote access is disabled for this account.', 'El acceso remoto está deshabilitado para esta cuenta.')}, status=403)
     roots = list(dict.fromkeys([path_guard._get_application_root(),
                                *path_guard.get_allowed_dirs_display()]))
     try:
         folder = _resolve(request.GET.get('path') or roots[0], directory=True)
         if folder is None:
-            return JsonResponse({'error': 'Choose a folder permitted by Tlamatini configuration.'}, status=403)
+            return JsonResponse({'error': _say('Choose a folder permitted by Tlamatini configuration.', 'Elige una carpeta permitida por la configuración de Tlamatini.')}, status=403)
         offset = int(request.GET.get('offset', '0'))
         if offset < 0 or offset > 100000:
             raise ValueError()
@@ -75,7 +80,7 @@ def files(request):
                              'roots': roots, 'entries': sorted(entries, key=lambda e: (not e['directory'], e['name'].casefold())),
                              'next_offset': index if index >= 0 and len(entries) == 200 else None})
     except (OSError, ValueError):
-        return JsonResponse({'error': 'This folder cannot be listed. Check its path and access permissions.'}, status=400)
+        return JsonResponse({'error': _say('This folder cannot be listed. Check its path and access permissions.', 'No se puede mostrar esta carpeta. Revisa su ruta y sus permisos de acceso.')}, status=400)
 
 
 @login_required
@@ -84,7 +89,7 @@ def files(request):
 def canvas_selection(request):
     """Observe the revision before explicit mobile Save As confirmation."""
     if not _authorized(request):
-        return JsonResponse({'error': 'Remote access is disabled for this account.'}, status=403)
+        return JsonResponse({'error': _say('Remote access is disabled for this account.', 'El acceso remoto está deshabilitado para esta cuenta.')}, status=403)
     from . import canvas_file_views as canvas
     try:
         owner = canvas._owner(request)
@@ -92,7 +97,7 @@ def canvas_selection(request):
         folder = _resolve(request.POST.get('directory', ''), directory=True)
         name = request.POST.get('name', '')
         if folder is None or not name or len(name) > 240 or name in {'.', '..'} or any(ord(c) < 32 or c in '<>:"/\\|?*' for c in name):
-            raise canvas.SaveError('Choose a permitted folder and valid file name.')
+            raise canvas.SaveError(_say('Choose a permitted folder and valid file name.', 'Elige una carpeta permitida y un nombre de archivo válido.'))
         path = folder / name
         canvas._check_path(path)
         with canvas._IO_LOCK:
@@ -102,7 +107,7 @@ def canvas_selection(request):
     except canvas.SaveError as error:
         return canvas._response({'error': str(error), 'code': error.code}, error.status)
     except OSError:
-        return canvas._response({'error': 'This destination cannot be selected.'}, 400)
+        return canvas._response({'error': _say('This destination cannot be selected.', 'No se puede seleccionar este destino.')}, 400)
 
 
 @login_required
@@ -111,7 +116,7 @@ def canvas_selection(request):
 def canvas_save(request):
     """Commit only a session-owned selected destination and observed revision."""
     if not _authorized(request):
-        return JsonResponse({'error': 'Remote access is disabled for this account.'}, status=403)
+        return JsonResponse({'error': _say('Remote access is disabled for this account.', 'El acceso remoto está deshabilitado para esta cuenta.')}, status=403)
     from . import canvas_file_views as canvas
     try:
         owner = canvas._owner(request)
@@ -120,13 +125,13 @@ def canvas_save(request):
         path = canvas._capability(token, owner).path
         # Recheck current path permissions, including links and configuration.
         if _resolve(str(path.parent), directory=True) is None:
-            raise canvas.SaveError('This destination is no longer permitted.', 'forbidden', 403)
+            raise canvas.SaveError(_say('This destination is no longer permitted.', 'Este destino ya no está permitido.'), 'forbidden', 403)
         upload = request.FILES.get('file')
         if upload is None or upload.size > canvas.MAX_FILE_BYTES:
-            raise canvas.SaveError('Choose a file within the 64 MiB limit.', 'too_large', 413)
+            raise canvas.SaveError(_say('Choose a file within the 64 MiB limit.', 'Elige un archivo dentro del límite de 64 MiB.'), 'too_large', 413)
         data = upload.read(canvas.MAX_FILE_BYTES + 1)
         if len(data) > canvas.MAX_FILE_BYTES:
-            raise canvas.SaveError('Choose a file within the 64 MiB limit.', 'too_large', 413)
+            raise canvas.SaveError(_say('Choose a file within the 64 MiB limit.', 'Elige un archivo dentro del límite de 64 MiB.'), 'too_large', 413)
         with canvas._IO_LOCK:
             revision = canvas._commit(path, data, request.POST.get('revision', ''))
         return canvas._response({'saved': True, 'token': token, 'revision': revision,
@@ -134,4 +139,4 @@ def canvas_save(request):
     except canvas.SaveError as error:
         return canvas._response({'saved': False, 'error': str(error), 'code': error.code}, error.status)
     except OSError:
-        return canvas._response({'saved': False, 'error': 'The file could not be saved.'}, 400)
+        return canvas._response({'saved': False, 'error': _say('The file could not be saved.', 'No se pudo guardar el archivo.')}, 400)

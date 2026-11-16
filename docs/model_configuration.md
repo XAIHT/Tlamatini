@@ -18,9 +18,9 @@ the release builders carry those same files.
 Image and video observers retain vision models: `mistral-large-4:cloud` and
 `gemma4:cloud`. Retired Mistral Large 3 choices resolve to Large 4; the catalog
 migration updates old Mistral and GLM references without deleting cards.
-Embedding and speech-recognition models are unchanged. Talker keeps
-**`legraphista/Orpheus:3b-ft-q8`**; this change does not download another
-speech model.
+Embedding and speech-recognition models are unchanged. Since 2026-11-16 the
+Talker default is **`legraphista/Orpheus:latest`**. Changing the setting does not
+download a model; pull it once with `ollama pull legraphista/Orpheus:latest`.
 
 Other available models remain selectable in **Config → Models**. The initial
 model change does not disable GLM or automatically replace a custom GLM choice
@@ -99,7 +99,7 @@ saving a dedicated value means later Unified model changes do not override it.
 
 | Global key / label | Agent YAML path | Initial default | Kind / fallback |
 |---|---|---|---|
-| `talker_model` — Talker · speech generation | `talker.model` | `legraphista/Orpheus:3b-ft-q8` | ollama |
+| `talker_model` — Talker · speech generation | `talker.model` | `legraphista/Orpheus:latest` | ollama |
 | `talker_voice` — Talker · voice | `talker.voice` | `tara` | choice |
 | `whisperer_engine` — Whisperer · recognition engine | `whisperer.engine` | `faster-whisper` | choice |
 | `whisperer_model` — Whisperer · local speech model | `whisperer.model` | `base` | local |

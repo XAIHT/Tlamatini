@@ -408,6 +408,11 @@ class ReviewedStatusDecisionsTests(SimpleTestCase):
                       "merge_fallback_concat"):
             self.assertEqual(av.status_class(token), av.CLASS_DEGRADED, token)
 
+    def test_an_appended_file_is_a_completed_write(self):
+        """File-Creator's append mode reports finished work, not an unknown token."""
+        self.assertIn("appended", av.WORK_COMPLETED_STATUSES)
+        self.assertEqual(av.status_class("appended"), av.CLASS_COMPLETED)
+
 
 class DegradedVerdictEndToEndTests(SimpleTestCase):
     """The live false-green, reproduced byte-faithfully and then killed."""
@@ -417,7 +422,7 @@ class DegradedVerdictEndToEndTests(SimpleTestCase):
         "output_path: C:\\Users\\angel\\Music\\TlamatiniTalker\\talker_1.wav\n"
         "output_dir: C:\\Users\\angel\\Music\\TlamatiniTalker\n"
         "filename: talker_1.wav\n"
-        "model: Orpheus-3b-FT\n"
+        "model: legraphista/Orpheus:latest\n"
         "language: en\n"
         "voice: tara\n"
         "gender: female\n"

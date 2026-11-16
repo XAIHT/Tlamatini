@@ -30,8 +30,17 @@ _LOG_FULL_ANSWERS = (
 # Database operations wrapped for async
 @sync_to_async
 def save_message(user, message, conversation_user=None, response_files=None):
-    from ..remote_response_files import record_artifacts
-    artifacts = record_artifacts(response_files or [])
+    artifacts = []
+    if response_files:
+        # Attachments only serve Remote-Controller downloads. A failure to
+        # snapshot them must never lose the answer itself.
+        try:
+            from ..remote_response_files import record_artifacts
+            artifacts = record_artifacts(response_files)
+        except Exception as exc:
+            print(f"--- [RC-FILES] attachment snapshot skipped ({type(exc).__name__}); "
+                  "saving the answer without it")
+            artifacts = []
     return AgentMessage.objects.create(user=user, conversation_user=conversation_user, message=message, response_files=artifacts).pk  # message_id for the Drop button
 
 # ── NAME-COLLISION GUARD (Angela, 2026-09-06) ────────────────────────────────

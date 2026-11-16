@@ -28,12 +28,12 @@ TEXT = {
     "back": "Back to chat", "refresh": "Refresh status",
     "service": "Remote-Controller service", "ready": "Running", "unavailable": "Not connected",
     "setup": "Setup required", "stopping": "Stopping",
-    "service_help": "Open XT → Show panel → Services → Remote-Controller to start, stop or restart the server.",
+    "service_help": "Right-click the XT icon → Remote-Controller to start, stop or restart the server.",
     "account": "Your account", "enabled": "Remote access enabled", "disabled": "Remote access disabled",
     "pending": "Remote access is disabled here. Service revocation will finish when Remote-Controller is reachable.",
     "enabled_help": "Approved devices can use the permissions you grant in XT. Remote chat uses this account’s history and execution approvals.",
     "disabled_help": "Enable this account before creating a device invitation in XT.",
-    "password": "<REDACTED>", "enable": "Enable this account",
+    "password_label": "Confirm your current Tlamatini password", "enable": "Enable this account",
     "disable": "Disable remote access", "retry": "Retry service revocation",
     "consent": "Enabling makes this account available in XT. It does not approve a device or start a service.",
     "disable_help": "Disabling cancels this account’s remote work and revokes its device access. Tlamatini stays open.",
@@ -48,6 +48,7 @@ TEXT = {
     "request_error": "This request could not be accepted. Refresh the page and try again.",
     "local_error": "Open this page on the PC running Tlamatini to manage remote access.",
     "service_error": "Remote-Controller could not be reached or refused the change. Check its Runtime tab in XT, then try again.",
+    "revoke_first": "This account still has device access that Remote-Controller has not revoked yet. Start Remote-Controller from the XT icon, then enable the account again.",
     "inactive_error": "This Tlamatini account is inactive.",
 }
 
@@ -140,6 +141,18 @@ def account(request):
         if action == "enable":
             if profile is None:
                 profile, _ = RemoteControllerProfile.objects.get_or_create(user=request.user)
+            if not profile.enabled and profile.binding_id:
+                # A disable whose service revocation never finished must finish
+                # first. Binding again could otherwise restore the old device
+                # grants that disabling promised to revoke.
+                try:
+                    unbind_profile(profile)
+                except RcBridgeError as exc:
+                    if exc.code != "not_found":
+                        logger.warning("Remote-Controller re-enable is waiting for a pending revocation")
+                        return _page(request, error=TEXT["revoke_first"], status=503)
+                profile.binding_id = ""
+                profile.save(update_fields=["binding_id"])
             try:
                 binding = bind_profile(profile)
                 binding_id = binding.get("id", "")

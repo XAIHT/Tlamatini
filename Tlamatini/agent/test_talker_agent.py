@@ -11,7 +11,7 @@
 
 Talker is TEXT-TO-SPEECH (TTS): it SPEAKS ``input_text`` aloud through a system OUTPUT device
 (speakers) by driving an OLLAMA connection that runs a neural TTS model (default
-``Orpheus-3b-FT``). The model streams audio TOKENS (``<custom_token_N>``) that are decoded to a
+``legraphista/Orpheus:latest``). The model streams audio TOKENS (``<custom_token_N>``) that are decoded to a
 24 kHz waveform with the SNAC neural codec, saved as a WAV and played. It is the voice-synthesis
 sibling of the media family (AudioPlayer plays an existing FILE; Talker GENERATES speech from
 text). It is a standalone pool agent under ``agent/agents/talker/`` loaded here through
@@ -592,11 +592,11 @@ class TalkerOllamaTests(unittest.TestCase):
         return text, status, captured
 
     def test_payload_and_default_options(self):
-        text, status, cap = self._run({'model': 'Orpheus-3b-FT'})
+        text, status, cap = self._run({'model': 'legraphista/Orpheus:latest'})
         self.assertEqual(status, 200)
         self.assertIn('<custom_token_110>', text)
         payload = json.loads(cap['req'].data.decode('utf-8'))
-        self.assertEqual(payload['model'], 'Orpheus-3b-FT')
+        self.assertEqual(payload['model'], 'legraphista/Orpheus:latest')
         self.assertTrue(payload['stream'])
         # Orpheus must be driven in raw mode (no Ollama chat template) with the
         # speaker/text core wrapped in the Llama-3 BOS/EOT special tokens, or it
@@ -784,7 +784,7 @@ def _ollama_base_url():
 
 
 def _orpheus_model():
-    return str(_talker_config_defaults().get("model") or "legraphista/Orpheus:3b-ft-q8")
+    return str(_talker_config_defaults().get("model") or "legraphista/Orpheus:latest")
 
 
 def _ollama_orpheus_ready():
@@ -946,7 +946,7 @@ class TalkerSectionTests(unittest.TestCase):
             'output_path': r'C:\Music\TlamatiniTalker\talker_speech.wav',
             'output_dir': r'C:\Music\TlamatiniTalker',
             'filename': 'talker_speech.wav',
-            'model': 'Orpheus-3b-FT', 'language': 'es', 'voice': 'jess',
+            'model': 'legraphista/Orpheus:latest', 'language': 'es', 'voice': 'jess',
             'gender': 'female', 'emotion': 'chuckle', 'sample_rate': 24000,
             'audio_seconds': 1.25, 'char_count': 11, 'played': True, 'status': 'spoken',
             '_message': 'Spoke 11 chars as 1.25s of audio',
@@ -969,7 +969,7 @@ class TalkerSectionTests(unittest.TestCase):
     def test_emit_error_section_round_trip(self):
         with _LogCapture() as cap:
             self.mod.emit_parametrizer_error_section(
-                {'input_text': 'hi', 'model': 'Orpheus-3b-FT', 'voice': 'tara'},
+                {'input_text': 'hi', 'model': 'legraphista/Orpheus:latest', 'voice': 'tara'},
                 'Cannot reach Ollama at http://localhost:11434:\nrefused')
         block = next(r for r in cap.records if 'INI_SECTION_TALKER<<<' in r)
         fields = _parse_ini_section(block)
@@ -994,7 +994,7 @@ class TalkerSynthesizeTests(unittest.TestCase):
 
     def _cfg(self, **over):
         cfg = {
-            'input_text': 'Hello there', 'model': 'Orpheus-3b-FT', 'voice': 'tara',
+            'input_text': 'Hello there', 'model': 'legraphista/Orpheus:latest', 'voice': 'tara',
             'language': 'en', 'output_dir': self.tmp.name, 'play_audio': False,
         }
         cfg.update(over)

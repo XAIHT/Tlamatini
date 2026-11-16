@@ -163,13 +163,13 @@ campaign. New checks and behavior added afterward await their own completed run;
 these counts do not certify the latest changes. Actual headed main-application
 and final installed end-to-end acceptance remain separate gates.
 The authoritative service record is
-`C:\Development\XAIHT\repo\Tlachihuani\docs\verification\2026-11-13-remote-controller.md`.
+`docs/verification/2026-11-13-remote-controller.md` in the Tlachihuani repository.
 
 The later response-preservation run passed **242/242 source checks per edition**.
 The rebuilt frozen pair `20261114-0255` was installed with all runtime hashes
 verified and database/configuration bytes preserved. Current installed prompt,
 mobile and lifecycle results—including answer-format failures—are tracked in
-`C:\Development\XAIHT\repo\Tlachihuani\docs\verification\2026-11-13-installed-rc-acceptance.md`.
+`docs/verification/2026-11-13-installed-rc-acceptance.md` in the Tlachihuani repository.
 
 The final installed local set completed **50 English + 50 Spanish real requests**,
 with **99/100 exact-answer checks**, **170/170 mobile checks**, and independent
@@ -188,7 +188,7 @@ the browser. This replaces **Load in canvas** on the mobile workspace as well.
 A failed download remains retryable; loading recent conversation refreshes expired
 links. The download limit is 64 MiB.
 
-Migration 0225_remote_response_files adds trusted attachment records to saved
+Migration 0225_response_files adds trusted attachment records to saved
 messages. Generated programs/snippets and supported successful file-producing
 tools supply exact identities and SHA-256 snapshots. A model-written link or file
 name is not permission. Legacy attachments without ownership records must be
@@ -198,4 +198,49 @@ backup/restore nor Torrenter lifetime is changed.
 Package remote_response_files.py, the migration, response parser, tool-result
 hooks and matching Tlachihuani RC assets together. Rebuild/install the main
 English/Spanish applications before the matching controller. Source evidence is
-in C:/Development/XAIHT/repo/Tlachihuani/docs/verification/2026-11-14-rc-rich-responses.md.
+in the Tlachihuani repository at `docs/verification/2026-11-14-rc-rich-responses.md`.
+
+## Fixes · 15 November 2026
+
+- The account page shows its password label again, and names one place to manage
+  the server: **right-click the XT icon → Remote-Controller**.
+- Enabling an account whose earlier revocation never reached the service first
+  finishes that revocation, so old device grants cannot come back. If the service
+  is unreachable, the page asks you to start Remote-Controller and try again.
+- A deactivated Tlamatini account is revoked once and its binding is cleared. It
+  must enable remote access again after it is reactivated.
+- The adapter polls an idle account every 3 seconds and an active conversation
+  every second. While the service keeps failing it waits 2, 4, 8 and then 15
+  seconds between attempts; revocation retries use the same delays.
+- The status reports ready once Tlamatini has loaded. A remote conversation builds
+  its own chain when no desktop chat is open.
+- RC sends Self-Modify only after you change that box on the device, and the
+  desktop switch is rewritten only when the choice really changes.
+- Step-by-step requires Multi-turn, as on the desktop.
+- If saving attachment records fails, the answer is still saved.
+- Phone messages and request errors use the edition's language, and the phone
+  gateway no longer forwards the local Terminater API.
+- File-Creator's append mode reports `appended`, a named completed status.
+
+The next migration must depend on the current last migration,
+`0225_response_files`. `Tests/test_migration_graph.py` fails when the graph has
+more than one agent leaf.
+
+## Approval synchronization · 15 November 2026
+
+An execution approval is identified by its request ID. When a user answers in RC
+or in a main-chat tab, the broker accepts the first answer once and sends
+exec-permission-resolved to every observing tab for that account. Approval,
+denial, cancellation, teardown and runtime auto-proceed retire the matching
+prompt without a page refresh. An old decision cannot dismiss a newer prompt.
+The RC runtime forwards the same identity through permission progress.
+
+If the chat socket is lost, the unusable modal closes and the existing
+disconnection guidance remains. Closing that UI does not assert that execution
+succeeded. Retry/reconnect must preserve operation identity and unknown outcomes.
+
+Rebuild both main editions and Tlachihuani together for installed acceptance.
+With Ask Execs enabled, approve a read-only command in RC while the main prompt
+is visible; it must disappear automatically. Repeat in the opposite direction,
+then test denial, cancellation and competing tabs. Regression coverage is in
+agent/test_exec_permission_sync.py and the controller's rc_approval_browser.mjs.

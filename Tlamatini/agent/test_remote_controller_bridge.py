@@ -31,6 +31,26 @@ def operation(kind="conversation.submit", **payload):
             "kind": kind, "payload": payload or {"text": "A harmless question"}}
 
 
+class RetryDelayTests(TestCase):
+    def test_backoff_saturates_during_extended_outages(self):
+        for failures, expected in [(0, 2), (1, 2), (2, 4), (3, 8), (4, 15),
+                                   (1023, 15), (1024, 15), (1000000, 15)]:
+            with self.subTest(failures=failures):
+                self.assertEqual(bridge._retry_delay(failures), expected)
+
+
+class ExtendedOutagePollingTests(IsolatedAsyncioTestCase):
+    async def test_failed_poll_after_long_outage_keeps_cancellation_and_backoff(self):
+        worker = SimpleNamespace(retiring=False, cancel=threading.Event(),
+                                 poll_failures=1023, next_poll_at=0,
+                                 tick=AsyncMock(side_effect=RuntimeError("offline")))
+        with patch.object(bridge, "_now", return_value=100):
+            await bridge._poll(worker, asyncio.Semaphore(1))
+        self.assertTrue(worker.cancel.is_set())
+        self.assertEqual(worker.poll_failures, 1024)
+        self.assertEqual(worker.next_poll_at, 115)
+
+
 class NativeBoundaryTests(TestCase):
     def setUp(self):
         self.binary = MagicMock()
@@ -193,6 +213,58 @@ class BindingBoundaryTests(TestCase):
             bridge._retry_revocation(current)
         unbind.assert_called_once_with(current)
         clear.assert_called_once_with(current)
+
+    def test_inactive_account_revocation_clears_its_binding(self):
+        current = profile(enabled=True, active=False)
+        with patch.object(bridge, "_revocation_profile", return_value=current), \
+                patch.object(bridge, "unbind_profile") as unbind, \
+                patch.object(bridge, "_clear_binding") as clear:
+            bridge._retry_revocation(current)
+        unbind.assert_called_once_with(current)
+        clear.assert_called_once_with(current)
+
+    def test_binding_the_service_already_dropped_is_cleared(self):
+        current = profile(enabled=False)
+        gone = bridge.RcBridgeError("not_found", "fixture")
+        with patch.object(bridge, "_revocation_profile", return_value=current), \
+                patch.object(bridge, "unbind_profile", side_effect=gone), \
+                patch.object(bridge, "_clear_binding") as clear:
+            bridge._retry_revocation(current)
+        clear.assert_called_once_with(current)
+
+    def test_unreachable_service_keeps_the_binding_for_a_later_retry(self):
+        current = profile(enabled=False)
+        down = bridge.RcBridgeError("service_unavailable", "fixture")
+        with patch.object(bridge, "_revocation_profile", return_value=current), \
+                patch.object(bridge, "unbind_profile", side_effect=down), \
+                patch.object(bridge, "_clear_binding") as clear:
+            with self.assertRaises(bridge.RcBridgeError):
+                bridge._retry_revocation(current)
+        clear.assert_not_called()
+
+    def test_clear_binding_touches_only_an_unconsented_exact_binding(self):
+        from django.db.models import Q
+        from . import models
+        manager = Mock()
+        account = profile(enabled=False)
+        with patch.object(models.RemoteControllerProfile, "objects", manager):
+            bridge._clear_binding(account)
+        manager.filter.assert_called_once_with(
+            Q(enabled=False) | Q(user__is_active=False),
+            pk=account.pk, binding_id=account.binding_id,
+        )
+        manager.filter.return_value.update.assert_called_once_with(binding_id="", enabled=False)
+
+    def test_ready_once_the_application_has_loaded(self):
+        from django.apps import apps
+        account = profile()
+        with patch("agent.global_state.global_state.get_state", return_value=None):
+            self.assertTrue(bridge._ready(account))
+            with patch.object(apps, "ready", False):
+                self.assertFalse(bridge._ready(account))
+        with patch("agent.global_state.global_state.get_state", return_value=object()), \
+                patch.object(apps, "ready", False):
+            self.assertTrue(bridge._ready(account))
 
 
 class AdapterLeaseTests(TestCase):
@@ -559,7 +631,7 @@ class AccountDispatchTests(IsolatedAsyncioTestCase):
 
 class WorkerLifecycleTests(IsolatedAsyncioTestCase):
     async def run_loop(self, snapshots, *, lease_available=True, on_tick=None, close_gate=None,
-                       tombstones=(), revocation_failures=0):
+                       tombstones=(), revocation_failures=0, clock_step=1000.0):
         workers = []
         stop = threading.Event()
         observed = iter(snapshots)
@@ -567,6 +639,9 @@ class WorkerLifecycleTests(IsolatedAsyncioTestCase):
         durable = {bridge._identity(item): item for item in tombstones}
         real_sleep = asyncio.sleep
         turns = 0
+        # A fake clock. By default each supervisor turn is longer than any poll
+        # interval or retry delay, so a test sees one attempt per turn.
+        clock = [0.0]
 
         def profiles():
             nonlocal current_profiles
@@ -601,6 +676,7 @@ class WorkerLifecycleTests(IsolatedAsyncioTestCase):
             for _ in range(6):
                 await real_sleep(0)
             turns += 1
+            clock[0] += clock_step
             if turns >= len(snapshots):
                 if close_gate is not None:
                     close_gate.set()
@@ -613,8 +689,7 @@ class WorkerLifecycleTests(IsolatedAsyncioTestCase):
                 bridge.unbind_profile(value)
             elif not current.enabled or not current.user.is_active:
                 bridge.unbind_profile(current)
-                if not current.enabled:
-                    bridge._clear_binding(current)
+                bridge._clear_binding(current)
 
         async def to_thread(function, *args):
             return function(*args)
@@ -635,7 +710,8 @@ class WorkerLifecycleTests(IsolatedAsyncioTestCase):
                 patch.object(bridge, "_remember_revocation", side_effect=lambda value: durable.__setitem__(bridge._identity(value), value)), \
                 patch.object(bridge, "_forget_revocation", side_effect=lambda value: durable.pop(bridge._identity(value), None)), \
                 patch.object(bridge.asyncio, "sleep", side_effect=sleep), \
-                patch.object(bridge.asyncio, "to_thread", side_effect=to_thread):
+                patch.object(bridge.asyncio, "to_thread", side_effect=to_thread), \
+                patch.object(bridge, "_now", side_effect=lambda: clock[0]):
             await bridge._run()
         return workers, unbind, clear
 
@@ -703,12 +779,15 @@ class WorkerLifecycleTests(IsolatedAsyncioTestCase):
         unbind.assert_called_once_with(disabled)
         clear.assert_called_once_with(disabled)
 
-    async def test_inactive_user_is_revoked_without_reenrollment(self):
+    async def test_inactive_user_is_revoked_and_cleared_without_reenrollment(self):
         inactive = profile(active=False)
         workers, unbind, clear = await self.run_loop([[profile()], [inactive]])
         self.assertTrue(workers[0].cancel.is_set())
         unbind.assert_called_once_with(inactive)
-        clear.assert_not_called()
+        # Clearing the revoked binding stops the supervisor from revoking it
+        # again every second for as long as the account stays inactive.
+        clear.assert_called_once_with(inactive)
+        self.assertEqual(len(workers), 1)
 
     async def test_duplicate_process_lease_prevents_any_dispatch(self):
         workers, _, _ = await self.run_loop([[profile()]], lease_available=False)
@@ -737,6 +816,31 @@ class WorkerLifecycleTests(IsolatedAsyncioTestCase):
         workers, _, _ = await self.run_loop([[profile(), other]], on_tick=tick, close_gate=gate)
         await asyncio.gather(*(worker.poll_task for worker in workers if worker.poll_task))
         self.assertEqual(observed, [False])
+
+    async def test_idle_account_is_polled_every_few_seconds(self):
+        workers, _, _ = await self.run_loop([[profile()]] * 7, clock_step=1.0)
+        # One native round every IDLE_POLL_SECONDS: at 0, 3 and 6 seconds.
+        self.assertEqual(workers[0].tick.await_count, 3)
+
+    async def test_active_conversation_is_polled_every_second(self):
+        async def tick(worker, _workers):
+            worker.active = operation()
+        workers, _, _ = await self.run_loop([[profile()]] * 4, on_tick=tick, clock_step=1.0)
+        self.assertEqual(workers[0].tick.await_count, 4)
+
+    async def test_failing_service_is_retried_with_growing_delays(self):
+        async def tick(_worker, _workers):
+            raise bridge.RcBridgeError("service_unavailable", "fixture")
+        workers, _, _ = await self.run_loop([[profile()]] * 10, on_tick=tick, clock_step=1.0)
+        # Attempts at 0, 2 and 6 seconds; the next one waits until 14 seconds.
+        self.assertEqual(workers[0].tick.await_count, 3)
+
+    async def test_revocation_retries_back_off_while_the_service_is_down(self):
+        old = profile()
+        _, unbind, _ = await self.run_loop([[old]] + [[]] * 11, revocation_failures=99,
+                                           clock_step=1.0)
+        # Attempts at 1, 4 and 9 seconds; the fourth waits until 18 seconds.
+        self.assertEqual(unbind.call_count, 3)
 
 
 class HeartbeatWatchdogTests(IsolatedAsyncioTestCase):

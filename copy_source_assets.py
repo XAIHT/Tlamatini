@@ -252,6 +252,8 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/remote_controller_bridge.py",
     "Tlamatini/agent/remote_controller_runtime.py",
     "Tlamatini/agent/remote_response_files.py",
+    "Tlamatini/agent/remote_mobile_views.py",
+    "Tlamatini/agent/test_remote_mobile_views.py",
     "Tlamatini/agent/test_remote_response_files.py",
     "Tlamatini/agent/remote_controller_guard.py",
     "Tlamatini/agent/migrations/0224_remote_controller.py",

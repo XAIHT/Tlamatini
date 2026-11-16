@@ -10,6 +10,19 @@
 
 > Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
 
+## 2026-11-16 — Talker default speech model is `legraphista/Orpheus:latest`
+
+Angela asked to replace `legraphista/Orpheus:3b-ft-q8` with `legraphista/Orpheus:latest` as the
+default in both editions. Changed together: `agent/config.json`, the
+`talker_model` default in `agent/agents/model_settings.py`, Talker's code
+fallbacks and `config.yaml` comments, the chat tool description, FlowCreator
+and FlowHypervisor text, the catalog descriptions, tests and documentation.
+A choice already saved in an installation's `config.json` is kept; the
+registry does not rewrite it, and `agent/test_model_tag_upgrade.py` checks
+that. No model is downloaded: run `ollama pull legraphista/Orpheus:latest` once
+before Talker uses it. Dated records (release notes, verification evidence,
+the 2026-11-08 entry below) keep the tag they recorded.
+
 ## 2026-11-12 — Selection explanation and output capture
 
 [Released version 1.93.5](../changes/2026-11-12-v1.93.5.md) includes checkbox-independent selection explanation and the [Executer capture fix](../changes/2026-11-12-executer-output-capture.md). A detached START application can retain inherited output handles after the outer CMD exits. Pipe capture waited for their EOF; regular capture files and separate readers now return a snapshot when the outer process finishes without moving the child's write position. Direct commands still block normally. Replays with the same Rust executable returned in about five seconds while the cube stayed open. No generic repetition limit was added, and the separate final-response delivery stall was not declared resolved.
@@ -40,7 +53,8 @@ files was also corrected.
 Vision uses `mistral-large-4:cloud` alongside `gemma4:cloud`. The registry
 recognizes the retired Mistral Large 3 choice, and migration 0222 updates catalog
 references. Keep `legraphista/Orpheus:3b-ft-q8`: Angela withdrew the request
-to change it to `latest` because of her limited data connection. Do not
+to change it to `latest` because of her limited data connection (superseded on 2026-11-16: the
+default is now `legraphista/Orpheus:latest`). Do not
 download speech models for this change. Regression coverage lives in
 `agent/test_model_tag_upgrade.py`; see the
 [model configuration guide](../model_configuration.md).

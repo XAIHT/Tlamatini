@@ -15,6 +15,13 @@ from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from . import remote_controller_views as views
 
+# Fixture values are named constants. The public-release scrubber rewrites a
+# quoted value written right after a "password" key, which once turned these
+# fixtures into placeholders and silently changed what the tests checked.
+UNIT_PASSWORD = "rc-unit-test-only"
+OVERSIZED_PASSWORD = "a" * 4097
+OVERSIZED_BODY = "a" * 8200
+
 
 @override_settings(ALLOWED_HOSTS=["127.0.0.1", "localhost", "[::1]"],
                    LOGIN_URL="/login/")
@@ -58,7 +65,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
             request = self.factory.get("/remote-controller/", HTTP_HOST="127.0.0.1:8000",
                                        REMOTE_ADDR=address)
         else:
-            payload = data if data is not None else {"action": action, "password": "rc-unit-test-only"}
+            payload = data if data is not None else {"action": action, "password": UNIT_PASSWORD}
             request = self.factory.generic(
                 method or "POST", "/remote-controller/", urlencode(payload, doseq=True),
                 content_type="application/x-www-form-urlencoded", HTTP_HOST="127.0.0.1:8000",
@@ -126,7 +133,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
     def test_enable_confirms_current_password_and_owns_binding(self):
         response = views.account(self.request("enable"))
         self.assertEqual(response.status_code, 200)
-        self.user.check_password.assert_called_once_with("rc-unit-test-only")
+        self.user.check_password.assert_called_once_with(UNIT_PASSWORD)
         self.bind.assert_called_once_with(self.profile)
         self.assertTrue(self.profile.enabled)
         self.assertEqual(self.profile.binding_id, "1" * 32)
@@ -149,7 +156,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
         self.user.check_password.assert_not_called()
 
     def test_oversized_password_is_refused_before_hashing(self):
-        response = views.account(self.request("enable", data={"action": "enable", "password": "<REDACTED>" * 4097}))
+        response = views.account(self.request("enable", data={"action": "enable", "password": OVERSIZED_PASSWORD}))
         self.assertEqual(response.status_code, 403)
         self.user.check_password.assert_not_called()
         self.bind.assert_not_called()
@@ -186,12 +193,12 @@ class RemoteControllerAccountTests(SimpleTestCase):
         self.unbind.assert_not_called()
 
     def test_browser_cannot_select_another_account(self):
-        data = {"action": "enable", "password": "<REDACTED>", "account_id": "2" * 32}
+        data = {"action": "enable", "password": UNIT_PASSWORD, "account_id": "2" * 32}
         self.assertEqual(views.account(self.request("enable", data=data)).status_code, 400)
         self.bind.assert_not_called()
 
     def test_duplicate_action_is_refused(self):
-        data = {"action": ["enable", "disable"], "password": "<REDACTED>"}
+        data = {"action": ["enable", "disable"], "password": UNIT_PASSWORD}
         self.assertEqual(views.account(self.request("enable", data=data)).status_code, 400)
         self.bind.assert_not_called()
 
@@ -201,7 +208,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
     def test_password_is_not_copied_into_template_context(self):
         response = views.account(self.request("enable"))
         self.assertNotIn("password", response.context_data)
-        self.assertNotIn("current-secret", str(response.context_data))
+        self.assertNotIn(UNIT_PASSWORD, str(response.context_data))
 
     def test_disable_persists_denial_before_native_call(self):
         self.profile.enabled = True
@@ -267,7 +274,7 @@ class RemoteControllerAccountTests(SimpleTestCase):
         self.bind.assert_not_called()
 
     def test_body_bound_is_enforced(self):
-        data = {"action": "enable", "password": "<REDACTED>" * 8200}
+        data = {"action": "enable", "password": OVERSIZED_BODY}
         self.assertEqual(views.account(self.request("enable", data=data)).status_code, 403)
         self.user.check_password.assert_not_called()
 
@@ -279,3 +286,69 @@ class RemoteControllerAccountTests(SimpleTestCase):
         request._dont_enforce_csrf_checks = True
         self.assertEqual(views.account(request).status_code, 403)
         self.bind.assert_not_called()
+
+    def test_password_label_is_real_text(self):
+        marker = "<" + "REDACTED" + ">"
+        self.assertNotIn("password", views.TEXT)
+        self.assertTrue(views.TEXT["password_label"].strip())
+        for key, value in views.TEXT.items():
+            with self.subTest(key=key):
+                self.assertNotIn(marker, value)
+
+    def test_remote_controller_sources_carry_no_redaction_placeholder(self):
+        from pathlib import Path
+        marker = "<" + "REDACTED" + ">"
+        agent = Path(views.__file__).resolve().parent
+        for name in ("remote_controller_views.py", "remote_controller_bridge.py",
+                     "remote_controller_runtime.py", "remote_mobile_views.py",
+                     "remote_response_files.py", "test_remote_controller_views.py",
+                     "templates/agent/remote_controller.html"):
+            with self.subTest(name=name):
+                self.assertNotIn(marker, (agent / name).read_text(encoding="utf-8"))
+
+    def test_reenable_finishes_a_pending_revocation_first(self):
+        self.profile.binding_id = "1" * 32
+        calls = []
+
+        def unbind(profile):
+            calls.append(("unbind", profile.binding_id))
+            return {"disabled": True}
+
+        def bind(profile):
+            calls.append(("bind", profile.binding_id))
+            return {"id": "3" * 32}
+
+        self.unbind.side_effect = unbind
+        self.bind.side_effect = bind
+        self.assertEqual(views.account(self.request("enable")).status_code, 200)
+        self.assertEqual(calls, [("unbind", "1" * 32), ("bind", "")])
+        self.assertTrue(self.profile.enabled)
+        self.assertEqual(self.profile.binding_id, "3" * 32)
+
+    def test_reenable_waits_while_the_old_grant_cannot_be_revoked(self):
+        self.profile.binding_id = "1" * 32
+        self.unbind.side_effect = views.RcBridgeError("service_unavailable", "isolated fixture")
+        response = views.account(self.request("enable"))
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.context_data["error"], views.TEXT["revoke_first"])
+        self.bind.assert_not_called()
+        self.assertFalse(self.profile.enabled)
+        self.assertEqual(self.profile.binding_id, "1" * 32)
+
+    def test_reenable_continues_when_the_old_binding_is_already_gone(self):
+        self.profile.binding_id = "1" * 32
+        self.unbind.side_effect = views.RcBridgeError("not_found", "isolated fixture")
+        self.bind.return_value = {"id": "3" * 32}
+        self.assertEqual(views.account(self.request("enable")).status_code, 200)
+        self.bind.assert_called_once_with(self.profile)
+        self.assertEqual(self.profile.binding_id, "3" * 32)
+
+    def test_phone_messages_follow_the_edition_language(self):
+        from . import remote_controller_bridge as bridge
+        from . import remote_mobile_views, remote_response_files
+        for module in (remote_mobile_views, remote_response_files):
+            with self.subTest(module=module.__name__):
+                with patch.object(bridge, "EDITION", "spanish"):
+                    self.assertEqual(module._say("Saved.", "Guardado."), "Guardado.")
+                with patch.object(bridge, "EDITION", "english"):
+                    self.assertEqual(module._say("Saved.", "Guardado."), "Saved.")

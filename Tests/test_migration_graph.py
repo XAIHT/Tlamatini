@@ -56,13 +56,18 @@ class ActualMigrationGraphTests(unittest.TestCase):
         cls.loader = MigrationLoader(None)
         assert not cls.loader.detect_conflicts(), cls.loader.detect_conflicts()
         leaves = cls.loader.graph.leaf_nodes("agent")
-        assert leaves == [("agent", "0224_remote_controller")], leaves
-        cls.target = leaves[0]
-        cls.parent = next(n for n in cls.loader.disk_migrations[cls.target].dependencies
+        # Exactly one agent leaf: a second one means a new migration does not
+        # depend on the current last migration, and upgrades would fork.
+        assert len(leaves) == 1, leaves
+        cls.leaf = leaves[0]
+        cls.rc = ("agent", "0224_remote_controller")
+        assert cls.rc in cls.loader.disk_migrations, cls.rc
+        assert cls.rc in cls.loader.graph.forwards_plan(cls.leaf), (cls.rc, cls.leaf)
+        cls.parent = next(n for n in cls.loader.disk_migrations[cls.rc].dependencies
                           if n[0] == "agent")
         cls.targets = cls.loader.graph.leaf_nodes()
         print(f"REAL {ROOT.name}: {len(cls.loader.disk_migrations)} graph nodes; "
-              f"{cls.target[1]} follows {cls.parent[1]}", flush=True)
+              f"{cls.rc[1]} follows {cls.parent[1]}; agent leaf {cls.leaf[1]}", flush=True)
 
     def setUp(self):
         from django.db import connections
@@ -114,8 +119,13 @@ class ActualMigrationGraphTests(unittest.TestCase):
         self.assertTrue(prompts.filter(pk=1).exists())
         prompts.filter(pk=1).update(promptContent="Preserve this user-edited prompt.")
         executor = self.executor("default")
+        graph = executor.loader.graph
+        before = set(graph.forwards_plan(self.parent))
+        expected = [name for app, name in graph.forwards_plan(self.leaf)
+                    if app == "agent" and (app, name) not in before]
+        self.assertEqual(expected[:1], [self.rc[1]])
         self.assertEqual([migration.name for migration, backwards in executor.migration_plan(self.targets)],
-                         ["0224_remote_controller"])
+                         expected)
         executor.migrate(self.targets)
         apps = executor.loader.project_state(self.targets).apps
         self.assertTrue(apps.get_model("auth", "User").objects.filter(pk=user.pk, username=user.username).exists())

@@ -272,7 +272,7 @@
   "video_interpreter_model_2": "gemma4:cloud",
   "video_merging_model": "deepseek-v4.1-flash:cloud",
   "claude_image_model": "claude-opus-5-5",
-  "talker_model": "legraphista/Orpheus:3b-ft-q8",
+  "talker_model": "legraphista/Orpheus:latest",
   "talker_voice": "leah",
   "whisperer_engine": "faster-whisper",
   "whisperer_model": "base",

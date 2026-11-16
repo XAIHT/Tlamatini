@@ -241,6 +241,7 @@ export default [
                 showExecPermissionDialog: "readonly",
                 dismissExecPermissionDialogForRuntimeProceed: "readonly",
                 dismissExecPermissionDialogSilently: "readonly",
+                resolveExecPermissionDialog: "readonly",
                 preRenderOmissionsDialog: "readonly",
                 renderOmissionsDialog: "readonly",
                 preRenderMcpsDialog: "readonly",

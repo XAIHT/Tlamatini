@@ -49,7 +49,7 @@ for agent, prefix, first, second in (
 _field('claude_image_model', 'Claude image analysis', 'Vision', 'claude-opus-4-5-20251101',
        kind='provider', help_text='Anthropic model ID; requires your existing Claude API credentials.')
 
-_field('talker_model', 'Talker · speech generation', 'Speech', 'legraphista/Orpheus:3b-ft-q8',
+_field('talker_model', 'Talker · speech generation', 'Speech', 'legraphista/Orpheus:latest',
        agent='talker', path='model', help_text='Orpheus-compatible audio-token model; ordinary chat models cannot speak.')
 _field('talker_voice', 'Talker · voice', 'Speech', 'tara', agent='talker', path='voice',
        kind='choice', choices=('tara', 'leah', 'jess', 'mia', 'zoe'), help_text='Use a supported female Orpheus voice.')

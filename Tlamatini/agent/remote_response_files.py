@@ -25,6 +25,11 @@ from django.http import FileResponse, JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
+def _say(english, spanish):
+    """This edition's wording for an error shown on the phone."""
+    from .remote_controller_bridge import EDITION
+    return spanish if EDITION == "spanish" else english
+
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_TICKET_SECONDS = 30 * 60
 SALT = "tlamatini.rc.response-file.v1"
@@ -347,9 +352,9 @@ def download(request):
         return response
     except FileFault as error:
         return JsonResponse({"error": {"code": error.code,
-                            "message": "This file cannot be downloaded. Reload the conversation and try again."}}, status=error.status)
+                            "message": _say("This file cannot be downloaded. Reload the conversation and try again.", "No se puede descargar este archivo. Vuelve a cargar la conversación e inténtalo de nuevo.")}}, status=error.status)
     except (KeyError, TypeError, ValueError, OSError):
-        return JsonResponse({"error": {"code": "file_unavailable", "message": "This file is no longer available."}}, status=404)
+        return JsonResponse({"error": {"code": "file_unavailable", "message": _say("This file is no longer available.", "Este archivo ya no está disponible.")}}, status=404)
 
 
 @never_cache
@@ -382,9 +387,9 @@ def mobile_download(request):
         response["Cache-Control"] = "no-store, private"
         return response
     except FileFault as error:
-        return JsonResponse({"error": {"code": error.code, "message": "This file cannot be downloaded."}}, status=error.status)
+        return JsonResponse({"error": {"code": error.code, "message": _say("This file cannot be downloaded.", "No se puede descargar este archivo.")}}, status=error.status)
     except (ValueError, OSError):
-        return JsonResponse({"error": {"code": "file_unavailable", "message": "This file is no longer available."}}, status=404)
+        return JsonResponse({"error": {"code": "file_unavailable", "message": _say("This file is no longer available.", "Este archivo ya no está disponible.")}}, status=404)
 
 
 def content_ticket(user_id, message_id, html, *, profile=None):
@@ -446,9 +451,9 @@ def response_content(request):
         return response
     except FileFault as error:
         return JsonResponse({"error": {"code": error.code,
-                             "message": "This response cannot be loaded. Reload the conversation and try again."}}, status=error.status)
+                             "message": _say("This response cannot be loaded. Reload the conversation and try again.", "No se puede cargar esta respuesta. Vuelve a cargar la conversación e inténtalo de nuevo.")}}, status=error.status)
     except (KeyError, TypeError, ValueError, OSError):
-        return JsonResponse({"error": {"code": "response_unavailable", "message": "This response is no longer available."}}, status=404)
+        return JsonResponse({"error": {"code": "response_unavailable", "message": _say("This response is no longer available.", "Esta respuesta ya no está disponible.")}}, status=404)
 
 
 _TOOL_FILES = {

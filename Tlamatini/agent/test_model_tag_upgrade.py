@@ -10,26 +10,27 @@ from agent.agents import model_settings as registry
 from agent.models import Prompt
 
 OLD_VISION = 'mistral-large-3:675b-cloud'
-SPEECH_MODEL = 'legraphista/Orpheus:3b-ft-q8'
+SPEECH_MODEL = 'legraphista/Orpheus:latest'
+SAVED_SPEECH_MODEL = 'legraphista/Orpheus:3b-ft-q8'
 
 
 class ModelTagConfigurationTests(SimpleTestCase):
     def test_old_saved_choices_resolve_in_dialog_chat_and_agent_overrides(self):
         original = {'image_interpreter_model': OLD_VISION,
-                    'talker_model': SPEECH_MODEL, 'talker_voice': 'tara',
+                    'talker_model': SAVED_SPEECH_MODEL, 'talker_voice': 'tara',
                     'unified_agent_model': 'my-model:custom',
                     'unrelated': OLD_VISION}
         resolved = registry.normalize_model_config(original)
         self.assertEqual(resolved['image_interpreter_model'], 'mistral-large-4:cloud')
-        self.assertEqual(resolved['talker_model'], SPEECH_MODEL)
+        self.assertEqual(resolved['talker_model'], SAVED_SPEECH_MODEL)
         self.assertEqual(resolved['talker_voice'], 'tara')
         self.assertEqual(resolved['unrelated'], OLD_VISION)
         self.assertEqual(resolved['unified_agent_model'], 'my-model:custom')
-        self.assertEqual(original['talker_model'], SPEECH_MODEL)
+        self.assertEqual(original['talker_model'], SAVED_SPEECH_MODEL)
         self.assertEqual(registry.values_for_dialog(original)['talker_model'],
-                         SPEECH_MODEL)
-        yaml = registry.resolve_agent_models('talker', {'model': SPEECH_MODEL, 'voice': 'tara'}, {})
-        self.assertEqual(yaml['model'], SPEECH_MODEL)
+                         SAVED_SPEECH_MODEL)
+        yaml = registry.resolve_agent_models('talker', {'model': SAVED_SPEECH_MODEL, 'voice': 'tara'}, {})
+        self.assertEqual(yaml['model'], SAVED_SPEECH_MODEL)
         self.assertEqual(yaml['voice'], 'tara')
         yaml = registry.resolve_agent_models('talker', {'model': 'custom:local'}, {})
         self.assertEqual(yaml['model'], 'custom:local')

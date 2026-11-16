@@ -9,7 +9,7 @@
 #   Tlamatini Author Banner — do not remove (releases scrub the name automatically)
 # Talker Agent - TEXT-TO-SPEECH (TTS): speaks `input_text` aloud via OLLAMA.
 # Action: Triggered by upstream -> Read input_text + Ollama connection config ->
-#         Ask the Ollama TTS model (default Orpheus-3b-FT) to synthesise the
+#         Ask the Ollama TTS model (default legraphista/Orpheus:latest) to synthesise the
 #         text (it streams audio TOKENS) -> Decode the tokens to a 24 kHz
 #         waveform with the SNAC neural codec -> Save a WAV -> Play it through a
 #         system OUTPUT device (speakers) -> Emit a Parametrizer-readable
@@ -858,7 +858,7 @@ def query_ollama_tts(config: Dict, prompt: str) -> Tuple[str, int]:
     """
     base = str(config.get('ollama_url') or 'http://localhost:11434').rstrip('/')
     url = f"{base}/api/generate"
-    model = str(config.get('model') or 'Orpheus-3b-FT').strip()
+    model = str(config.get('model') or 'legraphista/Orpheus:latest').strip()
     token = str(config.get('ollama_token') or '').strip()
     timeout = _coerce_float(config.get('request_timeout', 300), 300)
 
@@ -1133,7 +1133,7 @@ def synthesize(config: Dict) -> Dict:
     if not text:
         raise RuntimeError("No input_text configured — set input_text to the words to speak.")
 
-    model = str(config.get('model') or 'Orpheus-3b-FT').strip()
+    model = str(config.get('model') or 'legraphista/Orpheus:latest').strip()
     language = str(config.get('language') or 'en').strip()
     emotion = str(config.get('emotion') or '').strip().lower().strip('<>')
     base = str(config.get('ollama_url') or 'http://localhost:11434').rstrip('/')
@@ -1359,7 +1359,7 @@ def emit_parametrizer_error_section(config: Dict, error_message: str):
         f"output_path: \n"
         f"output_dir: {resolve_output_dir(config)}\n"
         f"filename: \n"
-        f"model: {config.get('model', 'Orpheus-3b-FT')}\n"
+        f"model: {config.get('model', 'legraphista/Orpheus:latest')}\n"
         f"language: {config.get('language', 'en')}\n"
         f"voice: {_report_voice}\n"
         f"gender: {_report_gender}\n"
@@ -1425,7 +1425,7 @@ def main():
 
         logging.info("🗣️ TALKER AGENT STARTED (Ollama TTS)")
         logging.info(
-            f"🤖 Model: {config.get('model', 'Orpheus-3b-FT')} @ "
+            f"🤖 Model: {config.get('model', 'legraphista/Orpheus:latest')} @ "
             f"{config.get('ollama_url', 'http://localhost:11434')}"
         )
         logging.info(f"🎯 Targets: {target_agents}")

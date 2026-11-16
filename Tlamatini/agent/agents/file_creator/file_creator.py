@@ -380,11 +380,15 @@ def _emit_file_receipt(file_path, append):
             after = os.fstat(stream.fileno())
         if (before.st_size, before.st_mtime_ns, before.st_ino) != (after.st_size, after.st_mtime_ns, after.st_ino) or size != before.st_size:
             return False
+        if append:
+            status = "appended"
+        else:
+            status = "created"
         logging.info(
             "INI_SECTION_FILE_CREATOR<<<\n"
             "status: %s\noutput_path: %s\nbytes: %s\noutput_sha256: %s\n\n"
             ">>>END_SECTION_FILE_CREATOR",
-            "appended" if append else "created", output_path, size, digest.hexdigest())
+            status, output_path, size, digest.hexdigest())
         return True
     except (OSError, ValueError, TypeError):
         logging.warning("Response file metadata unavailable; the file creation result is unchanged.")

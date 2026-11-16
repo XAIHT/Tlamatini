@@ -24,6 +24,25 @@ _leases_lock = threading.Lock()
 _leases = set()
 enrollment_lock = threading.RLock()
 AUTHORITY_SECONDS = 20.0
+# Each native call starts a helper process. Poll an idle account every few
+# seconds, an active conversation every second, and back off while the
+# service keeps failing, so a stopped service costs almost nothing.
+ACTIVE_POLL_SECONDS = 1.0
+IDLE_POLL_SECONDS = 3.0
+MAX_RETRY_SECONDS = 15.0
+
+
+def _now():
+    return time.monotonic()
+
+
+def _retry_delay(failures):
+    """2, 4, 8, then at most 15 seconds between attempts that keep failing."""
+    # Saturate before exponentiation: a long outage must never overflow and
+    # bypass the retry schedule or interrupt the revocation supervisor.
+    if failures >= 4:
+        return MAX_RETRY_SECONDS
+    return min(MAX_RETRY_SECONDS, 2.0 ** max(1, failures))
 
 
 class RcBridgeError(Exception):
@@ -90,9 +109,15 @@ def _profiles():
 
 
 def _clear_binding(profile):
+    from django.db.models import Q
     from .models import RemoteControllerProfile
-    RemoteControllerProfile.objects.filter(pk=profile.pk, enabled=False,
-                                            binding_id=profile.binding_id).update(binding_id="")
+    # Clear only this exact revoked binding, and only while consent is absent:
+    # remote access disabled here, or the Django account deactivated. After a
+    # reactivation the account must enable remote access again.
+    RemoteControllerProfile.objects.filter(
+        Q(enabled=False) | Q(user__is_active=False),
+        pk=profile.pk, binding_id=profile.binding_id,
+    ).update(binding_id="", enabled=False)
 
 
 def _pending_revocations():
@@ -122,8 +147,12 @@ def _forget_revocation(profile):
 
 
 def _ready(profile):
+    # A remote conversation builds this account's chain on demand, so the
+    # application can serve it once Django has loaded. An existing desktop
+    # chain only means that it is already warm.
+    from django.apps import apps
     from .global_state import global_state
-    return bool(global_state.get_state(f"rag_chain_{profile.user_id}"))
+    return bool(global_state.get_state(f"rag_chain_{profile.user_id}")) or apps.ready
 
 
 class _NativeTransport:
@@ -169,9 +198,15 @@ def _retry_revocation(profile):
             return
         if current.enabled and current.user.is_active:
             return
-        unbind_profile(current)
-        if not current.enabled:
-            _clear_binding(current)
+        try:
+            unbind_profile(current)
+        except RcBridgeError as exc:
+            # The service no longer knows this binding: it is already revoked.
+            if exc.code != "not_found":
+                raise
+        # Consent is gone here or the account is inactive. Clearing the revoked
+        # binding ends the retries instead of repeating them every second.
+        _clear_binding(current)
 
 
 def _history(profile):
@@ -305,6 +340,8 @@ class AccountWorker:
         self.retiring = False
         self.consent_observed = True
         self._close_started = False
+        self.next_poll_at = 0.0
+        self.poll_failures = 0
 
     async def call(self, op, **fields):
         request = {"op": op, "adapter_id": self.profile.adapter.hex, **fields}
@@ -509,8 +546,14 @@ async def _poll(worker, slots):
             await worker.tick()
         except Exception as exc:
             worker.cancel.set()
+            worker.poll_failures = getattr(worker, "poll_failures", 0) + 1
+            worker.next_poll_at = _now() + _retry_delay(worker.poll_failures)
             if not isinstance(exc, RcBridgeError):
                 _log.info("Remote-Controller account polling failed: %s", type(exc).__name__)
+        else:
+            worker.poll_failures = 0
+            worker.next_poll_at = _now() + (
+                ACTIVE_POLL_SECONDS if getattr(worker, "active", None) else IDLE_POLL_SECONDS)
 
 
 async def _revoke(profile, transport):
@@ -533,6 +576,8 @@ async def _run():
     retiring = set()
     revocations = {}
     pending_revocations = {}
+    revocation_failures = {}
+    revocation_retry_at = {}
     transport = _NativeTransport()
     poll_slots = asyncio.Semaphore(4)
     last_problem = None
@@ -570,7 +615,8 @@ async def _run():
                         workers[profile.pk] = worker
                     worker.profile = profile
                     worker.consent_observed = True
-                    if worker.poll_task is None or worker.poll_task.done():
+                    if ((worker.poll_task is None or worker.poll_task.done())
+                            and _now() >= getattr(worker, "next_poll_at", 0.0)):
                         worker.poll_task = asyncio.create_task(_poll(worker, poll_slots))
                 # Deleted profiles cannot be rediscovered. Keep their known
                 # old binding until revocation is acknowledged. New bindings
@@ -578,10 +624,20 @@ async def _run():
                 # 128; an outage cannot create new remotely authorized IDs.
                 for identity, old in list(pending_revocations.items()):
                     previous = revocations.get(identity)
-                    if previous is not None and previous.done() and previous.result():
-                        pending_revocations.pop(identity)
+                    if previous is not None and not previous.done():
+                        continue
+                    if previous is not None:
                         revocations.pop(identity)
-                    elif previous is None or previous.done():
+                        if previous.result():
+                            pending_revocations.pop(identity)
+                            revocation_failures.pop(identity, None)
+                            revocation_retry_at.pop(identity, None)
+                            continue
+                        # The service could not be reached: wait before retrying.
+                        failures = revocation_failures.get(identity, 0) + 1
+                        revocation_failures[identity] = failures
+                        revocation_retry_at[identity] = _now() + _retry_delay(failures)
+                    if _now() >= revocation_retry_at.get(identity, 0.0):
                         revocations[identity] = asyncio.create_task(_revoke(old, transport))
                 last_problem = None
             except Exception as exc:

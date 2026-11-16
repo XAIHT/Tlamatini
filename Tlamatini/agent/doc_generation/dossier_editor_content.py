@@ -278,8 +278,9 @@ def release_sections(section, facts):
                     "a classifier or disk scan. It grants no new permission. A mixed request continues through "
                     "normal processing rather than being mistaken for a directory-listing request.",
                     "Central defaults use deepseek-v4.1-flash:cloud for text and mistral-large-4:cloud plus "
-                    "gemma4:cloud for vision; configured choices remain the settings authority. Orpheus "
-                    "3b-ft-q8 remains the speech model. On November 9, the wizard's final visible cohorts "
+                    "gemma4:cloud for vision; configured choices remain the settings authority. "
+                    "legraphista/Orpheus:latest is the default speech model. On November 9, the "
+                    "wizard's final visible cohorts "
                     "created and authenticated 20 accounts with 260 assertions across the two editions.",
                 ], deck_points=[
                     ("Create", "Known wizard card uses the current runtime and private console input."),

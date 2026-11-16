@@ -175,6 +175,25 @@ const EXEC_PERM_DENY_CSS = {
 // Guards against double-sending a decision for the same prompt (button click
 // followed by the dialog's close handler, which also defaults to deny).
 let _execPermDecisionSent = false;
+let _execPermRequestId = null;
+const _execPermResolvedIds = new Set();
+
+function rememberExecPermissionResolution(requestId) {
+    _execPermResolvedIds.add(requestId);
+    if (_execPermResolvedIds.size > 256) {
+        _execPermResolvedIds.delete(_execPermResolvedIds.values().next().value);
+    }
+}
+
+function resolveExecPermissionDialog(detail) { // eslint-disable-line no-unused-vars
+    const requestId = detail && detail.request_id;
+    if (typeof requestId !== 'string' || !requestId ||
+        !['proceed', 'deny'].includes(detail.decision)) return;
+    rememberExecPermissionResolution(requestId);
+    if (_execPermRequestId === requestId) {
+        dismissExecPermissionDialogSilently('resolved');
+    }
+}
 
 /**
  * Show the modal "execution permission" dialog for a single Multi-Turn tool
@@ -189,6 +208,10 @@ let _execPermDecisionSent = false;
 function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-vars
     detail = detail || {};
     const requestId = detail.request_id;
+    if (!requestId || _execPermResolvedIds.has(requestId) || _execPermRequestId === requestId) return;
+    // Retiring an older widget must not send a denial for the new prompt.
+    dismissExecPermissionDialogSilently('replaced');
+    _execPermRequestId = requestId;
     _execPermDecisionSent = false;
 
     const agentEl = document.getElementById('exec-perm-agent');
@@ -206,8 +229,9 @@ function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-var
     if (shellEl) shellEl.value = detail.shell || '';
 
     function sendDecision(decision) {
-        if (_execPermDecisionSent) return;
+        if (_execPermDecisionSent || _execPermRequestId !== requestId) return;
         _execPermDecisionSent = true;
+        rememberExecPermissionResolution(requestId);
         sendChatSocketMessage(JSON.stringify({
             // 'message' is required by the consumer's receive() (it reads
             // text_data_json['message'] unconditionally before branching).
@@ -245,6 +269,7 @@ function showExecPermissionDialog(detail) { // eslint-disable-line no-unused-var
             // Closing without a button choice is treated as Deny (no-op if a
             // decision was already sent by one of the buttons).
             sendDecision('deny');
+            if (_execPermRequestId === requestId) _execPermRequestId = null;
         },
         create: function () {
             $(this).parent().find('.ui-dialog-buttonpane button:contains("Proceed")').css(EXEC_PERM_PROCEED_CSS);
@@ -294,6 +319,7 @@ function dismissExecPermissionDialogSilently(reason) {
     // already been answered. The dialog was modal:true, closeOnEscape:false and its
     // titlebar X is hidden, so a button was her ONLY way out. An orphan modal.
     _execPermDecisionSent = true;
+    _execPermRequestId = null;
     try {
         if ($('#exec-permission-dialog-message').hasClass('ui-dialog-content')) {
             $('#exec-permission-dialog-message').dialog('close');
