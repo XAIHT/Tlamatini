@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Editing and saving canvas files
 
-> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
 
 Introduced in v1.89.0 (2026-10-21), carried by v1.91.0 with configurable editor behavior. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
 

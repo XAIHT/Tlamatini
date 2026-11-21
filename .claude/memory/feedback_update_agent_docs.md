@@ -12,7 +12,7 @@ originSessionId: b8a2266e-dd47-49d9-8f3f-a4e91da6f11b
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
 
 
 When any workflow agent (in `Tlamatini/agent/agents/<name>/`) is added, renamed, or has its behavior/connection semantics changed, update the documentation files in the same commit:

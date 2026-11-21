@@ -1054,10 +1054,8 @@ def build_chapters(f: dict) -> list[Chapter]:
             f"The Catalog of Prompts opens with {sections_count} sections, each beginning with a guided "
             f"Step-by-Step wizard and growing from simple to advanced.",
             body=[
-                f"Sections: {catalog_names}. VOICE COMMANDS comes first, because speaking is the shortest way "
-                f"to use her: you talk, Whisperer transcribes, and the transcript becomes the prompt. "
-                "These catalog workflows use the model-mediated wrapped tool and their card-specific modes; "
-                "they are distinct from the direct microphone button beside Send.",
+                f"Sections: {catalog_names}. To speak a prompt, use the microphone button beside Send: "
+                "Whisperer transcribes what you say and the transcript becomes the prompt.",
                 "The mode badges on each card are derived from the prompt text itself, and clicking a card sets "
                 "the toolbar switches to exactly those modes. Every prompt uses one grammar, so it is always "
                 "clear whose blank is whose.",
@@ -1068,7 +1066,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ["< … >", "Report slot", "Where an answer is printed; never an input."],
             ]}, deck="split",
             deck_points=[
-                ("Sections", f"{sections_count}, beginning with VOICE COMMANDS."),
+                ("Sections", f"{sections_count}, beginning with Getting Started."),
                 ("Openers", "Every section starts with a guided Step-by-Step wizard."),
                 ("Badges", "Derived from the prompt text; a click sets the modes."),
                 ("Grammar", "[[ you ]], {{ runtime }}, < report slot >."),
@@ -1427,9 +1425,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "Transcription runs locally with faster-whisper, on a GPU when present and on the CPU otherwise, "
                 "or through a cloud Whisper provider. Talker speaks through an Orpheus-compatible model in a "
                 "female voice — tara, leah, jess, mia or zoe. A male voice is refused by design.",
-                "The catalog's first section, VOICE COMMANDS, makes the microphone the keyboard: she transcribes "
-                "your instruction, reads it back, and only then acts. Anything irreversible still needs your "
-                "written confirmation under those catalog instructions. Config > Mic selects automatic submission "
+                "The microphone button beside Send makes the microphone the keyboard. Config > Mic selects automatic submission "
                 "or an editable draft. Actual dispatch uses browser speech for acknowledgment, respecting Silent mode.",
             ], deck="list",
             deck_points=[

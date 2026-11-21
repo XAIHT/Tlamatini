@@ -263,16 +263,8 @@ def load_prompt_view(request, prompt_name):
 # a brand-new prompt added by a later migration before it is tagged), so nothing is
 # ever silently dropped from the catalog.
 PROMPT_CATEGORY_ORDER = [
-    # Voice Commands (Angela, 2026-09-12) — deliberately the VERY FIRST section,
-    # ahead of Getting Started. Rationale: speaking is the shortest path to using
-    # Tlamatini at all (you talk, she does it), so it is the first thing a new
-    # user should meet. It is a SEPARATE section from 'Media & Voice': that one
-    # is about PRODUCING or CONSUMING media (record a WAV, play a file, speak a
-    # sentence, transcribe a clip); this one is about DRIVING Tlamatini BY voice
-    # — the microphone IS the keyboard, and Whisperer's transcript becomes the
-    # prompt she then executes. Enabled by the Whisperer sound gate (v1.51.7):
-    # before it, a spoken prompt was cut off at a fixed record_seconds.
-    ('voice_commands', 'Voice Commands'),
+    # Voice Commands (prompts 121-122) was removed on 2026-11-21: the
+    # microphone button beside Send replaced it. Migration 0226 hides its rows.
     ('getting_started', 'Getting Started'),
     ('files_search', 'Files & Search'),
     ('run_execute', 'Run & Execute'),
@@ -10571,8 +10563,8 @@ def version_view(request):
     Response shape::
 
         {
-          "version": "1.93.5",                       # public SemVer (clean, no suffix)
-          "build":   "1.93.5",                       # build descriptor (same as version)
+          "version": "1.96.1",                       # public SemVer (clean, no suffix)
+          "build":   "1.96.1",                       # build descriptor (same as version)
           "commit":  "abc1234",
           "date":    "2026-05-15T18:42:11Z",
           "source":  "generated" | "git" | "unknown"

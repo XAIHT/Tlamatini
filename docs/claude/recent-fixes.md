@@ -8,7 +8,17 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+
+## 2026-11-21 — Voice Commands removed from the Catalog of Prompts (v1.96.1)
+
+The microphone button beside Send replaced the catalog's Voice Commands
+section. `views.PROMPT_CATEGORY_ORDER` no longer lists `voice_commands`, and
+migration 0226 hides prompts 121 and 122 (`hidden=True`) instead of deleting
+them, so no id is renumbered. `test_known_section_openers` no longer expects
+the section, and `agent/test_voice_commands_catalog.py` guards that it stays
+removed. Do not add the section back. Released as
+[v1.96.1](../changes/2026-11-21-v1.96.1.md).
 
 ## 2026-11-16 — Talker default speech model is `legraphista/Orpheus:latest`
 

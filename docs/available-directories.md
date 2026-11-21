@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Ask which directories are available
 
-> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
 
 Ask **“Show me the available directories”** or
 **“Muéstrame los directorios disponibles”**. Tlamatini answers with the roots

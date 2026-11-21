@@ -443,8 +443,8 @@ def release_statements(rel: dict, version: str) -> tuple[list[str], list[list[st
         f"**The latest released version is {version}.** The application, user guides, "
         "PDF dossier and PowerPoint deck all use this one release version.",
         f"This edition documents commit `{rel['head_short']}` and the complete release, "
-        "including selection explanations, Executer capture, background speech, truthful downloads "
-        "and native account creation.",
+        "including the Voice Commands removal from the Catalog of Prompts, the Tlamatini-RC remote "
+        "control and the 1.93.5 canvas, voice and execution changes.",
     ]
     points = [("Latest released version", version),
               ("Documented commit", rel["head_short"]),

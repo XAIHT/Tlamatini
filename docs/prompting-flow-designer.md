@@ -4,7 +4,7 @@
 
 # Prompt Flow Panel
 
-> Latest released version: **[v1.93.5](changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
 
 
 Open **Panels → Prompt Flow Panel** from chat, or **File → Prompt Flow Panel** from the Agentic Control Panel. The authenticated page is `/agent/prompt_flow_panel/`.

@@ -183,6 +183,21 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
+        section("release1961_catalog", f"RELEASED · v{facts['version']}", "Voice moves to the microphone",
+                "The Catalog of Prompts no longer has a Voice Commands section.",
+                body=[
+                    "The microphone button beside Send records, transcribes and sends a prompt directly, so the "
+                    "two Voice Commands cards (prompts 121 and 122) left the Catalog of Prompts. "
+                    "Migration 0226 hides them without renumbering, and the catalog now opens with Getting Started.",
+                    "This release also carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: "
+                    "hosted remote control, approval sync and hardening. Talker's default model is "
+                    "legraphista/Orpheus:latest.",
+                ], deck_points=[
+                    ("Speak", "Use the microphone button beside Send."),
+                    ("Catalog", "Voice Commands removed; Getting Started opens the catalog."),
+                    ("Data", "Migration 0226 hides prompts 121 and 122 without renumbering."),
+                    ("Remote", "Carries the Tlamatini-RC releases v1.94.0 to v1.96.0."),
+                ]),
         section("release1935_selection", f"RELEASED · v{facts['version']}", "Explain exactly what is selected",
                 "The canvas button works independently of the chat toolbar and Live editor switch.",
                 body=[

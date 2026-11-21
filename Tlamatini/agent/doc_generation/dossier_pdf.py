@@ -1134,7 +1134,7 @@ class ChapterOpener(FullPage):
         y = y - 16 - gh - 40
         titles = [s.title for s in ch.sections]
         if ch.key == "release":
-            titles = [s.title for s in ch.sections if s.key in {"release1935_selection", "release1935_execution", "release1935_voice", "release1935_downloads", "release1935_requests", "lineage", "identity_release"}]
+            titles = [s.title for s in ch.sections if s.key in {"release1961_catalog", "release1935_selection", "release1935_execution", "release1935_voice", "release1935_downloads", "release1935_requests", "lineage", "identity_release"}]
         if titles:
             draw_text(canv, 64, y, "IN THIS CHAPTER", "sans-semibold", 7.4, "gold", space=2.2)
             y -= 12

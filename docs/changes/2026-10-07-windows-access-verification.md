@@ -1,7 +1,7 @@
 <!-- Created by Angela López Mendoza · @angelahack1 — Tlamatini. -->
 # Windows access scripts and non-admin execution checks — 2026-10-07
 
-> Latest released version: **[v1.93.5](2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](2026-11-21-v1.96.1.md)**.
 
 
 The `security/` changes prepare Windows exceptions for the operator to apply.

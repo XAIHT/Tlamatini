@@ -8,7 +8,7 @@
 -->
 # DB / Older
 
-> Latest released version: **[v1.93.5](../../../docs/changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](../../../docs/changes/2026-11-21-v1.96.1.md)**.
 
 
 This directory is the **archive** of previously-live `db.sqlite3` files

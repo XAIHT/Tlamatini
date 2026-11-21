@@ -12,7 +12,7 @@ originSessionId: 161aebfa-f2df-4d28-bcdf-e79b7579c58e
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
 
 
 The 2026-05-07 desktop-UI test typed `Hi!, i''m tlamatini` instead of `Hi!, I'm Tlamatini`. Root cause was three layers all missing escape support for apostrophes inside quoted values.

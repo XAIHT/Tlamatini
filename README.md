@@ -23,7 +23,7 @@
 > **Setting up Tlamatini for the first time?** [▶ Watch the English setup walkthrough on YouTube](https://www.youtube.com/watch?v=8bQcWyqL9kg) and follow along on your Windows PC. Prefer to read? Jump to the [installation steps](#installation).
 
 <p align="center">
-  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.93.5"><img src="https://img.shields.io/badge/RELEASE-v1.93.5-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini release v1.93.5" /></a>
+  <a href="https://github.com/XAIHT/Tlamatini/releases/tag/v1.96.1"><img src="https://img.shields.io/badge/RELEASE-v1.96.1-38BDF8?style=for-the-badge&labelColor=101827" alt="Tlamatini release v1.96.1" /></a>
   <a href="#installation"><img src="https://img.shields.io/badge/WINDOWS-10%20%7C%2011-14B8A6?style=for-the-badge&labelColor=101827" alt="Windows 10 and 11" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/OPEN%20SOURCE-MIT-E9C46A?style=for-the-badge&labelColor=101827" alt="MIT open source" /></a>
   <a href="https://discord.gg/WFQsrskgc"><img src="https://img.shields.io/badge/DISCORD-JOIN%20US-818CF8?style=for-the-badge&labelColor=101827&logo=discord&logoColor=white" alt="Join the community on Discord" /></a>
@@ -34,7 +34,7 @@
   <a href="https://xaiht.org">Website</a> ·
   <a href="BookOfTlamatini.md">Full guide</a> ·
   <a href="Tlamatini-Architecture.pdf">Architecture atlas</a> ·
-  <a href="docs/changes/2026-11-12-v1.93.5.md">What's new</a>
+  <a href="docs/changes/2026-11-21-v1.96.1.md">What's new</a>
 </p>
 
 > [!IMPORTANT]
@@ -55,7 +55,7 @@
 </p>
 
 
-> Latest released version: **[v1.93.5](docs/changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](docs/changes/2026-11-21-v1.96.1.md)**.
 
 ## Remote-Controller integration · 13 November 2026
 
@@ -65,7 +65,13 @@ XT's installed-application launch broker. Torrenter remains independent. Connect
 are local-only; network transport, RC voice and final installed acceptance remain
 gated. Read [the account and connection guide](docs/remote-controller.md).
 
-## v1.93.5 — Canvas selection, continuous voice and correct execution
+## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+
+- The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
+- It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](docs/remote-controller.md).
+- Talker's default model is `legraphista/Orpheus:latest`. [Full changes](docs/changes/2026-11-21-v1.96.1.md).
+
+## Carried from v1.93.5 — Canvas selection, continuous voice and correct execution
 
 - **Explain selection** uses the selected unsaved text captured when you click, preserves the chat draft and works with every checkbox combination, including Live editor off. A small selection does not require sending the whole file. [Canvas](docs/canvas-editing.md).
 - Voice can continue when the window is covered or minimized. Browser speech retries interrupted chunks and can hand remaining text to Windows host playback. Stop and mute remain under your control. [Voice](docs/voice-playback.md).
@@ -93,7 +99,7 @@ The combined builder predicts both editions’ actual emitted version before bui
 
 ## Edit, learn, run
 
-Release 1.93.5 brings Tlamatini closer to the work itself: **an editable canvas, a tutor that reads your live text, and real terminals you can watch.**
+Release 1.96.1 brings Tlamatini closer to the work itself: **an editable canvas, a tutor that reads your live text, and real terminals you can watch.**
 
 ### ✍️ Edit the file beside the conversation
 
@@ -131,13 +137,13 @@ teaching segment, choose what she says and when, and let speech finish before
 typing. **Standard** and **Guided learning** presets give you a starting point;
 Preview lets you try the draft before saving. [Explore the settings →](docs/interaction-settings.md)
 
-**Release [1.93.5](docs/changes/2026-11-12-v1.93.5.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
+**Release [1.96.1](docs/changes/2026-11-21-v1.96.1.md).** Torrenter adds account-owned downloads to chat and the Agentic Control Panel. Live Editor and Terminater accept up to 250 WPM. The updater carries the uninstaller and preserves the vault. Release builds lease the Python environment for their requirements fingerprint.
 
 **Since [v1.91.0](docs/changes/2026-10-23-v1.91.0.md):** the shared configuration
 dialog controls the real editor and terminal behavior across chat and both control
-panels. These settings are included in release **1.93.5**.
+panels. These settings are included in release **1.96.1**.
 
-**Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The [1.93.5 release record](docs/changes/2026-11-12-v1.93.5.md) covers the complete release.
+**Release trail:** canvas editing arrived with v1.89.0; live editor tutoring headlines [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), alongside the visible terminals introduced in [v1.88.0](docs/changes/2026-10-20-v1.88.0.md). The [1.96.1 release record](docs/changes/2026-11-21-v1.96.1.md) covers the complete release.
 
 ## Speak and be heard
 
@@ -318,7 +324,7 @@ Pick a doorway and go as deep as your project needs.
 | :--- | :--- |
 | [Book of Tlamatini](BookOfTlamatini.md) | The full guide, architecture, workflows and development history. |
 | [Every agent](agents_descriptions.md) | The specialist catalog and each agent's role. |
-| [v1.93.5 release record](docs/changes/2026-11-12-v1.93.5.md) | The current patch release: what it fixes and where. |
+| [v1.96.1 release record](docs/changes/2026-11-21-v1.96.1.md) | The current patch release: what it fixes and where. |
 | [v1.91.0 release record](docs/changes/2026-10-23-v1.91.0.md) | Recent developments, source inventory and dated verification evidence. |
 | [Canvas editing](docs/canvas-editing.md) · [Interactor](docs/interactor.md) · [Terminater](docs/terminater.md) | Edit, learn and run with direct control. |
 | [Live Editor & Terminater settings](docs/interaction-settings.md) | Typing, teaching, narration, terminal behavior, presets and appearance. |

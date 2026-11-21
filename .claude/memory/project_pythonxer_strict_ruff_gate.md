@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.93.5](../../docs/changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
 
 
 2026-05-29: After the user discarded the whole #1–#7 exec hardening, he explicitly asked for the Ruff gate + an LLM fix→re-ruff→retry loop ("...up to having a python script correct!" / "Strict"). Re-implemented ONLY that subset, strict and minimal (NOT the discarded containment/watcher/executer-mirror). Supersedes the relevant part of [[project_pythonxer_forkbomb_fix]].

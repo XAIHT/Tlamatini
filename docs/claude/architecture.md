@@ -8,9 +8,15 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Latest released version: **[v1.93.5](../changes/2026-11-12-v1.93.5.md)**.
+> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
 
-## v1.93.5 — Canvas selection, continuous voice and correct execution
+## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+
+- The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
+- It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](../remote-controller.md).
+- Talker's default model is `legraphista/Orpheus:latest`. [Full changes](../changes/2026-11-21-v1.96.1.md).
+
+## Carried from v1.93.5 — Canvas selection, continuous voice and correct execution
 
 - **Explain selection** uses the selected unsaved text captured when you click, preserves the chat draft and works with every checkbox combination, including Live editor off. A small selection does not require sending the whole file. [Canvas](../canvas-editing.md).
 - Voice can continue when the window is covered or minimized. Browser speech retries interrupted chunks and can hand remaining text to Windows host playback. Stop and mute remain under your control. [Voice](../voice-playback.md).
