@@ -101,8 +101,8 @@ that mode starts no tool calls before manual Send. After automatic or manual
 submission, actual tool calls are captured
 according to the existing Multi-Turn/Exec Report settings.
 
-A model-invoked `chat_agent_whisperer` call from a VOICE COMMANDS catalog
-workflow remains a wrapped tool and is captured normally. Do not conflate the
+A model-invoked `chat_agent_whisperer` call (a request asking Tlamatini to listen)
+remains a wrapped tool and is captured normally. Do not conflate the
 two entry points when interpreting a report. [Voice contract](../chat-microphone-design.md).
 
 ## Scope — what gets captured

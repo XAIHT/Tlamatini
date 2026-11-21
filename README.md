@@ -153,7 +153,7 @@ panels. These settings are included in release **1.96.1**.
 | :--- | :--- |
 | Click **Mic** beside Send, wait for **Listening**, and talk. Whisperer transcribes your words into the chat. | The **chat avatar** reads replies using the shared voice player, configured in **Config ▸ Voice**. Windows host playback can continue while the window is covered or minimized. |
 | Recording status, input level and elapsed time appear in chat. The default silence window is **3.5 seconds**. | **Talker** separately generates model-based speech. Its model and voice settings are in **Config ▸ Models**. |
-| In **Config ▸ Mic**, choose **Send automatically** or **Keep in the chat input** to review the transcript first. | Explore the **Voice Commands** section at the start of the Catalog of Prompts for guided examples. |
+| In **Config ▸ Mic**, choose **Send automatically** or **Keep in the chat input** to review the transcript first. | Open the **Catalog of Prompts** for guided examples, starting with Getting Started. |
 
 Direct dictation uses the microphone on the **computer running Tlamatini**. It keeps status in chat and opens no extra recording console. Click Mic again or press Escape to cancel; empty or failed recognition does not send a prompt. [Voice setup and controls →](docs/chat-microphone-design.md)
 

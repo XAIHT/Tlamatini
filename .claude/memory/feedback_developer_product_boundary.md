@@ -14,5 +14,5 @@ no focus activation and no visibility gate. Keep recording state in chat and
 diagnostics in the main console/log. The normal application console remains.
 
 The microphone beside Send starts Whisperer directly, gates capture, recognizes
-and sends through the existing form. It is distinct from model-mediated
-VOICE COMMANDS catalog workflows. Contract: docs/chat-microphone-design.md.
+and sends through the existing form. It replaced the VOICE COMMANDS catalog
+section, removed in v1.96.1. Contract: docs/chat-microphone-design.md.

@@ -171,7 +171,7 @@ Tlamatini does a lot. This book is organized so you can stop reading at the dept
 - **Bonus chapter §59** — Sculpting in Blender from Tlamatini (the Blenderer agent + the official Blender MCP add-on). Read this if you make 3D art / assets in Blender and want a chat / canvas surface for the editor — and to see why Blender's *code-execution* protocol differs from Unreal's verbs.
 - **[The Prompt Flow Panel: draw a chain of prompts, then press Play](#the-prompt-flow-panel-draw-a-chain-of-prompts-then-press-play)** — the 2026-09-25 sibling of the Agentic Control Panel: eight executable operations, including Terminater, plus static review bubbles, `.fpmt` files (and why `.pmt` stays with the system prompt), running, pausing and stopping, and what a run may and may not touch.
 - **[Enable Tlamatini as a Blue-hat agent](#enable-tlamatini-as-a-blue-hat-agent)** — the complete Windows defensive-toolkit runbook: asset validation, persistent host changes, detect-only baselining, armed/watch modes, evidence review, false positives, response rollback, and operator responsibility.
-- **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — the catalog's new first section: speak your instruction instead of typing it, why it needed the silence gate to exist, and the two promises (she reads it back; if she did not hear you she says so).
+- **[Voice commands: your words become the prompt](#voice-commands-your-words-become-the-prompt)** — speak your instruction with the microphone beside Send instead of typing it, why it needed the silence gate to exist, and the catalog section it replaced.
 - **[Whisperer listens: the silence gate](#whisperer-listens-the-silence-gate)** — why a fixed recording length was the wrong question, how the gate hears you, the countdown in the console bar, and the one thing that would have made the whole feature invisible.
 - **[Terminals you can watch: Terminater](#terminals-you-can-watch-terminater)** — the visible Executer: real CMD and PowerShell terminals in the Terminals area, typed key by key like a person, with a hand-over, an Esc that gives you the keyboard back, hung-command detection and a safe three-card tour in the catalog. *New in v1.88.0.*
 - **[Avatar animation repair and reproducible visible tests](#avatar-animation-repair-and-reproducible-visible-tests)** — frame assets, the transparency-flash diagnosis, the source fix, real Django/Windows-voice validation, and the Python test launcher.
@@ -398,23 +398,20 @@ and Escape discard edits; outside clicks leave the dialog open. First model
 loading or download can delay recognition; the button does not promise zero
 latency.
 
-### The VOICE COMMANDS catalog is a different entry point
+### The old VOICE COMMANDS catalog section
 
-The catalog's **VOICE COMMANDS** section still contains guided workflows that
-ask the model to invoke the wrapped `chat_agent_whisperer` tool. They keep
-their own instructions and mode badges; they are not the microphone button.
+From v1.51.9 until v1.96.1 the catalog opened with a **VOICE COMMANDS** section:
+**#121 — YOUR FIRST VOICE COMMAND** (a Step-by-Step rehearsal) and **#122 —
+SPEAK YOUR PROMPT**, which asked the model to invoke the wrapped
+`chat_agent_whisperer` tool. v1.96.1 removed that section because the
+microphone button beside Send does the same job directly; a migration hides
+both cards without renumbering them.
 
-**#121 — YOUR FIRST VOICE COMMAND** is the Step-by-Step rehearsal: it checks
-microphone/recognition setup, shows the transcript and guides a read-only trial.
-
-**#122 — SPEAK YOUR PROMPT** uses Angela's original request:
-
-> *"Tlamatini, using Whisperer record my voice till I finish to tell you a prompt, then use the text extracted as a prompt and invoke it, go!."*
-
-That card selects **Multi-Turn, Exec report and ACPX**. Its transcript read-back
-and written-confirmation instructions belong to that catalog workflow. They
-must not be described as a confirmation screen implemented by the direct button.
-Both routes refuse to invent a command from empty or failed recognition.
+You can still ask in words for a voice command (for example *"record my voice
+and use it as a prompt"*). Tlamatini then calls `chat_agent_whisperer`, reads
+the transcript back and refuses to invent a command from empty or failed
+recognition. That read-back belongs to the model-mediated request; the direct
+button has no confirmation screen.
 
 ### Shared gate, distinct lifecycle
 

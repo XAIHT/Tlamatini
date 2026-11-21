@@ -27,8 +27,8 @@ Tlamatini host's microphone; this is not browser-local audio upload. The default
 recognizer runs locally; explicitly configured cloud speech engines send the
 capture to that provider. The resulting text follows the normal chat/model path.
 
-The **VOICE COMMANDS** catalog cards use the model-mediated wrapped agent and
-their own instructions. Their rehearsal/read-back behavior must not be promised
+The **VOICE COMMANDS** catalog cards, which used the model-mediated wrapped agent,
+were removed in v1.96.1. Read-back behavior from a spoken model request must not be promised
 for this direct button. Its optional review mode uses the ordinary chat input.
 
 ## Config → Mic

@@ -17,7 +17,7 @@ Config → Models → Speech through `@config`, unless this template overrides t
 | Entry point | Behavior |
 | --- | --- |
 | Chat microphone beside Send | Direct resident `chat_worker.py`; no model decision before capture; real status in chat; silence gate → recognition → automatic normal-form submission or editable draft (Config → Mic) |
-| Wrapped `chat_agent_whisperer` / VOICE COMMANDS catalog | Model-mediated workflow invocation with the card's selected modes and instructions |
+| Wrapped `chat_agent_whisperer` | Model-mediated workflow invocation when a request asks Tlamatini to listen (the VOICE COMMANDS catalog cards that used it were removed in v1.96.1) |
 | Canvas/standalone `whisperer.py` | Existing configured agent lifecycle: microphone/file input, transcript/audio outputs, structured result and downstream targets |
 
 The direct button uses the **Tlamatini host microphone**, including from a remote

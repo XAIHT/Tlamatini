@@ -96,8 +96,8 @@ It does not select tools, invoke a planner,
 enable Multi-Turn/ACPX or bypass the request's normal permissions. Existing draft
 text and current toggles remain part of the request.
 
-The VOICE COMMANDS catalog cards still launch model-mediated workflows through
-`chat_agent_whisperer` and select the modes encoded in their cards. Their
+A request asking Tlamatini to listen still launches a model-mediated workflow through
+`chat_agent_whisperer` (the VOICE COMMANDS catalog cards were removed in v1.96.1). Its
 transcript read-back instructions are not a direct-button confirmation step.
 Dictation itself emits no wrapped-agent Exec Report row or Create Flow node.
 Those features observe the actual tools used after the text is submitted.
