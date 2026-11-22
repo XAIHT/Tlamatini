@@ -40,7 +40,7 @@ metadata:
 
 # .flw doctor
 
-> Latest released version: **[v1.96.1](../../../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 > **HEADLESS IS FORBIDDEN. VISIBLE FOREGROUND EXECUTION ONLY.** Every command, automated test, diagnostic, script, build, agent and browser must run in a visible foreground window on Angela's real desktop. Use forked CMD/PowerShell windows, `execute_forked_window: true`, and `headless: false`. Monitor live; if visibility cannot be confirmed, do not run. Read the [mandatory execution policy](../../../../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).

@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Tlamatini and Remote-Controller
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 The 13 November source integration connects your Tlamatini account to the separate
 **Tlachihuani-RC Server**, managed in XT as **Remote-Controller**. It provides

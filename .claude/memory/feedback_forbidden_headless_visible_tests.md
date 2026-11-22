@@ -6,7 +6,7 @@ type: feedback
 
 # Headless tests are forbidden — Angela, reaffirmed 2026-09-23
 
-> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 **HEADLESS IS FORBIDDEN. ALL EXECUTION MUST BE VISIBLE.** Run every test and

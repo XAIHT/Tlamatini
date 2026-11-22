@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Release version pinning — 2026-10-22
 
-> Latest released version: **[v1.96.1](2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](2026-11-21-v1.97.0.md)**.
 
 ## Failure and evidence
 

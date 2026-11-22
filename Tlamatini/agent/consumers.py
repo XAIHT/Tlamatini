@@ -37,6 +37,7 @@ from .services import (
 )
 from .chat_history_loader import DBChatHistoryLoader
 from .global_state import global_state
+from .canvas_documents_context import cancel_canvas_context_tasks, serialize_context_mutations
 from .path_guard import get_runtime_agent_root, resolve_runtime_agent_path, safe_join_under
 from . import constants
 # Per-line USER attribution for tlamatini.log. Importing it is all that is
@@ -399,9 +400,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Store RAG chain in global_state for persistence across reconnections
                     user = self.scope.get('user')
                     user_id = user.id if user and user.is_authenticated else 'anonymous'
-                    global_state.set_state(f'rag_chain_{user_id}', self.rag_chain)
-                    global_state.set_state(f'context_path_{user_id}', None)  # No custom context
-                    print(f"--- RAG chain stored in global_state for user {user_id}")
+                    if getattr(self, '_canvas_context_owner', None) is None:
+                        global_state.set_state(f'rag_chain_{user_id}', self.rag_chain)
+                        global_state.set_state(f'context_path_{user_id}', None)  # No custom context
+                        print(f"--- RAG chain stored in global_state for user {user_id}")
+                    # An explicit Canvas set publishes its chain only after the
+                    # matching SessionState has committed, including on clear.
                     
                     if isinstance(self.rag_chain, BasicPromptOnlyChain):
                         await self.channel_layer.group_send(   # type: ignore
@@ -421,7 +425,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                             )
                     print("--- Bot ready message broadcast to room.")
                     self._schedule_context_gauge_refresh(self._take_gauge_reason("agent ready"))
-                    return
+                    return True
             except Exception as e:
                 print(f"!!! ERROR during RAG chain setup: {e}")
                 self.rag_chain = _prev_chain   # do NOT discard a working chain
@@ -575,9 +579,12 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     # Store RAG chain in global_state for persistence across reconnections
                     user = self.scope.get('user')
                     user_id = user.id if user and user.is_authenticated else 'anonymous'
-                    global_state.set_state(f'rag_chain_{user_id}', self.rag_chain)
-                    global_state.set_state(f'context_path_{user_id}', path_only)  # Store context path
-                    print(f"--- Contextual RAG chain stored in global_state for user {user_id}")
+                    if getattr(self, '_canvas_context_owner', None) is None:
+                        global_state.set_state(f'rag_chain_{user_id}', self.rag_chain)
+                        global_state.set_state(f'context_path_{user_id}', path_only)  # Store context path
+                        print(f"--- Contextual RAG chain stored in global_state for user {user_id}")
+                    # Keep reconnects on the previous context until the Canvas
+                    # selection's database commit and cache publication agree.
                     
                     if isinstance(self.rag_chain, BasicPromptOnlyChain):
                         fallback_llm_response = self._say(constants.MSG_AGENT_FALLBACK)
@@ -868,6 +875,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):   # type: ignore
         print("--- WebSocket disconnected.")
+        await cancel_canvas_context_tasks(self)
         if getattr(self, '_voice_page_user', None) is not None:
             try:
                 from . import host_voice
@@ -1524,6 +1532,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
         except Exception as send_err:  # noqa: BLE001
             print(f"--- [Tier-2 reaper] failed to broadcast survivor list: {send_err}")
 
+    @serialize_context_mutations
     async def receive(self, text_data):   # type: ignore
         if _WS_TRACE:
             print(f">>> [RECEIVE] Got frame ({len(text_data)} characters)", flush=True)
@@ -1531,7 +1540,10 @@ class AgentConsumer(AsyncWebsocketConsumer):
         try:
             text_data_json = json.loads(text_data)
             canvas_explanation = None
-            message = text_data_json['message']
+            # A selected-document control frame carries documents, not a chat
+            # message. Keep the existing message requirement for other frames.
+            message = ('' if text_data_json.get('type') == 'set-canvas-documents-as-context'
+                       else text_data_json['message'])
             multi_turn_enabled = bool(text_data_json.get('multi_turn_enabled', False))
             exec_report_enabled = bool(text_data_json.get('exec_report_enabled', False)) and multi_turn_enabled
             # ACPX defaults to DISABLED. The frontend always sends an explicit
@@ -1671,6 +1683,11 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 )
                 return
 
+            if type == 'set-canvas-documents-as-context':
+                from .canvas_documents_context import begin_canvas_documents
+                await begin_canvas_documents(self, user, text_data_json)
+                return
+
             if type == 'set-pdf-canvas-as-context':
                 from .pdf_context import PdfContextError, resolve_pdf_context
                 try:
@@ -1706,7 +1723,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                         'type': 'pdf-canvas-context-finished', 'context_token': context_token,
                         'success': success is True,
                     }))
-                asyncio.create_task(load_pdf_context())
+                await load_pdf_context()
                 return
 
             if type == 'set-canvas-as-context':
@@ -1747,13 +1764,13 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     'context_type': 'file',
                     'context_filename': safe_filename
                 }))
-                asyncio.create_task(self.setup_contextual_rag_chain(context_files_path, safe_filename))
+                await self.setup_contextual_rag_chain(context_files_path, safe_filename)
                 return
             if type == 'unset-canvas-as-context':
                 print("--- Received unset-canvas-as-context message from client.")
                 self._gauge_reason = "context cleared"
                 global_state.set_state('chat_hist_summarizer_counter', 0)                
-                asyncio.create_task(self.setup_rag_chain())
+                await self.setup_rag_chain()
                 return
             if type == 'set-directory-as-context':
                 print("--- Received set-directory-as-context message from client.")
@@ -1792,7 +1809,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     'context_type': 'directory',
                     'context_filename': None
                 }))
-                asyncio.create_task(self.setup_contextual_rag_chain(context_path))
+                await self.setup_contextual_rag_chain(context_path)
                 return
             
             if type == 'set-file-as-context':
@@ -1827,7 +1844,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     'context_type': 'file',
                     'context_filename': safe_filename
                 }))
-                asyncio.create_task(self.setup_contextual_rag_chain(application_path, safe_filename))
+                await self.setup_contextual_rag_chain(application_path, safe_filename)
                 return            
 
             if type == 'cancel-current':
@@ -1957,7 +1974,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     global_state.set_state(f'context_path_{user_id}', None)
                     print(f"--- Cleared global_state cache for user {user_id}")
                     self._gauge_reason = "reconnected"
-                    asyncio.create_task(self.setup_rag_chain())
+                    await self.setup_rag_chain()
                     print("--- LLM reconnected.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
@@ -1988,7 +2005,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                         if client:
                             client.close()
                     self._gauge_reason = "history cleared"
-                    asyncio.create_task(self.setup_rag_chain())
+                    await self.setup_rag_chain()
                     print("--- LLM reconnected after history clean.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,
@@ -2015,7 +2032,7 @@ class AgentConsumer(AsyncWebsocketConsumer):
                     global_state.set_state(f'context_path_{user_id}', None)
                     print(f"--- Cleared global_state cache for user {user_id}")
                     self._gauge_reason = "context cleared"
-                    asyncio.create_task(self.setup_rag_chain())
+                    await self.setup_rag_chain()
                     print("--- LLM context cleaned and reconnected.")
                     await self.channel_layer.group_send(   # type: ignore
                         self.room_group_name,

@@ -1072,7 +1072,7 @@ def build_chapters(f: dict) -> list[Chapter]:
                 ("Grammar", "[[ you ]], {{ runtime }}, < report slot >."),
             ]),
         Section("pdfcanvas", "PDF CANVAS", "Read a PDF, then hand her the whole document",
-            "Open a PDF beside the chat in a vendored Mozilla PDF.js viewer, then use it as context.",
+            "Open a PDF in its own Canvas tab with the vendored Mozilla PDF.js viewer; select context explicitly.",
             body=[
                 "Reading uploads nothing and calls no model: the viewer reads byte ranges straight from your "
                 "disk, so there is no size or page cutoff on Tlamatini's side. Text selection, navigation, zoom, "
@@ -1083,19 +1083,22 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "also renders every page and analyzes every embedded image with Image-Interpreter. Progress is "
                 "honest, Cancel really cancels, and partial image failures are reported, not hidden. A PDF "
                 "password is used in memory only: never written to disk, to the context text or to the log.",
+                "Switching document tabs preserves page, zoom, rotation and scroll state. A successful Refresh "
+                "advances that PDF's revision and marks any selected context snapshot as older; Update context "
+                "prepares and confirms a new snapshot. Closing the viewer does not remove selected context.",
                 "A second account signed in from the same browser takes over every open tab, while an open chat "
                 "keeps its first account, so loading is refused. Since v1.76.0 the message names that cause and "
                 "the fix, reloading with F5, the header comes back and the progress dialog marks the failed step.",
             ], deck="list",
             deck_points=[
                 ("Private reading", "Byte ranges from your disk; nothing uploaded, no model called."),
-                ("Viewer", "Mozilla PDF.js 6.3.289, vendored under Apache-2.0; no CDN."),
+                ("Viewer", "Retained page, zoom, rotation and scroll; local PDF.js 6.3.289, no CDN."),
                 ("Use as context", "Text only by default; images only when you tick the box."),
                 ("Honest progress", "Four progress rows, a real Cancel, failures reported."),
                 ("Passwords", "Used in memory only; never stored or logged."),
             ]),
         Section("mdcanvas", "MARKDOWN CANVAS", "Markdown opens as a page, and stays your source",
-            "Open or drop a .md file and the canvas renders it; Source opens the editable document.",
+            "Open or drop a .md file into its own tab; Preview and Source share that document's editable buffer.",
             body=[
                 "Open, Refresh, a dropped file, a generated-file link and Context ▸ Set file as context all "
                 "recognise .md and .markdown. Preview renders CommonMark and GitHub-flavored Markdown: "
@@ -1809,10 +1812,10 @@ def build_chapters(f: dict) -> list[Chapter]:
                 "pages. Tlamatini types every key like a person, about 50 words per minute and never pasted, waits for the "
                 "command, reads its whole output and reports the exit code. Esc takes the keyboard; a command can hand it "
                 "to you on purpose with <<USER:hint>>.",
-                f"A command that stops answering is flagged hung and can be aborted without losing the terminal; one that "
-                f"exits with an error is a red Exec Report row even though the terminal worked. One hub in the Django "
-                f"process owns the shells, so closing a page never closes one. It is wrapped chat agent number 67, "
-                f"the eighth Prompt Flow Panel operation, and has three safe cards in the Catalog of Prompts.",
+                "A command that stops answering is flagged hung and can be aborted without losing the terminal; one that "
+                "exits with an error is a red Exec Report row even though the terminal worked. One hub in the Django "
+                "process owns the shells, so closing a page never closes one. It is wrapped chat agent number 67, "
+                "the eighth Prompt Flow Panel operation, and has three safe cards in the Catalog of Prompts.",
                 "The build now proves it inside the frozen app: check_terminater drives a real PowerShell, a real cmd.exe, "
                 "the shipped pool agent under the carried Python and a WebSocket round trip, and packaging stops if it "
                 "fails. On October 19, 774 unit tests passed, and 1,668 passed after the documentation pass. The saved "

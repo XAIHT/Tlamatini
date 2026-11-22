@@ -8,7 +8,22 @@
 -->
 # Tlamatini — Creating a New MCP or Tool
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
+
+## Existing Interactor tool: multiple documents
+
+This change extends the existing module/tool; do not register a second tool or
+workflow agent. `documents` returns metadata for open Canvas tabs without
+reading every buffer or replacing the last verified snapshot. After `read`,
+`activate` takes an exact `target_document_id`, verifies the current source
+document/revision and returns the selected target snapshot. Future edits use
+that target's identity. Duplicate filenames are not interchangeable IDs.
+
+The account and browser-client routing still applies. A document switch stops
+in-progress typing; PDF tabs supply document metadata but no editable buffer.
+Open/new may add a text tab even while a PDF or dirty text document is active,
+preserving both. These operations never implicitly select documents as ordinary
+chat context. See [Interactor](../interactor.md) and [Canvas](../canvas-editing.md).
 
 ## Carried from v1.92.3 — Downloads, updates and build isolation
 

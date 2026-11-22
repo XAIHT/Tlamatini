@@ -6,9 +6,26 @@ Tlamatini Author Banner — do not remove
 
 # Tlamatini instructions for Codex and every coding agent
 
-> Latest released version: **[v1.96.1](docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## Current Canvas multi-document contract — 2026-11-21
+
+Treat the Canvas as up to 32 documents with distinct IDs, revisions, buffers,
+undo history, save targets and PDF/Markdown view state. Opening or activating a
+tab is not context consent. Only explicitly selected, server-accepted snapshots
+enter ordinary chat context; edits/Refresh leave an older snapshot until Update
+context succeeds. Closing a tab retains its selected context chip until removal.
+
+Do not reduce dirty/save protection to the active tab, confuse an Interactor
+browser client ID with a document ID, or redirect stale edits to a newly active
+document. Browser-reserved Ctrl+Tab cannot be guaranteed; Alt+PageUp/PageDown is
+the documented Canvas alternative. Browser close warnings are not crash recovery.
+Read [Canvas](docs/canvas-editing.md), [Interactor](docs/interactor.md), and the
+[source verification record](docs/changes/2026-11-21-canvas-document-tabs.md).
+Preserve the distinction between injected chat acknowledgements and actual
+backend/native/PDF evidence when extending the visible tests.
+
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](docs/remote-controller.md).
@@ -341,7 +358,7 @@ Contract: [CLAUDE.md](CLAUDE.md) → *Self-modify*,
 for every page: each dropped file is recognised by its bytes and sent to its own mechanism, so an MCP
 .json imports everywhere and never errors, opens as text or navigates away."* It was published on GitHub
 on 2026-10-14 ("Tlamatini Release v1.83.0 Win11x64", marked Latest), so self-update delivered `v1.83.0` then;
-that historical runtime version was `1.83.0`. The current release is `v1.96.1`. `v1.83.0` carried everything in `v1.82.0` plus the three
+that historical runtime version was `1.83.0`. The current release is `v1.97.0`. `v1.83.0` carried everything in `v1.82.0` plus the three
 changes below. `v1.83.0` added no migration after 0213 (0214 arrived in v1.87.0); the frontend has 60 JS modules and 26
 stylesheets, and the live `STATIC_VERSION` cache suffix is now `-agent-catalog-1-quality-cleanup-1-usage-status-2`.
 

@@ -8,9 +8,31 @@
 -->
 # Tlamatini — Gotchas, Build/Lint, Roadmap, Work Style
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## Canvas tabs: failures to avoid
+
+- A new tab must not replace or mark another buffer saved. Inspect inactive
+  documents in the departure warning and preserve their independent save targets.
+- Tab activation is not consent to load chat context. Only accepted selections
+  receive Context badges; edited/Refreshed snapshots remain older until updated.
+  A closed editor can still have an explicitly listed context chip.
+- The browser may consume Ctrl+Tab before JavaScript sees it. Test the real key
+  and document Alt+PageUp/PageDown, rather than claiming a synthetic event proves
+  the operating browser shortcut works.
+- Keep a PDF viewer alive across tab switches; metadata alone does not prove
+  its rendered page is still visible. Inspect actual PDF pixels after returning.
+- Test the complete receive entry with a selected-document frame without a
+  chat message. Helper tests alone missed that parser boundary.
+- Keep the account reservation until legacy and new context save/rebuild work
+  finishes, not merely until its task is scheduled. Reconnect from another
+  browser must not overwrite a freshly committed selection's cache.
+- A lost context acknowledgement is unknown, not success. Keep the documents,
+  clear confirmation badges and request reconnect/context verification.
+
+Evidence and boundaries: [21 November Canvas record](../changes/2026-11-21-canvas-document-tabs.md).
+
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](../remote-controller.md).

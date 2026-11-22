@@ -1,7 +1,7 @@
 <!-- Created by Angela López Mendoza · @angelahack1 — Tlamatini. -->
 # LaTeXer delivery and real-chat verification — 2026-10-07
 
-> Latest released version: **[v1.96.1](2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](2026-11-21-v1.97.0.md)**.
 
 
 The installed Tlamatini chat produced a correct simple PDF through LaTeXer:

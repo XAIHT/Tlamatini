@@ -209,6 +209,30 @@ function setDocument(content, filename) {
     announce({ origin: 'load', docChanged: true });
 }
 
+// Keep the actual EditorState (history, selections, guide fields and language),
+// not a string copy. A document's identity/revision survives a Canvas tab switch.
+function suspend() {
+    if (!view) return null;
+    const saved = { state: view.state, documentId, revision, currentName, currentLanguage,
+        currentText, readOnly, wrap, position: { top: view.scrollDOM.scrollTop, left: view.scrollDOM.scrollLeft } };
+    view.destroy();
+    view = null;
+    onChange = null;
+    return saved;
+}
+
+function resume(parent, saved, changed) {
+    view?.destroy();
+    ({ documentId, revision, currentName, currentLanguage, currentText, readOnly, wrap } = saved);
+    onChange = changed;
+    view = new EditorView({ parent, state: saved.state });
+    parent.classList.add('tlm-source-editor');
+    view.scrollDOM.scrollTop = saved.position.top;
+    view.scrollDOM.scrollLeft = saved.position.left;
+    configureAppearance(appearanceSettings);
+    announce({ origin: 'load', docChanged: true });
+}
+
 function command(action) {
     if (!view || readOnly) return false;
     const changed = action(view);
@@ -239,7 +263,8 @@ function configureAppearance(settings) {
 
 window.TlamatiniTextEditor = {
     configureAppearance,
-    mount, setDocument, destroy, historyState,
+    mount, setDocument, destroy, historyState, suspend, resume,
+    adoptIdentity: (id, nextRevision) => { documentId = id; revision = nextRevision; },
     inspect, explanationSnapshot, interactor,
     getText: () => view?.state.doc.toString() || '',
     undo: () => command(undo), redo: () => command(redo),

@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Created by Angela López Mendoza · @angelahack1 -->
 # Voice playback and browser handoff
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 Choose **Config → Voice** to read answers aloud, announce completion, or remain
 silent. Covering, minimizing or unfocusing the browser does not deliberately

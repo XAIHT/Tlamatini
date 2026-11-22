@@ -8,7 +8,7 @@
 -->
 # Tlamatini Flow Creation Skill
 
-> Latest released version: **[v1.96.1](../../../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 You are an expert flow designer for the Tlamatini platform. Your task is to design an agent flow (a directed graph of connected agents) that accomplishes a user-specified objective.

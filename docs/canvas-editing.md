@@ -1,11 +1,12 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Editing and saving canvas files
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 Introduced in v1.89.0 (2026-10-21), carried by v1.91.0 with configurable editor behavior. The tests below retain their actual dates; source verification does not certify a newly rebuilt installed executable.
 
-Open a text or source file in the chat canvas and edit it directly. The filename
+Open text, source, Markdown and PDF documents in separate chat Canvas tabs.
+Each tab keeps its own document, editing state and file identity. The filename
 bar provides **Save**, **Save as…**, **Undo**, **Redo**, **Find** (including replace),
 and **Wrap**, alongside Copy, Refresh, Clear canvas and Use as context. The status
 shows unsaved changes and the text encoding/line endings. Ctrl/Cmd+S saves;
@@ -21,6 +22,70 @@ context read the edited source. HTML and SVG remain source text, never an active
 web page. PDF remains the complete PDF viewer: Save exports its original bytes
 as a copy and preserves the viewed document and prepared context. Flow files and
 images retain their existing dedicated routing.
+
+## Work with several documents
+
+Open or drop another supported document to add a tab without replacing the
+documents already open. Up to **32 tabs** can remain open. Click a tab to return
+to it; a text document retains its edits, undo history, selection and scroll
+position. Markdown keeps its Preview/Source view. A PDF keeps its viewer,
+navigation state and prepared context instead of becoming a plain-text editor.
+The toolbar acts on the active document; **Clear canvas** closes that tab.
+
+With focus inside the Canvas or its tab strip, **Alt+PageUp / Alt+PageDown** moves
+between documents. Ctrl+Tab / Ctrl+Shift+Tab also works when the browser delivers
+those keys to the page. Chrome normally reserves Ctrl+Tab for browser tabs, so
+use the Alt shortcuts or click a Canvas tab there. These shortcuts do not switch
+Canvas documents while focus is in chat, a terminal or an open dialog.
+
+A tab's **asterisk (*)** means that document has changes not yet saved to disk.
+Opening or switching tabs does not discard those changes. Saving one document
+does not clear another document's asterisk. Wait for a pending save to finish
+before switching documents; a failed or cancelled save preserves the edits.
+Closing a dirty tab asks before discarding it. Page-departure protection checks
+**every open tab**, including inactive ones and pending saves. The browser owns
+the final warning and can still close or crash: save all work before leaving.
+There is no promise to restore unsaved tabs after a reload.
+
+Live Editor and [Interactor](interactor.md) identify the document they are
+working on. Switching documents cancels an in-progress typing action instead
+of letting it continue in the next tab. Interactor can select another open
+document for the next part of a lesson; opening it does not select it as chat
+context.
+
+## Choose exactly which documents become context
+
+**Open is not the same as context.** Use **Use as context** on each document you
+want ordinary chat to use. For example, keep `notes.md`, `main.py` and `manual.pdf`
+open, then select only `notes.md` and `manual.pdf`: `main.py` stays an editor tab
+and is not included in that context set. PDF preparation still asks whether to
+process images; selectable text alone remains the default.
+
+The **Chat context** strip lists the accepted snapshots. Their tabs also carry
+a **Context** badge. Selection changes take effect only after the server accepts
+the complete replacement set; a rejected update keeps the previous context.
+An account cannot replace context while its chat is running. The set accepts
+at most 32 documents and 32 MiB of prepared UTF-8 text, including separators;
+oversized context is rejected, never silently truncated. The configured model's
+context capacity remains a separate limit.
+
+Editing a selected document produces **Context · older** and changes the button
+to **Update context**. The model still has the earlier snapshot until you click
+that button and the replacement succeeds. **Saving does not update context;
+selecting context does not save the original file.** A current selected snapshot
+offers **Remove from context**, and each context chip can remove its snapshot.
+Closing an editor tab retains its selected snapshot in the context strip so
+that merely closing a view does not silently change what chat can read. Remove
+that chip explicitly when it should no longer be context. Choosing another
+file/folder context replaces the Canvas selection through the existing context
+controls.
+
+If the chat connection drops, the Canvas keeps its open documents but removes
+confirmation badges and shows a reconnect notice. The server may have committed
+an update whose acknowledgement was lost, so the page does not guess which
+selection succeeded. Reconnect and verify context before continuing. Restoring
+server context is separate from restoring editor tabs; unsaved tabs and their
+browser file handles are not recovered after a page reload.
 
 ## Explain the selected text
 
@@ -59,14 +124,15 @@ the app never silently substitutes a download or claims a file was saved.
 Cancellation, denied permissions and disk errors keep the document and its
 unsaved marker. If another program changes a destination, Save refuses to
 overwrite it; use Save as… to preserve your edits separately or Refresh to
-review the disk version. Open, Clear and Refresh ask before discarding edits.
+review the disk version. Closing a tab, Clear and Refresh ask before discarding
+its edits; opening another document adds a tab.
 Edits made while a save is in progress remain unsaved after that snapshot is
 written. Edits made during a pending load invalidate that replacement. A dirty
-document also uses the browser's page-departure warning; closing a page discards
-its in-memory document, so save work before closing.
+document in any tab also uses the browser's page-departure warning; closing a
+page discards its in-memory documents, so save work before closing.
 
 Editing context does not silently update the model's already loaded context.
-Use as context makes the current source available again; the pending context
+Update context makes the selected document's current source available again; the pending context
 replacement state survives Save. Saving under a new name does not falsely mark
 that new name as already loaded context.
 
@@ -82,6 +148,13 @@ original terminator (LF for a file without one). Empty files can be saved. Text
 editing and native saves have a 64 MiB limit.
 
 ## Implementation and safeguards
+
+`agent_page_canvas_tabs.js` owns tab identities, suspended document state and the
+explicit selected-context set. `canvas_documents_context.py` validates each
+complete selection, resolves PDF tokens for the authenticated user and writes a
+separate application-owned bundle. Publication is atomic: failure preserves the
+previous selection. An account-scoped execution reservation prevents a chat or
+another context replacement from racing that publication.
 
 `agent_page_canvas.js` retains document loading, refresh, context and generation
 ownership. `agent_page_editing.js` owns the editable snapshot, saved baseline,
@@ -136,7 +209,39 @@ startup and installed use require no npm or CDN.
   [Marked sanitization warning](https://marked.js.org/): request authorization,
   same-volume write staging and safe preview rendering.
 
+## Multi-document verification (2026-11-21)
+
+From a visible foreground development console, run
+`python -B -u scripts/canvas_tabs_visible.py` in this edition's root. The harness
+uses visible Chrome, an isolated account/database, native Open/Save dialogs and
+files under `Temp/canvas-tabs-visible`. Inspect `browser-waiting.png` before
+creating `browser-visible-confirmed` there. Each `run-N/SUMMARY.html` contains
+the checkpoints and full-desktop screenshots. Create `close.confirmed` to end
+the test browser, or `rerun.confirmed` to repeat the checks.
+
+The English full run passed 28 checkpoints; a focused follow-up also passed
+Interactor opening a text file while a PDF was active. The Spanish full run
+passed all 29 checkpoints. Each edition passed 46 context-transaction tests,
+40 Interactor protocol/ownership tests, and targeted Python/JavaScript lint.
+Checks include A+B selected with C excluded, stale/rejected context updates,
+independent undo/save state, delayed-save and refresh races, inactive dirty-tab
+departure protection, retained PDF state and real Windows keyboard input.
+
+The normal chat WebSocket is captured and its context acknowledgements are
+injected explicitly in browser tests. Backend routing, account ownership,
+persistence and rollback are tested separately with model/network boundaries
+substituted. These results do not claim live-model ingestion or acceptance of
+a rebuilt installed executable. Native file writes, PDF text preparation and
+authenticated Interactor actions use their actual local implementations.
+
 ## Verification
+
+The [21 November multi-document record](changes/2026-11-21-canvas-document-tabs.md)
+describes the English/Spanish browser campaigns, actual native saves and PDF
+rendering, 46 context tests and 40 Interactor tests per edition. It distinguishes
+captured chat acknowledgements from real backend dispatch and explicitly lists
+the substituted model/network boundaries. The older runs below remain dated
+evidence for their original editor, save and decoding scope.
 
 Follow [the visible execution policy](../TestsVisiblesAndVisibleExecutionFromClaude2Codex.md).
 From the verified foreground console run `python -u scripts/canvas_editing_visible.py`.
@@ -197,6 +302,8 @@ sources (including the undefined-name pass); JavaScript lint and parsing of
 **Config → Live Editor & Terminater** and the canvas Settings button control the
 real editor font (12–24 px, default 13), line numbers and wrapping. These appearance
 choices persist per account in this browser and apply when a document is mounted.
+They apply across Canvas documents; each tab retains its own content and view
+state rather than a separate account preference profile.
 They do not alter the file's contents or dirty baseline. The Live Editor tab also
 configures Interactor pacing, segment pauses, suggestions and cursor following;
 the Voice tab controls segment narration. Account behavior and local appearance

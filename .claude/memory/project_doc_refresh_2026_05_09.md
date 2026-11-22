@@ -12,7 +12,7 @@ originSessionId: ee628161-0643-45df-ad17-1919d3121c35
   Tlamatini Author Banner — do not remove (Angela's name is kept in every build)
 ═══════════════════════════════════════════════════════════════════
 -->
-> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 On 2026-05-09 the assistant updated the AI-onboarding doc set to capture five surgical changes that landed between 2026-05-07 and 2026-05-09 and were not yet documented:

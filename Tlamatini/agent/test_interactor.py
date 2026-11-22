@@ -22,7 +22,7 @@ from .interactor import context
 from .interactor.consumer import InteractorConsumer
 from .interactor.files import prepare_file
 from .interactor.hub import Hub
-from .interactor.protocol import InteractorError, MAX_UNITS, expect, snapshot, splice, units
+from .interactor.protocol import InteractorError, MAX_DOCUMENTS, MAX_UNITS, documents, expect, snapshot, splice, units
 from .interactor.tool import build_tool, perform
 
 
@@ -36,6 +36,30 @@ def request(client_id="test", owner=("7", "session")):
 
 
 class ProtocolTests(SimpleTestCase):
+    def test_document_inventory_exposes_metadata_only(self):
+        result = documents([{"document_id": "canvas-one", "revision": 4, "filename": "notes.md",
+                             "kind": "text", "active": True, "dirty": True, "context": True,
+                             "text": "private buffer", "path": "C:/private/notes.md",
+                             "native": {"token": "never-return"}}])
+        self.assertEqual(result, [{"document_id": "canvas-one", "revision": 4, "filename": "notes.md",
+                                   "kind": "text", "active": True, "dirty": True, "context": True}])
+
+    def test_invalid_document_inventories_are_refused(self):
+        entry = {"document_id": "canvas-one", "revision": 0, "active": True}
+        for value in (None, {}, [None], [entry, entry], [entry] * (MAX_DOCUMENTS + 1),
+                      [{**entry, "revision": True}], [{**entry, "filename": "x" * 256}],
+                      [entry, {**entry, "document_id": "canvas-two"}]):
+            with self.subTest(value=repr(value)[:100]), self.assertRaises(InteractorError):
+                documents(value)
+        self.assertEqual(documents([]), [])
+
+    def test_snapshot_distinguishes_tabs_capability_and_context(self):
+        current = snapshot({**document(), "multi_document": True, "context": True, "kind": "markdown"})
+        self.assertTrue(current["multi_document"])
+        self.assertTrue(current["context"])
+        self.assertEqual(current["kind"], "markdown")
+        self.assertFalse(snapshot(document())["multi_document"])
+
     def test_utf16_offsets_preserve_emoji(self):
         self.assertEqual(units("a😀b"), 4)
         self.assertEqual(splice("a😀b", 1, 3, "é"), "aéb")
@@ -148,6 +172,16 @@ class HubTests(SimpleTestCase):
         finally:
             endpoint.mutation.release()
 
+    def test_document_listing_is_read_only_during_mutation(self):
+        req = self.attach(lambda _: {"ok": True, "multi_document": True, "documents": []})
+        endpoint = self.hub.endpoint(req)
+        endpoint.mutation.acquire()
+        try:
+            self.assertEqual(self.hub.call(req, "documents")["documents"], [])
+            self.assertTrue(endpoint.mutation.locked())
+        finally:
+            endpoint.mutation.release()
+
 
 class ToolTests(SimpleTestCase):
     def setUp(self):
@@ -237,8 +271,104 @@ class ToolTests(SimpleTestCase):
         from .mcp_agent import MultiTurnToolAgentExecutor
         for action in ("new", "save"):
             self.assertTrue(MultiTurnToolAgentExecutor._requires_exec_permission(None, "interactor", {"action": action}))
-        for action in ("read", "open", "type", "guide", "select", "stop"):
+        for action in ("read", "documents", "activate", "open", "type", "guide", "select", "stop"):
             self.assertFalse(MultiTurnToolAgentExecutor._requires_exec_permission(None, "interactor", {"action": action}))
+
+    def test_document_listing_does_not_replace_last_read_or_return_text(self):
+        self.req.document_id, self.req.revision = "previous-read", 7
+        self.req.handed_off = True
+        with patch("agent.interactor.tool.hub.call", return_value={
+                "ok": True, "multi_document": True, "documents": [
+                    {"document_id": "canvas-other", "revision": 8, "filename": "notes.md",
+                     "text": "private", "context": False, "active": True}]}) as call:
+            result = self.invoke(action="documents")
+        self.assertTrue(result["ok"])
+        self.assertNotIn("text", result["documents"][0])
+        self.assertEqual((self.req.document_id, self.req.revision), ("previous-read", 7))
+        self.assertEqual(call.call_args.args[1], "documents")
+
+    def test_listing_refuses_legacy_or_invalid_inventory(self):
+        for reply in ({"ok": True}, {"ok": True, "multi_document": True, "documents": [{}]}):
+            with self.subTest(reply=reply), patch("agent.interactor.tool.hub.call", return_value=reply):
+                self.assertFalse(self.invoke(action="documents")["ok"])
+
+    def test_activate_requires_fresh_current_document(self):
+        current = {**document(), "multi_document": True}
+        with patch("agent.interactor.tool.hub.call", return_value={"ok": True, "snapshot": current}) as call:
+            result = self.invoke(action="activate", target_document_id="canvas-two")
+        self.assertEqual(result["status"], "conflict")
+        self.assertEqual(call.call_count, 1)
+
+    def test_activate_updates_receipt_identity_for_following_edit(self):
+        current = {**document(), "multi_document": True, "dirty": True}
+        target = {**document("second", 9), "document_id": "canvas-two", "multi_document": True}
+        typed = {**target, "text": "second!", "revision": 10, "selection": {"from": 7, "to": 7}}
+        with patch("agent.interactor.tool.hub.call", side_effect=[
+                {"ok": True, "snapshot": current}, {"ok": True, "snapshot": current},
+                {"ok": True, "snapshot": target}, {"ok": True, "snapshot": target},
+                {"ok": True, "snapshot": typed}]) as call:
+            self.invoke(action="read")
+            result = self.invoke(action="activate", target_document_id="canvas-two")
+            self.assertTrue(result["verified"])
+            self.assertEqual((self.req.document_id, self.req.revision), ("canvas-two", 9))
+            self.assertEqual(call.call_args.args[2], {
+                "document_id": "document-one", "revision": 1, "target_document_id": "canvas-two"})
+            self.assertTrue(self.invoke(action="type", text="!")["verified"])
+        self.assertEqual((self.req.document_id, self.req.revision), ("canvas-two", 10))
+
+    def test_stale_activation_is_refused_before_switch(self):
+        self.req.document_id, self.req.revision = "document-one", 1
+        with patch("agent.interactor.tool.hub.call", return_value={
+                "ok": True, "snapshot": {**document(revision=2), "multi_document": True}}) as call:
+            self.assertEqual(self.invoke(action="activate", target_document_id="canvas-two")["status"], "conflict")
+        self.assertEqual(call.call_count, 1)
+
+    def test_activation_receipt_must_name_exact_target(self):
+        current = {**document(), "multi_document": True}
+        self.req.document_id, self.req.revision = "document-one", 1
+        with patch("agent.interactor.tool.hub.call", return_value={"ok": True, "snapshot": current}):
+            result = self.invoke(action="activate", target_document_id="canvas-two")
+        self.assertEqual(result["status"], "conflict")
+        self.assertTrue(self.req.handed_off)
+        self.assertEqual((self.req.document_id, self.req.revision), ("document-one", 1))
+
+    def test_activate_rejects_legacy_client_and_empty_target(self):
+        self.req.document_id, self.req.revision = "document-one", 1
+        for multi_document, target, status in ((False, "canvas-two", "unsupported"), (True, "", "refused")):
+            with self.subTest(multi_document=multi_document), patch("agent.interactor.tool.hub.call", return_value={
+                    "ok": True, "snapshot": {**document(), "multi_document": multi_document}}) as call:
+                self.assertEqual(self.invoke(action="activate", target_document_id=target)["status"], status)
+                self.assertEqual(call.call_count, 1)
+
+    def test_activate_cannot_override_user_handoff(self):
+        self.req.handed_off = True
+        with patch("agent.interactor.tool.hub.call") as call:
+            self.assertEqual(self.invoke(action="activate", target_document_id="canvas-two")["status"], "operator_required")
+            call.assert_not_called()
+
+    def test_activate_can_leave_readonly_pdf_without_reclassifying_it(self):
+        self.req.document_id, self.req.revision = "pdf-one", 3
+        pdf = {**document("", 3), "document_id": "pdf-one", "active": False, "kind": "pdf", "multi_document": True}
+        target = {**document(), "multi_document": True}
+        with patch("agent.interactor.tool.hub.call", side_effect=[
+                {"ok": True, "snapshot": pdf}, {"ok": True, "snapshot": target}]):
+            result = self.invoke(action="activate", target_document_id="document-one")
+        self.assertTrue(result["verified"])
+        self.assertEqual(self.req.document_id, "document-one")
+
+    def test_open_preserves_dirty_document_only_with_tab_capability(self):
+        self.req.document_id, self.req.revision = "document-one", 1
+        current = {**document(), "dirty": True, "multi_document": True}
+        target = {**document(), "document_id": "canvas-two", "multi_document": True}
+        with patch("agent.interactor.tool.hub.call", side_effect=[
+                {"ok": True, "snapshot": current}, {"ok": True}, {"ok": True, "snapshot": target}]), \
+                patch("agent.interactor.tool.hub.endpoint", return_value=SimpleNamespace(local=True)), \
+                patch("agent.interactor.tool.context.cancelled", return_value=False), \
+                patch("agent.interactor.tool.prepare_file", return_value={"path": "C:/chosen/notes.md"}) as opened:
+            result = self.invoke(action="open", path="C:/chosen/notes.md")
+        self.assertTrue(result["ok"])
+        opened.assert_called_once()
+        self.assertEqual(self.req.document_id, "canvas-two")
 
 
 class FilesTests(SimpleTestCase):

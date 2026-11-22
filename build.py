@@ -539,6 +539,7 @@ _FROZEN_REQUIRED_AGENT_MODULES = (
     "agent.interaction_settings", "agent.interaction_narration",
     "agent.interactor.hub", "agent.interactor.consumer", "agent.interactor.files", "agent.interactor.tool",
     "agent.interactor.explanation",
+    "agent.canvas_documents_context",
     "agent.canvas_file_views", "agent.native_dialogs",  # native canvas Save/Save As
     "agent.usage_tracking", "agent.usage_provider", "agent.usage_views",
     "agent.chat_voice_consumer",
@@ -1591,6 +1592,7 @@ def main():
         '--hidden-import=agent.usage_tracking',
         '--hidden-import=agent.usage_provider',
         '--hidden-import=agent.usage_views',
+        '--hidden-import=agent.canvas_documents_context',
         '--hidden-import=agent.canvas_file_views',
         '--hidden-import=agent.native_dialogs',
         '--hidden-import=agent.context_governor',

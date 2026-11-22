@@ -4,7 +4,7 @@ description: How to create a new Tlamatini agent
 
 # Creating a New Agent in Tlamatini
 
-> Latest released version: **[v1.96.1](../../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 Step-by-step guide for a new workflow agent. Follow all 8 steps in order. Replace `<agent_name>` (lowercase, underscored, e.g. `shoter`) and `<AgentName>` (PascalCase, e.g. `Shoter`) throughout.

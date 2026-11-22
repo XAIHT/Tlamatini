@@ -262,6 +262,11 @@ REQUIRED_SNAPSHOT_FILES = (
     "Tlamatini/agent/static/agent/css/remote_controller.css",
     "Tlamatini/agent/test_remote_controller_views.py",
     "Tlamatini/agent/canvas_file_views.py",
+    "Tlamatini/agent/canvas_documents_context.py",
+    "Tests/test_canvas_documents_context.py",
+    "scripts/canvas_tabs_visible.py",
+    "Tlamatini/agent/static/agent/js/agent_page_canvas_tabs.js",
+    "Tlamatini/agent/static/agent/css/canvas_tabs.css",
     "Tlamatini/agent/native_dialogs.py",
     "Tlamatini/agent/test_canvas_file_views.py",
     # Preserve the source-quality commands for builds initiated from the snapshot.

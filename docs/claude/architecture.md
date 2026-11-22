@@ -8,9 +8,52 @@
 -->
 # Tlamatini — Architecture & Core Systems
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## Canvas tabs, snapshots and the account execution lane
+
+The browser owns independent editor/viewer documents; ordinary chat uses only
+the explicitly selected, server-accepted snapshots. Activating or saving a tab
+does not select it as context. Closing an editor does not remove its accepted
+context snapshot. These boundaries also apply to PDFs and Interactor.
+
+```mermaid
+flowchart LR
+    Tabs["Canvas tabs: text · Markdown · PDF"] -->|"explicit selection only"| Set["Full selected snapshot set"]
+    Set --> Validate["Validate IDs, sizes and user-bound PDF tokens"]
+    Validate --> Bundle["Unique account-owned context bundle"]
+    Bundle --> Prepare["Prepare contextual RAG"]
+    Prepare --> Commit["Persist selection and publish matching cache"]
+    Commit --> Ack["Accept selection; update context badges"]
+    Prepare -->|"failure"| Keep["Retain previous context"]
+```
+
+`canvas_documents_context.py` bounds a set to 32 documents and 32 MiB prepared
+UTF-8 text including separators, validates basenames/IDs/revisions and creates
+`context_files/canvas_tabs/<user-id>/<unique-id>/documents.txt`. Text snapshots
+are supplied explicitly; PDF text resolves through the existing authenticated
+signed token. No browser path becomes an arbitrary host read. The account
+execution reservation spans preparation, persistence, cache publication and
+reply. A failure/cancel removes only the unpublished bundle and restores the
+prior usable chain/cache; an already committed selection survives a lost reply.
+
+Legacy file/folder/context-clear and reconnect messages use the same account
+lane. The receive decorator reserves ownership before scheduling one tracked
+task that awaits the actual save/rebuild. This prevents another browser of the
+same account from interleaving cache and SessionState changes, while unrelated
+accounts remain independent and WebSocket control frames remain responsive.
+Disconnect cancels/awaits owned work without awaiting the current task itself;
+ownership is released even when a task is cancelled before its first instruction.
+No new service, database model or workflow agent is introduced.
+
+The backend receives `set-canvas-documents-as-context` as a control frame; it
+does not require a chat `message` field. The full receive entry, not only the
+helper, is covered by the [source regressions](../changes/2026-11-21-canvas-document-tabs.md).
+Interactor's browser-client identity and Canvas document identity remain
+distinct: `documents` lists metadata, and `activate` verifies the source revision
+and exact target before subsequent live editing.
+
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](../remote-controller.md).

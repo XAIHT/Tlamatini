@@ -13,7 +13,7 @@ from ..interaction_settings import snapshot as settings_snapshot, DETAIL, spoken
 from . import context
 from .files import prepare_file
 from .hub import hub
-from .protocol import MAX_INSERT, MAX_UNITS, InteractorError, expect, snapshot, splice, units
+from .protocol import MAX_INSERT, MAX_UNITS, InteractorError, documents, expect, snapshot, splice, units
 
 
 class Choice(BaseModel):
@@ -24,9 +24,10 @@ class Choice(BaseModel):
 
 class Arguments(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["read", "new", "open", "type", "guide", "select", "save", "stop"]
+    action: Literal["read", "documents", "activate", "new", "open", "type", "guide", "select", "save", "stop"]
     document_id: str = Field(default="", max_length=96, description="Optional exact live document_id. Omit to use this turn's last read/receipt; a read is required first.")
     revision: int = Field(default=-1, ge=-1, description="Optional exact revision. -1 uses this turn's last read/receipt. Never guess.")
+    target_document_id: str = Field(default="", max_length=96, description="For activate only: exact document_id from documents. It identifies a canvas document, not the browser chat tab. Read the current document first.")
     filename: str = Field(default="", max_length=200, description="For new: e.g. Dockerfile. No path means a unique directory in Tlamatini Temp.")
     path: str = Field(default="", max_length=4096, description="For open/new only: user-requested absolute path. Omit when none was provided.")
     text: str = Field(default="", max_length=MAX_INSERT, description="For type: only the next small teaching segment. It is typed character by character, never executed or implicitly saved.")
@@ -41,18 +42,27 @@ class Arguments(BaseModel):
 
 
 def perform(action, document_id="", revision=-1, filename="", path="", text="", start=-1,
-            end=-1, typing_wpm=100, label="", hint="", choices=None, explanation="", secret=False):
+            end=-1, typing_wpm=100, label="", hint="", choices=None, explanation="", secret=False,
+            target_document_id=""):
     request = context.current.get()
     created_path = None
     try:
         if not request:
             raise InteractorError("Send this request from Tlamatini's browser chat. No editor tab is bound to this request.", "disconnected")
-        if request.handed_off and action not in {"read", "stop"}:
+        if request.handed_off and action not in {"read", "documents", "stop"}:
             raise InteractorError("The user has the editor now. Explain the next field in chat and END this turn; do not retry or use another file-writing tool.", "operator_required")
         if action == "stop":
             result = hub.call(request, "stop")
             request.handed_off = True
             return json.dumps(result, ensure_ascii=False)
+        if action == "documents":
+            result = hub.call(request, "documents")
+            if result.get("multi_document") is not True:
+                raise InteractorError("Reload this chat to enable canvas document tabs.", "unsupported")
+            return json.dumps({"ok": True, "status": "documents", "multi_document": True,
+                               "documents": documents(result.get("documents")),
+                               "instruction": "Listing tabs does not read their content or set model context. Read the current document before activating an exact target_document_id."},
+                              ensure_ascii=False)
         current = snapshot(hub.call(request, "read").get("snapshot"))
         preferences, settings_revision = settings_snapshot(request.user_id)
         if action == "read":
@@ -65,8 +75,20 @@ def perform(action, document_id="", revision=-1, filename="", path="", text="", 
         expected = {"document_id": document_id, "revision": revision}
         if current["busy"]:
             raise InteractorError("The editor is busy saving or typing. Wait for it to finish before editing.", "busy")
-        if action in {"new", "open"}:
-            if current["dirty"]:
+        if action == "activate":
+            if not current["multi_document"]:
+                raise InteractorError("Reload this chat to enable canvas document tabs.", "unsupported")
+            if not isinstance(target_document_id, str) or not 1 <= len(target_document_id) <= 96:
+                raise InteractorError("Use an exact target_document_id returned by documents.")
+            result = hub.call(request, "activate", {**expected, "target_document_id": target_document_id},
+                              timeout=30, visibility_grace=120)
+            actual = snapshot(result.get("snapshot"))
+            if actual["document_id"] != target_document_id:
+                request.handed_off = True
+                raise InteractorError("The activated document does not match the requested tab. Read the current document before continuing.", "conflict")
+            result["verified"] = True
+        elif action in {"new", "open"}:
+            if current["dirty"] and not current["multi_document"]:
                 raise InteractorError("The open document has unsaved changes. Ask the user to Save or choose another document before replacing it.", "unsaved_changes")
             if not hub.endpoint(request).local:
                 raise InteractorError("Host-file creation/opening requires a chat on the computer running Tlamatini. Remote users can edit their already-open browser document.", "local_only")
@@ -134,6 +156,8 @@ def perform(action, document_id="", revision=-1, filename="", path="", text="", 
 DESCRIPTION = """Interact with the CURRENT LIVE canvas text editor in this chat tab, including UNSAVED text.
 Use for 'your editor', 'file editor', 'text editor', 'canvas', guided coding and tutoring.
 Always read first. Read returns exact current text, document_id, revision and UTF-16 selection.
+documents lists metadata for this chat's open canvas tabs, including dirty/context indicators; it does not read files or make them chat context.
+activate switches to an exact target_document_id from documents after reading the current tab; its verified receipt becomes the current document for subsequent teaching. Open tabs keep separate buffers and saving targets.
 new creates an EMPTY file (Dockerfile etc.) in Tlamatini Temp when no path was requested; open loads an existing absolute path.
 type visibly types a SMALL segment, preserving undo; guide then marks ONE field for the user, with explanations and locally cached choices for instant completion.
 After guide or user takeover END your editing turn and explain the field in chat. The user fills it and clicks Continue; read fresh before the next step.

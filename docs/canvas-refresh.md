@@ -1,7 +1,27 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
-# Refresh the open canvas file
+# Refresh the active Canvas document
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
+
+## Refresh with several tabs
+
+**Refresh** rereads only the active Canvas document from its retained source.
+Other tabs keep their text, save destinations, undo history and viewer state.
+An external change never authorizes overwriting unsaved edits: the active tab
+asks before replacing them. Switching tabs or starting another load invalidates
+the pending read, so a late result cannot replace the newly active document.
+
+**Open** adds another tab, up to 32; **Clear canvas** closes the active one.
+Views → Canvas hides the complete document workspace without discarding its
+tabs. A full browser-page reload still loses in-memory editor tabs and handles.
+
+Refreshing a selected document does **not** refresh ordinary chat context.
+Its existing snapshot remains selected; changed content displays **Context ·
+older** and **Update context**. Click that button to replace the snapshot after
+reviewing the document. Other selected snapshots remain in the same set.
+For a PDF, this explicit update performs the usual preparation before the
+server accepts the replacement. See [tabs and context](canvas-editing.md) and
+[the dated verification record](changes/2026-11-21-canvas-document-tabs.md).
 
 
 ## Canvas, Views and avatar in v1.85.0
@@ -68,13 +88,12 @@ PDFs remain range-backed with no whole-file scan/hash, page-count cutoff or
 automatic whole-document prefetch. A PDF is always reloaded on Refresh; an
 unchanged-content claim is only made for text/Markdown, where it was compared.
 
-When the canvas is already chat context, a changed document follows the existing
-context replacement path, after the new content is ready. There is no intervening
-empty-context rebuild. PDF context retains its existing text/image options and
-cancellation. An unavailable connection or cancelled preparation leaves the old
-backend context intact and explains that the displayed version still needs
-**Use as context**. Clear, opening another document, a new chat operation and
-Cancel invalidate pending reads so late results cannot resurrect a document.
+When the active document is selected chat context, Refresh retains its existing
+snapshot and marks changed content as **Context · older**. **Update context**
+explicitly prepares and sends its replacement; an unavailable connection or
+cancelled preparation preserves the old backend context. Closing the tab,
+switching documents, a new chat operation and Cancel invalidate pending reads
+so late results cannot resurrect a document.
 
 ## Verification
 

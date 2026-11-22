@@ -1,13 +1,29 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza -->
 # Markdown in the chat canvas
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 ## Readable files with occasional controls — 1.92.4
 
 A readable Markdown file is not rejected merely for containing an isolated control character, such as a bell or backspace introduced while escaping a path. Bytes, BOM and line endings are preserved. Decoding remains strict: decoded NUL, control-dominated content and malformed encodings are refused before replacing the canvas. See [editing and saving](canvas-editing.md).
 
 **Views → Canvas** keeps this document and its viewer alive while hiding the pane. Opening a document shows the pane again. **Views → Reset layout** restores both panes and their sizes without clearing the document or context. See [v1.85.0](changes/2026-10-16-v1.85.0.md).
+
+## Markdown alongside other documents
+
+Each Markdown document occupies its own Canvas tab. Switching tabs preserves
+its edited source, undo history, selection, reading position, Preview/Source
+choice and selected local resources. Open or drop adds a tab; it does not
+discard the currently edited Markdown. **Clear canvas** closes the active tab
+and asks before discarding its unsaved changes.
+
+**Use as context** selects a snapshot of the source, including unsaved edits,
+alongside any other explicitly selected documents. Open-but-unselected tabs
+are excluded. Edits, Save As and changed Refresh results can make that snapshot
+older; **Update context** replaces it explicitly. Closing the tab leaves the
+snapshot in the **Chat context** strip until removed there. A context snapshot
+is not a saved copy of the original Markdown file. See [Canvas editing](canvas-editing.md)
+for tab navigation, save protection and reconnect behavior.
 
 Written 2026-10-11 as a local source change; committed in `880a335e` (2026-10-12) and shipped in the published `v1.82.0` release.
 
@@ -40,9 +56,10 @@ Preview reflects the edits through the existing sanitizer. Save writes the edite
 source with the original encoding/BOM and line endings, while unedited files keep
 their exact bytes. Native Save As can choose a folder outside Downloads. See
 [canvas editing](canvas-editing.md).
-Generated Markdown saves as UTF-8. Loading another file or clearing the canvas
-releases image object URLs. Plain text, source code, PDF and flow routing retain
-their dedicated behavior.
+Generated Markdown saves as UTF-8. Renderer cleanup releases temporary image
+object URLs; switching back restores the document's retained resource selection
+and regenerates its preview safely. Closing that document releases its view.
+Plain text, source code, PDF and flow routing retain their dedicated behavior.
 
 `agent_page_markdown.js` uses locally vendored Marked 18.1.0 and DOMPurify 3.4.16.
 The sanitizer allowlists HTML and attributes, scopes IDs, removes document classes

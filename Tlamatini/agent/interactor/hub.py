@@ -92,7 +92,7 @@ class Hub:
         if context.cancelled(request):
             raise InteractorError("This chat request was cancelled.", "aborted")
         endpoint = self.endpoint(request)
-        mutation = action != "read"
+        mutation = action not in {"read", "documents"}
         if mutation and not endpoint.mutation.acquire(blocking=False):
             raise InteractorError("An editor action is already running. Read before trying again.", "busy")
         command_id = secrets.token_urlsafe(18)

@@ -8,7 +8,7 @@
 -->
 # Tlamatini — Agents (Creation, Catalog, FlowCreator, FlowHypervisor)
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
 
 ## Executer in 1.93.5
 

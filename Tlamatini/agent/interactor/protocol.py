@@ -5,6 +5,7 @@ from __future__ import annotations
 MAX_UNITS = 262_144
 MAX_FRAME = 2 * 1024 * 1024
 MAX_INSERT = 2_000
+MAX_DOCUMENTS = 128
 
 
 class InteractorError(Exception):
@@ -46,9 +47,38 @@ def snapshot(value):
             "language": str(value.get("language", ""))[:64],
             "active": value.get("active") is True, "dirty": value.get("dirty") is True,
             "busy": value.get("busy") is True,
+            "multi_document": value.get("multi_document") is True,
+            "context": value.get("context") is True,
+            "kind": str(value.get("kind", "text"))[:32],
             "selection": {"from": start, "to": end},
             "guide": value.get("guide") if isinstance(value.get("guide"), dict) else None,
             "offset_unit": "UTF-16", "truncated": False, "source": "live_editor"}
+
+
+def documents(value):
+    """Validate metadata only; never expose paths, native capabilities or buffers."""
+    if not isinstance(value, list) or len(value) > MAX_DOCUMENTS:
+        raise InteractorError("Invalid canvas document list.", "invalid_reply")
+    result, identities = [], set()
+    for item in value:
+        if not isinstance(item, dict):
+            raise InteractorError("Invalid canvas document entry.", "invalid_reply")
+        identity, revision = item.get("document_id"), item.get("revision")
+        filename, kind = item.get("filename", ""), item.get("kind", "text")
+        if (not isinstance(identity, str) or not 1 <= len(identity) <= 96
+                or identity in identities or type(revision) is not int or revision < 0
+                or not isinstance(filename, str) or len(filename) > 255
+                or not isinstance(kind, str) or not 1 <= len(kind) <= 32):
+            raise InteractorError("Invalid canvas document identity or revision.", "invalid_reply")
+        identities.add(identity)
+        result.append({"document_id": identity, "revision": revision,
+                       "filename": filename, "kind": kind,
+                       "active": item.get("active") is True,
+                       "dirty": item.get("dirty") is True,
+                       "context": item.get("context") is True})
+    if sum(item["active"] for item in result) > 1:
+        raise InteractorError("More than one canvas document is active.", "invalid_reply")
+    return result
 
 
 def expect(current, document_id, revision):

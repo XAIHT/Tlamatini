@@ -3,8 +3,8 @@
 """Rebuild Tlamatini-Architecture.pdf in one step.
 
 1. gen_architecture.py writes Temp/architecture/Tlamatini-Architecture.tex from
-   all files tracked in git, including migration history. The atlas lists exactly what `git ls-files`
-   returns, so `git add` new files BEFORE rebuilding.
+   tracked files plus the three explicitly listed Canvas source additions when
+   present and unignored. Generation never stages files or changes Git state.
 2. A private copy of Tlamatini's own LaTeXer pool agent typesets that .tex with
    pdflatex into <repo>/Tlamatini-Architecture.pdf (same launch recipe as
    tlamatini_mcp_server.run_agent_blocking: template copy + model registry +
@@ -71,8 +71,16 @@ def say(msg):
 
 def git_files():
     out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"], capture_output=True, check=True).stdout
-    return [f for f in out.decode("utf-8", "replace").split("\0")
-            if f]
+    tracked = {f for f in out.decode("utf-8", "replace").split("\0") if f}
+    additions = {
+        "Tlamatini/agent/canvas_documents_context.py",
+        "Tlamatini/agent/static/agent/css/canvas_tabs.css",
+        "Tlamatini/agent/static/agent/js/agent_page_canvas_tabs.js",
+    }
+    untracked = subprocess.run(
+        ["git", "-C", ROOT, "ls-files", "--others", "--exclude-standard", "-z"],
+        capture_output=True, check=True).stdout.decode("utf-8", "replace").split("\0")
+    return sorted(tracked | additions.intersection(untracked), key=str.lower)
 
 
 def step_generate():
@@ -197,7 +205,7 @@ def step_verify(pdf_path):
     start = None
     listed = None
     for i, text in enumerate(pages):
-        m = re.search(r"File index\W+([\d,]+)\s+tracked files", text)
+        m = re.search(r"File index\W+([\d,]+)\s+listed application files", text)
         if m:
             start, listed = i, int(m.group(1).replace(",", ""))
             break
@@ -208,21 +216,21 @@ def step_verify(pdf_path):
     index = squash("".join(pages[start:]))
     no_index = [p for p in files if squash(p) not in index]
     no_tile = [p for p in files if squash(p.rsplit("/", 1)[-1]) not in sheets]
-    say("pages: %d (%d atlas pages + %d index pages); tracked files: %d; index header says %d"
+    say("pages: %d (%d atlas pages + %d index pages); listed application files: %d; index header says %d"
         % (len(pages), start, len(pages) - start, len(files), listed))
     say("missing from the file index: %d; file names missing from the atlas sheets: %d" % (len(no_index), len(no_tile)))
     for p in (no_index + no_tile)[:40]:
         say("   missing: " + p)
     if no_index or no_tile or listed != len(files):
-        say("FAILED: the PDF does not cover every listed application file. Did you `git add` new files first?")
+        say("FAILED: the PDF inventory differs from tracked files plus the explicitly listed Canvas source additions.")
         sys.exit(3)
-    say("OK: all %d tracked files are present." % len(files))
+    say("OK: all %d listed application files are present." % len(files))
 
 
 def main():
     ap = argparse.ArgumentParser(description="Regenerate and verify Tlamatini-Architecture.pdf.")
     ap.add_argument("--output", default=DEFAULT_PDF, help="PDF to write (default: %(default)s)")
-    ap.add_argument("--skip-verify", action="store_true", help="do not check the PDF against git ls-files")
+    ap.add_argument("--skip-verify", action="store_true", help="do not check the PDF against the declared source inventory")
     args = ap.parse_args()
     pdf_path = os.path.abspath(args.output)
     say("Repository: %s" % ROOT)

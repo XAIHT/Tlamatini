@@ -2575,6 +2575,7 @@ chatSocket.onmessage = function (e) {
     }
     // Handle session-restored: Context was restored from saved session
     if (data.type === 'session-restored') {
+        window.TlamatiniCanvasTabs?.sessionRestored();
         console.log('--- Session restored from server:', data);
         if (data.context_path) {
             applyContextUiState(data.context_path, data.context_type, data.context_filename);
@@ -2612,7 +2613,12 @@ chatSocket.onmessage = function (e) {
         }
         return;
     }
+    if (data.type === 'canvas-documents-context-result') {
+        if (window.TlamatiniCanvasTabs?.contextResult(data)) enableControlsAfterOperation();
+        return;
+    }
     if (data.type === 'context-path-set') {
+        if (!data.canvas_documents) window.TlamatiniCanvasTabs?.clearContext();
         console.log('--- Context path set by server:', data.context_path, 'type:', data.context_type);
         if (data.context_path) {
             applyContextUiState(data.context_path, data.context_type, data.context_filename);

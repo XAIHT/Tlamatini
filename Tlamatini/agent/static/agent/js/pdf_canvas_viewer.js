@@ -185,6 +185,17 @@
             status.textContent = event.data.message;
         }
     });
+    // Keyboard events in an iframe do not bubble to the Canvas tab bar.
+    document.addEventListener('keydown', event => {
+        if (event.defaultPrevented || event.isComposing || event.metaKey || document.hidden || !document.hasFocus()) return;
+        const controlTab = event.ctrlKey && !event.altKey && event.key === 'Tab';
+        const alternatePage = event.altKey && !event.ctrlKey && !event.shiftKey && ['PageUp', 'PageDown'].includes(event.key);
+        if (!controlTab && !alternatePage) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const direction = controlTab ? (event.shiftKey ? -1 : 1) : (event.key === 'PageUp' ? -1 : 1);
+        send('canvas-document-cycle', { direction });
+    });
     previous.addEventListener('click', () => { viewer.currentPageNumber--; });
     next.addEventListener('click', () => { viewer.currentPageNumber++; });
     pageInput.addEventListener('change', () => {

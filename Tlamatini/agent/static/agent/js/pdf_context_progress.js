@@ -102,7 +102,7 @@
             ? 'PDF processing is complete. Loading its text and image analyses into Tlamatini’s context…'
             : 'PDF text extraction is complete. Loading its text into Tlamatini’s context…'));
     }
-    function finish(token, success) {
+    function finish(token, success, detail = '') {
         if (token !== expectedToken) return;
         expectedToken = null;
         setTitleBusy(false, 'pdf-context');
@@ -112,7 +112,7 @@
         if (success) {
             update('rag', 1, 1, 'Your PDF context is ready. You can now ask Tlamatini about the document.');
             dialog.close();
-        } else fail('The PDF was processed, but context loading failed. Please retry and check the configured model service if the problem persists.');
+        } else fail(detail || 'The PDF was processed, but context loading failed. Please retry and check the configured model service if the problem persists.');
     }
     function fail(detail) {
         if (processImages.checked && !failureReported) {

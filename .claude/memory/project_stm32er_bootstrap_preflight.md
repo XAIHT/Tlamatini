@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 2026-05-26: Made STM32er ([[project_stm32er_agent]]) zero-config + fail-safe for critical-mission robot programming. All self-contained in `agent/agents/stm32er/stm32er.py` (stdlib only), covers BOTH Multi-Turn (chat_agent_stm32er) and canvas (same script). 122 tests green, ruff clean, verified live against the real MCP + real ST-LINK probe.

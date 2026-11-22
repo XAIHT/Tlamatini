@@ -15,7 +15,7 @@ metadata:
 ═══════════════════════════════════════════════════════════════════
 -->
 
-> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 2026-05-21: Added two **advanced, more-visual** demo prompts to the Catalog of Prompts, beyond the basic/medium 0095 set. Migration `Tlamatini/agent/migrations/0096_add_director_virtuoso_demo_prompts.py`, APPENDED at the tail (slots 55-56, NO renumber — catalog stays contiguous 1-56):

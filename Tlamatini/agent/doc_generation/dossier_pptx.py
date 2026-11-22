@@ -870,6 +870,33 @@ def divider_slide(deck: Deck, chapter, label_override: str | None = None):
     return sc
 
 
+def chapter_contents_slides(deck: Deck, chapter):
+    """List every topic on readable continuation slides for large chapters."""
+    items = [section.title for section in chapter.sections if section.deck != "none"]
+    if len(items) <= 6:
+        return
+    page_size = 10
+    pages = math.ceil(len(items) / page_size)
+    gap = 0.42
+    col_w = (CONTENT_W - gap) / 2
+    row_h = (CONTENT_BOTTOM - CONTENT_TOP) / 5
+    for page in range(pages):
+        sc = deck.new("content", notes="\n".join(items[page * page_size:(page + 1) * page_size]))
+        deck.header(sc, "CHAPTER CONTENTS", chapter.title,
+                    f"Every topic, without omissions · {page + 1}/{pages}", chapter.accent)
+        chunk = items[page * page_size:(page + 1) * page_size]
+        per_col = math.ceil(len(chunk) / 2)
+        for index, title in enumerate(chunk):
+            col, row = divmod(index, per_col)
+            x, y = MX + col * (col_w + gap), CONTENT_TOP + row * row_h
+            text(sc, x, y, 0.43, row_h - 0.08,
+                 one(f"{page * page_size + index + 1:02d}", "sans-semibold", 13, chapter.accent),
+                 label="contents number")
+            text(sc, x + 0.55, y, col_w - 0.55, row_h - 0.08,
+                 one(title, "sans", 15, "ivory"), label="contents topic", min_scale=0.9)
+        deck.chrome(sc, f"Chapter {chapter.numeral}")
+
+
 def section_slides(deck: Deck, chapter, section):
     f = deck.facts
     notes = "\n\n".join([plain(section.lede)] + [plain(t) for t in section.body]
@@ -1178,6 +1205,7 @@ def build_pptx(facts: dict, chapters, output) -> int:
     for chapter in chapters:
         sc = divider_slide(deck, chapter)
         deck.chrome(sc, f"Chapter {chapter.numeral}")
+        chapter_contents_slides(deck, chapter)
         for section in chapter.sections:
             if section.deck != "none":
                 section_slides(deck, chapter, section)

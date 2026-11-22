@@ -1,6 +1,6 @@
 # Transport Configuration Reference
 
-> Latest released version: **[v1.96.1](../../../../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../../../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 ## Supported Transports

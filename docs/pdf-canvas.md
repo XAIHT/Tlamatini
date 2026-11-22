@@ -1,15 +1,22 @@
 # PDF canvas and document context
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 
 **Views → Canvas** keeps this document and its viewer alive while hiding the pane. Opening a document shows the pane again. **Views → Reset layout** restores both panes and their sizes without clearing the document or context. See [v1.85.0](changes/2026-10-16-v1.85.0.md).
 
 The Agent Page **Open** native file picker accepts `.pdf` and
 `application/pdf`. A PDF opens inside the existing canvas with its original
-filename in the existing header. Copy, Refresh, Clear canvas and Use as context
+filename in its own Canvas tab and the active document header. Copy, Refresh, Clear canvas and Use as context
 keep the shared button styling. Since v1.85.0,
 [Refresh](canvas-refresh.md) rereads the same file without another selection.
+
+You can keep several PDFs beside text and Markdown tabs, up to 32 documents
+in total. Switching retains each PDF's viewer and page/zoom/rotation/scroll
+state, original bytes and prepared context choices. Opening a text file does
+not close the PDF tab. Interactor can activate a PDF for navigation but refuses
+text edits; it can open a text document in another tab for the explanation.
+Opening or activating a PDF does not select it as chat context.
 
 The chat/canvas divider keeps pointer capture while resizing across the PDF
 frame. Release, cancelled touch input, lost capture and window focus loss end
@@ -27,17 +34,21 @@ passwords produce visible errors. PDF scripts are not executed.
 - **Copy** reads selectable text from every page. Scans without selectable text
   explain that OCR is required; Use as context can perform visual interpretation
   when Process images is enabled.
-- **Save As** downloads the original PDF bytes with a PDF extension.
+- **Save / Save as** exports a copy of the original PDF bytes, using the available
+  local native or supported browser picker. The viewer stays open; another
+  export asks for a destination again. PDF export does not update chat context.
 - **Use as context** processes the complete original document as described below.
-  Its existing toggle removes the selected context normally.
+  Its snapshot can coexist with other explicitly selected documents. **Remove
+  from context** or its context chip removes only that snapshot.
 - **Refresh** stages a new viewer from the latest file before replacing the old
   viewer, preserving page/zoom/rotation/scroll mode. Failed reads or invalid PDFs
-  keep the previous display. If the canvas was already context, it prepares the
-  replacement before rebuilding context. Cancelling preparation leaves the
-  previous backend context available.
-- **Clear canvas**, text-file selection and generated text remove the PDF frame,
-  terminate its worker and invalidate outstanding reads. Generation checks stop
-  an earlier asynchronous file read from overwriting a newer selection.
+  keep the previous display. A selected PDF keeps its previous context snapshot
+  and shows **Context · older**; **Update context** explicitly prepares and loads
+  the replacement. Cancelling preparation leaves the old context available.
+- **Clear canvas** closes the active PDF tab and disposes its viewer. Selecting
+  text or generated text opens another tab and retains the PDF. Closing a
+  selected PDF leaves its accepted context chip until explicitly removed.
+  Document-generation checks prevent late reads from replacing a different tab.
 
 Opening and reading use local browser file ranges and do not upload the PDF.
 There is no application file-size or page-count cutoff. The viewer reads
@@ -89,9 +100,12 @@ viewer status and saved reports after the dialog closes.
    the configured model services and can require network access or running Ollama.
 4. Full extracted text, plus artifact paths and complete reports when images were enabled, are written
    to a UTF-8 index. A user-bound signed token passes that index to the existing
-   contextual RAG setup. The normal session/context path is saved for restoration.
-   Model responses use normal retrieval and model context limits; the complete
-   index is retained without a PDF-specific text cutoff.
+   selected-document context operation. Only tokens belonging to the authenticated
+   user can join the set. The server prepares and persists the whole selection
+   before confirming it; errors preserve the previous selection. The complete
+   PDF index remains retained, but the combined selected context accepts at most
+   32 documents and 32 MiB of prepared UTF-8 text including separators. An excess
+   is refused, not truncated. Model retrieval/context limits still apply.
 
 This uses File-Interpreter-equivalent complete text/image extraction without
 importing that executable's process setup. Image-Interpreter itself is reused,
@@ -137,6 +151,8 @@ Frontend code is under `Tlamatini/agent/static/agent/`:
   and styling. The Agent Page template contains markup and external references,
   with no new inline JavaScript.
 - Existing canvas/context/chat modules coordinate the established actions.
+- `js/agent_page_canvas_tabs.js` retains per-document viewer ownership and the
+  explicit context selection independently of which tab is active.
 
 Backend code is under `Tlamatini/agent/`:
 
@@ -150,6 +166,9 @@ Backend code is under `Tlamatini/agent/`:
   login/CSRF/method protections in `urls.py`.
 - `consumers.py`: validates ownership and hands the prepared index to normal RAG,
   then confirms completion to the progress dialog.
+- `canvas_documents_context.py`: validates the full selected set, resolves PDF
+  tokens, and commits an account-owned context bundle without changing source
+  files. Its shared account reservation serializes context and reconnect work.
 
 Packages live below the runtime agent root at
 `context_files/pdf_canvas/<user-id>/<document-uuid>/`. Each contains `source.pdf`,

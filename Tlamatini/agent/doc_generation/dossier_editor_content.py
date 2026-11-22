@@ -4,6 +4,7 @@
 
 def editor_sections(section):
     return [
+        *canvas_document_sections(section),
         section("torrent_workspace", "TORRENTER", "From a magnet to verified files",
                 "Chat, the Agentic Control Panel and XT share the account’s Jobs queue.",
                 body=["Inspect the metadata and select file IDs. A job receipt lets you reconnect. Enable Wait for complete download in a flow when downstream nodes need the files.",
@@ -63,7 +64,7 @@ def editor_sections(section):
                     ("Timing", "Before/during/after; optional completion before typing."),
                     ("Control", "Escape stops speech; Ctrl+Shift+M toggles global mute."),
                 ]),
-        section("canvas_edit", "CANVAS EDITOR · v1.89.0", "Edit the document you are discussing",
+        section("canvas_edit", "CANVAS EDITOR · v1.97.0", "Edit the document you are discussing",
                 "A local CodeMirror 6 editor keeps text, code, JSON and Markdown Source editable in the chat canvas.",
                 body=[
                     "Open or drop a file, make a change, and use the filename bar: Save, Save as, Undo, Redo, "
@@ -72,11 +73,12 @@ def editor_sections(section):
                     "Markdown Preview is sanitized with the existing Marked/DOMPurify renderer. Source and Preview "
                     "share one buffer and undo history. HTML and SVG remain text, never an active web page. PDFs "
                     "remain read-only viewers and export their original bytes; flows and images keep their own routes.",
-                    "The dirty marker survives failed or cancelled saves. Open, Clear and Refresh ask before "
-                    "discarding edits. Unsaved text lives in memory, so save before closing. Automatic sizing "
+                    "Open and drop add documents without replacing other buffers. The dirty marker survives "
+                    "failed or cancelled saves; closing or refreshing edited documents requires confirmation. "
+                    "Unsaved text lives in memory, so save before closing. Automatic sizing "
                     "reserves 320 CSS pixels for the canvas and wraps controls; manual splits remain the user's choice.",
                 ], points=[
-                    ("One document", "Code, configuration and plain text share the same editing authority."),
+                    ("Independent documents", "Each tab owns its buffer, undo history, revision and save target."),
                     ("Markdown", "Editable source and sanitized preview preserve undo history."),
                     ("Controls", "Save, Save as, Undo/Redo, Find/replace and Wrap."),
                     ("Layout", "A reserved canvas width and an editor that fills its available height."),
@@ -129,7 +131,7 @@ def editor_sections(section):
                     "the learner can write an alternative value. This is contextual teaching support, not a claim "
                     "of unrestricted predictive autocomplete or vendor benchmark latency.",
                     "User input, selection, Stop, Escape, chat cancellation and disconnect interrupt AI typing. "
-                    "The typed prefix stays editable. A temporarily hidden or occluded tab pauses the same action "
+                    "The typed prefix stays editable. A temporarily hidden or occluded browser tab pauses the same action "
                     "for up to two extra minutes and resumes at the exact next character when visible. Timeout "
                     "never replays a partial edit. Switching Markdown to Preview or hiding the canvas returns control.",
                     "Live tutoring accepts at most 262,144 UTF-16 units and checks document/revision before "
@@ -144,13 +146,110 @@ def editor_sections(section):
     ]
 
 
+def canvas_document_sections(section):
+    return [
+        section("canvas_documents", "MULTI-DOCUMENT CANVAS · v1.97.0", "Keep the whole task beside the conversation",
+                "Open up to 32 documents in one Canvas; switching tabs does not change the chat context.",
+                body=[
+                    "Open, drop and generated text add tabs. Each document keeps its own text, undo/redo, "
+                    "selection, scroll, encoding, revision and authorized destination. Identical basenames "
+                    "remain separate documents. Save applies to the active file; other dirty tabs keep their asterisk.",
+                    "Markdown retains its Source/Preview state. Each PDF retains its viewer, page, zoom, "
+                    "rotation and scroll state. PDFs remain read-only and Save as exports original bytes. "
+                    "Opening a document is neither a disk save nor a request to include it in the conversation.",
+                    "A late save cannot silently clear newer edits. Pending saves block document switches; "
+                    "cancelled or failed writes preserve dirty buffers. Generated text starts unsaved. "
+                    "Tabs and unsaved edits are memory state, not crash recovery or a restored browser session.",
+                ], points=[
+                    ("32 tabs", "Keep text, source and PDF documents together without replacing buffers."),
+                    ("Per document", "Independent undo, selection, view state and save destination."),
+                    ("Save", "Write the active document; retain every other dirty indicator."),
+                    ("PDF", "Keep the viewer state and export the unchanged original bytes."),
+                ]),
+        section("canvas_context_set", "EXPLICIT CONTEXT", "Select the sources that guide the answer",
+                "Use as context selects a confirmed snapshot, independently of the active document.",
+                body=[
+                    "Open A, B and C. Select Use as context on A, then B: the selected set contains A and B; "
+                    "opening or activating C does not add it. Tab badges and the context strip identify the "
+                    "selected documents. Closing an editor tab keeps its selected snapshot until explicitly removed.",
+                    "Editing a selected file, renaming a text document through Save as or refreshing a PDF marks the "
+                    "snapshot as older. Update context explicitly replaces that snapshot. Remove one entry "
+                    "without discarding the rest. PDF preparation asks about images, unchecked by default, "
+                    "and uses an account-bound prepared token; reading a PDF alone prepares no chat context.",
+                    "The server accepts up to 32 selected snapshots atomically within a shared 32 MiB UTF-8 "
+                    "budget, including document labels. "
+                    "A rejected update preserves the last confirmed set. Disconnect clears confirmed tab "
+                    "indicators and reports uncertainty while preserving buffers; a late reply cannot certify "
+                    "a newer selection. Confirm the restored context before relying on it.",
+                ], points=[
+                    ("Select", "Only explicit selections enter the shared context package."),
+                    ("Recognize", "Tab badges and the context strip show the confirmed documents."),
+                    ("Update", "An older snapshot stays older until Update context succeeds."),
+                    ("Remove", "Remove one snapshot; closing its editor is a separate action."),
+                ]),
+        section("canvas_context_example", "THREE DOCUMENTS, TWO SOURCES", "Open is not the same as selected context",
+                "Keep notes.md, main.py and manual.pdf open; only notes.md and manual.pdf guide this chat.",
+                body=[
+                    "Use as context on notes.md, then prepare manual.pdf with images unchecked and confirm. "
+                    "Wait for the server acknowledgement before treating the new set as active. Switching "
+                    "to main.py leaves it available for editing without adding it to the selected context.",
+                    "Editing notes.md marks its selected snapshot as older. The confirmed old snapshot stays "
+                    "in use until Update context succeeds; removing manual.pdf removes only that source.",
+                ], visual="steps", visual_data={"steps": [
+                    ("Open three", "notes.md + main.py + manual.pdf retain independent tabs and view state."),
+                    ("Select two", "notes.md + manual.pdf enter the confirmed context set after acknowledgement."),
+                    ("Edit freely", "main.py stays open but unselected. Edits to notes.md mark its context snapshot older."),
+                    ("Update explicitly", "Update notes.md to replace its snapshot, or remove manual.pdf without clearing notes.md."),
+                ]}, deck="visual"),
+        section("canvas_navigation", "NAVIGATION AND UNSAVED WORK", "Switch documents and keep a clear exit warning",
+                "Canvas shortcuts act inside the Canvas; browser shortcuts remain controlled by the browser.",
+                body=[
+                    "Click a document tab, or use Alt+PageUp and Alt+PageDown while focus is inside the Canvas, "
+                    "including its active PDF viewer. Ctrl+Tab and Ctrl+Shift+Tab work only if the browser "
+                    "delivers them. Windows Chrome reserves physical Ctrl+Tab for browser tabs; use the Alt shortcut there.",
+                    "An asterisk marks every unsaved document, including inactive tabs. Closing a dirty tab "
+                    "asks before discarding it. Leaving or reloading the page requests the browser's standard "
+                    "warning whenever any tab is dirty or a save is pending. The browser decides whether to "
+                    "show that warning, and the user can still leave or force-close it.",
+                    "Save each edited file to persistent storage before leaving. No page can guarantee recovery "
+                    "after a crash, forced exit or discarded browser warning. Keyboard events outside the Canvas "
+                    "and messages from hidden PDF viewers do not switch its documents.",
+                ], points=[
+                    ("Navigate", "Click tabs or use Alt+PageUp / Alt+PageDown inside Canvas."),
+                    ("Browser limit", "Ctrl+Tab cannot be stolen from Chrome's own tab navigation."),
+                    ("Dirty marker", "Every unsaved tab shows an asterisk, even in the background."),
+                    ("Leave safely", "Save all edited files; the browser owns the final departure warning."),
+                ]),
+        section("interactor_documents", "LIVE EDITOR ACROSS DOCUMENTS", "Teach in one file, then continue in another",
+                "Interactor keeps account connection identity separate from each Canvas document ID.",
+                body=[
+                    "documents lists IDs, names, revisions, active/dirty/context flags and document kinds; "
+                    "it does not expose file contents, host paths or write capabilities. read obtains the "
+                    "current document and revision. activate names an exact target_document_id and returns "
+                    "a verified target snapshot before the next type action can edit that document.",
+                    "Switching preserves the source's unsaved edits. Interactor can open or create a text "
+                    "document while a PDF is active; the PDF and other tabs remain open. Tool-origin activation "
+                    "continues the same lesson. A manual tab switch gives control back to the user and interrupts "
+                    "ongoing typing; stale commands cannot cross document or revision boundaries.",
+                    "Explain selection reads the active document's exact unsaved ranges independently of "
+                    "the selected chat-context snapshots. Live Editor permission, Stop, cancellation, Ask Execs "
+                    "and native file authorization retain their existing responsibilities.",
+                ], points=[
+                    ("Discover", "documents lists metadata; read captures the active source revision."),
+                    ("Activate", "Choose the exact document ID and verify the returned target."),
+                    ("Continue", "Type into that target while retaining the other buffers."),
+                    ("Take over", "A manual switch interrupts typing and preserves the written prefix."),
+                ]),
+    ]
+
+
 def bridge_section(section):
-    return section("interactor_architecture", "LIVE EDITOR BRIDGE", "One authenticated tab, one exact buffer",
-                   "The browser editor and the synchronous tool loop share an account/session-bound bridge.",
+    return section("interactor_architecture", "LIVE EDITOR BRIDGE", "One connection, distinct document identities",
+                   "An authenticated browser connection carries exact document IDs and revisions for every action.",
                    points=[
-                       ("Browser", "CodeMirror is authoritative; bridge.js sends receipts/access/stop, not host-path commands."),
+                       ("Browser", "Canvas tabs retain independent editors and PDF viewers; the active document supplies the receipt."),
                        ("Transport", "ws/interactor/ authenticates the session and exact Origin/Host; the server issues tab identity."),
-                       ("Tool context", "ContextVar carries tab/account/session identity into workers; read gets the live buffer."),
+                       ("Tool context", "ContextVar carries connection/account/session identity; documents/read/activate select exact buffers."),
                        ("Hub", "Bounded queues, command IDs, deadlines, revision checks and full-buffer verification."),
                        ("Persistence", "Ask Execs gates new/save; loopback host access uses the existing path and file-capability guards."),
                        ("Carriage", "Migration 0218, tool_gate_table, prompt rules, frozen modules and offline source/static inventories."),
@@ -183,6 +282,26 @@ def wizard_section(section):
 
 def release_sections(section, facts):
     return [
+        section("release1970_canvas", f"RELEASED · v{facts['version']}", "Multiple documents, explicit context and safe handoffs",
+                "The English and Spanish Canvas share the same document model and localized controls.",
+                body=[
+                    "Up to 32 tabs preserve independent text and PDF state. Explicit multi-document context "
+                    "selection has visible badges, older-snapshot indicators, update and removal. Interactor "
+                    "can list and activate documents without discarding unsaved work.",
+                    "Verified on November 21, 2026: the English full browser run passed 28 checkpoints plus "
+                    "a focused PDF-to-text Interactor check; the Spanish full run passed 29 checkpoints. "
+                    "Each edition passed 46 context-transaction tests, 40 Interactor protocol/ownership tests "
+                    "and targeted Python/JavaScript lint. Both PDF viewers were checked for actually rendered visible text.",
+                    "Browser context acknowledgements were explicitly injected; backend ownership and atomic "
+                    "persistence were tested separately with model/network boundaries substituted. Native disk "
+                    "writes, PDF text preparation and authenticated Interactor actions used their actual local "
+                    "implementations. This is source evidence, not live-model ingestion or installed-build acceptance.",
+                ], deck_points=[
+                    ("Documents", "32 tabs with independent buffers, undo and PDF view state."),
+                    ("Context", "A+B selected, C only open; explicit update and removal."),
+                    ("Teaching", "Interactor discovers and activates exact document IDs."),
+                    ("Evidence", "Dated browser, backend and lint results with stated test boundaries."),
+                ]),
         section("release1961_catalog", f"RELEASED · v{facts['version']}", "Voice moves to the microphone",
                 "The Catalog of Prompts no longer has a Voice Commands section.",
                 body=[

@@ -84,6 +84,7 @@ function ClearContext(e) {
         return;
     }
 
+    window.TlamatiniCanvasTabs?.clearContext();
     if (canvasLoaded === true) {
         contextButton.style.backgroundColor = "darkgreen";
         contextButton.disabled = false;
@@ -111,6 +112,12 @@ function ClearContext(e) {
 
 // --- Context button click handler (toggle set/unset) ---
 contextButton.addEventListener('click', async (event) => {
+    if (window.TlamatiniCanvasTabs) {
+        event.preventDefault();
+        try { await window.TlamatiniCanvasTabs.changeContext(); }
+        catch (error) { await window.tlmAlert(error.message, 'Canvas'); }
+        return;
+    }
     if (contextEnabled === false) {
         event.preventDefault();
         return;

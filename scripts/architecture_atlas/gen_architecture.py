@@ -64,7 +64,17 @@ def n2(x):
 
 
 # ----------------------------------------------------------------------------- inventory
-ALL_FILES = sorted([f for f in git("ls-files", "-z").split("\0") if f], key=lambda p: p.lower())
+DOCUMENT_SOURCE_ADDITIONS = {
+    "Tlamatini/agent/canvas_documents_context.py",
+    "Tlamatini/agent/static/agent/css/canvas_tabs.css",
+    "Tlamatini/agent/static/agent/js/agent_page_canvas_tabs.js",
+}
+TRACKED_FILES = {f for f in git("ls-files", "-z").split("\0") if f}
+WORKING_SOURCE_FILES = DOCUMENT_SOURCE_ADDITIONS.intersection(
+    git("ls-files", "--others", "--exclude-standard", "-z").split("\0"))
+ALL_FILES = sorted(TRACKED_FILES | WORKING_SOURCE_FILES, key=lambda p: p.lower())
+note("Inventory: %d tracked files + %d explicitly listed Canvas source additions (no staging)."
+     % (len(TRACKED_FILES), len(WORKING_SOURCE_FILES)))
 FILES = list(ALL_FILES)
 PATHSET = set(FILES)
 HEAD = git("rev-parse", "--short", "HEAD").strip()
@@ -119,7 +129,7 @@ for _p in FILES:
 for _i, _p in enumerate(FILES, 1):
     FI[_p].id = "F%04d" % _i
 TOTAL_LOC = sum(f.loc for f in FI.values())
-note("Tracked files: %d  text lines: %d  HEAD %s  tag %s" % (len(FILES), TOTAL_LOC, HEAD, TAG))
+note("Listed application files: %d  text lines: %d  HEAD %s  release %s" % (len(FILES), TOTAL_LOC, HEAD, TAG))
 
 # ----------------------------------------------------------------------------- file types
 TYPES = [
@@ -1446,7 +1456,7 @@ def sheet_topology():
             "[[templates/agent/agent_page.html|agent_page.html]]: composer, toolbar modes (Multi-Turn, Exec report, ACPX, Ask Execs, Step-by-Step, Compact mode, Self-modify), canvas, avatar",
             "Boot and state: [[agent_page_init.js]], [[agent_page_state.js]], [[agent_page_ui.js]], [[agent_page_layout.js]]",
             "Messages: [[agent_page_chat.js]] (Copy/Drop, Create Flow, Exec Report)",
-            "Canvas: [[agent_page_canvas.js]], [[agent_page_markdown.js]], [[agent_page_pdf.js]]",
+            "Canvas: [[agent_page_canvas_tabs.js]], [[agent_page_canvas.js]], [[agent_page_markdown.js]], [[agent_page_pdf.js]]",
             "Voice and avatar: [[chat_dictation.js]], [[mic_settings.js]], [[avatar.js]]",
             "Gauges: [[context_gauge.js]], [[model_capacity.js]], [[self_modify_switch.js]]"]),
         ("pA2", "Lpresentation", "Agentic Control Panel", [
@@ -2144,12 +2154,12 @@ def sheet_dsm():
 
 def sheet_live_editor():
     sh = new_sheet("Live canvas editor and Interactor",
-                   "Editable source, native persistence and tutoring share one document authority. Interactor is a module/tool, not a workflow agent.",
+                   "Each Canvas document has independent state; native saving and tutoring address its exact ID and revision.",
                    "presentation")
     o = sh.body
     left = [
         ("ed1", "Lpresentation", "Editable document", [
-            "[[agent_page_editing.js]] owns the CodeMirror buffer, dirty baseline, encoding and save snapshots.",
+            "[[agent_page_editing.js]] supplies CodeMirror state; [[agent_page_canvas_tabs.js]] retains each document's buffer, undo and revision.",
             "[[agent_page_canvas.js]] owns Open/Refresh and cancellation; Markdown Preview/Source share the current buffer.",
             "Text/code/JSON are editable. HTML/SVG stay inert source. PDFs remain read-only and export original bytes.",
             "Save, Save as, Undo/Redo, Find/replace, Wrap; Ctrl/Cmd+S and Ctrl/Cmd+Shift+S."]),
@@ -2159,14 +2169,14 @@ def sheet_live_editor():
             "Prepared choices match locally: Tab accepts, Ctrl+Right takes one word, Escape dismisses. No per-key model call.",
             "User input/selection, Stop, cancellation or disconnect interrupts and preserves the typed prefix."]),
         ("ed3", "Lpresentation", "Visibility and layout", [
-            "A hidden/occluded tab pauses the same command for up to 120 extra seconds; resume at the next character.",
+            "A hidden/occluded browser tab pauses the same command for up to 120 extra seconds; resume at the next character.",
             "No automatic replay after a partial edit. Preview or hiding the canvas returns control.",
             "Automatic layout reserves canvas width; editor fills available height. Manual divider choices remain valid."]),
     ]
     right = [
         ("ed4", "Ltransport", "Authenticated live bridge", [
             "[[interactor/consumer.py]] serves ws/interactor/ with exact Origin/Host and session authentication.",
-            "[[interactor/hub.py]] binds server-issued tab IDs to account/session; ContextVar carries identity into tool workers.",
+            "[[interactor/hub.py]] binds the browser connection to account/session; document IDs and revisions select exact buffers.",
             "Bounded command queues, IDs, deadlines and document/revision checks reject stale work. Full-buffer receipts verify edits.",
             "Live tutoring: 262,144 UTF-16 units; a smaller tool-result budget can refuse content, never silently truncate it."]),
         ("ed5", "Lpersistence", "Native file persistence", [
@@ -2182,6 +2192,44 @@ def sheet_live_editor():
     ]
     stack(o, 12, TOP, 193, left, size=12.0)
     stack(o, 215, TOP, 193, right, size=12.0)
+    return sh
+
+
+def sheet_canvas_documents():
+    sh = new_sheet("Canvas tabs and explicit document context",
+                   f"{TAG}: three open documents, two selected sources; browser connection and document identities remain separate.",
+                   "presentation")
+    o = sh.body
+    box(o, 12, TOP, 125, "Lpresentation", "notes.md - selected", [
+        "Editable Markdown with its own undo history.",
+        "Edits mark the confirmed snapshot as older.",
+    ], h=45, name="cn", size=12, tsize=14)
+    box(o, 147.5, TOP, 125, "Lplatform", "main.py - open only", [
+        "Active and editable; not part of chat context.",
+        "Switching here does not change the selected set.",
+    ], h=45, name="cm", size=12, tsize=14)
+    box(o, 283, TOP, 125, "Lpresentation", "manual.pdf - selected", [
+        "Retained page, zoom, rotation and scroll.",
+        "Read-only; context preparation is explicit.",
+    ], h=45, name="cp", size=12, tsize=14)
+    box(o, 12, TOP - 64, 396, "Lintelligence", "Confirmed chat context: notes.md + manual.pdf", [
+        "Use as context / Update context -> account-bound transaction -> server acknowledgement -> confirmed badges.",
+        "Until acknowledgement, keep the previous snapshot. Closing a tab keeps its snapshot; Remove context removes that source.",
+    ], h=43, size=12, tsize=14)
+    arrow(o, "cn.south", "74.5,207.5", color="Lpresentation!85!black")
+    arrow(o, "cp.south", "345.5,207.5", color="Lpresentation!85!black")
+    box(o, 12, TOP - 122, 193, "Lpersistence", "Independent state and persistent files", [
+        "[[agent_page_canvas_tabs.js]] and [[canvas_tabs.css]] retain up to 32 documents, exact IDs and per-tab view/dirty state.",
+        "Save writes the active file. Other dirty tabs keep their asterisks; pending saves block switches and late receipts preserve newer edits.",
+        "Alt+PageUp/PageDown stays inside Canvas, including the active PDF. Chrome reserves physical Ctrl+Tab for browser tabs.",
+        "Any dirty tab or pending save requests the browser's exit warning. Tabs remain memory state; save to disk before closing.",
+    ], h=118, size=12, tsize=14)
+    box(o, 215, TOP - 122, 193, "Ltransport", "Context transactions and live document handoff", [
+        "[[canvas_documents_context.py]] validates the full selected set, shared budget and account-bound PDF tokens before atomic publication.",
+        "Rejected updates preserve confirmed context. Disconnect reports uncertainty; stale acknowledgements cannot confirm newer selections.",
+        "Interactor: documents (metadata) -> read (source ID/revision) -> activate (exact target ID) -> verified target -> type.",
+        "Tool-origin activation continues the lesson. A manual tab switch stops typing; stale commands cannot edit another document. PDF-to-text open retains both.",
+    ], h=118, size=12, tsize=14)
     return sh
 
 
@@ -2560,6 +2608,7 @@ def autofit(fn, target, lo=0.85, hi=1.45):
 autofit(sheet_topology, BOTTOM + 1.5)
 sheet_lifecycle()
 sheet_live_editor()
+sheet_canvas_documents()
 sheet_interaction_settings()
 sheet_torrenter()
 sheet_current_release()
@@ -2595,7 +2644,7 @@ def fill_cover():
     text_node(o, 14, 238, r"Complete Architecture Atlas", size=26, color="black!80")
     text_node(o, 14, 226.5, r"\itshape eXtended Artificial Intelligence, Humanly Tempered \textperiodcentered{} ``one who knows''", size=12, color="black!65")
     text_node(o, 14, 218, r"Created by \textbf{Angela L\'opez Mendoza} \textperiodcentered{} XAIHT", size=11.5, color="black!75")
-    text_node(o, 14, 211, esc("Release %s \u00b7 commit %s (%s) \u00b7 atlas generated %s from every file tracked in git, including migration history" % (TAG, HEAD, COMMIT_DATE, TODAY)), size=8, color="black!60")
+    text_node(o, 14, 211, esc("Release %s \u00b7 commit %s (%s) \u00b7 generated %s: tracked files + %d explicit Canvas source additions" % (TAG, HEAD, COMMIT_DATE, TODAY, len(WORKING_SOURCE_FILES))), size=8, color="black!60")
     kpis = [
         ("{:,}".format(len(FILES)), "listed application files"),
         ("{:,}".format(TOTAL_LOC), "lines of text"),
@@ -2785,7 +2834,7 @@ def render_index():
     out.append(r"\renewcommand{\headrulewidth}{0.3pt}")
     out.append(r"\pdfbookmark[0]{Part C - file index}{bmfileindex}\hypertarget{fileindex}{}")
     out.append(r"\setlength{\columnsep}{4mm}\setlength{\columnseprule}{0.2pt}")
-    out.append(r"\noindent{\sffamily\fontsize{12}{14}\selectfont\bfseries File index \textemdash{} %d tracked files}\par" % len(FILES))
+    out.append(r"\noindent{\sffamily\fontsize{12}{14}\selectfont\bfseries File index \textemdash{} %d listed application files}\par" % len(FILES))
     out.append(r"\noindent{\sffamily\fontsize{6.6}{8}\selectfont\color{black!60} ID (click to see the tile) \textperiodcentered{} path \textperiodcentered{} [lines or size] \textperiodcentered{} description extracted from the file itself. Grouped exactly like the atlas.}\par\vspace{2mm}")
     out.append(r"\begin{multicols*}{4}")
     out.append(r"\raggedright\sffamily\fontsize{5.6}{6.75}\selectfont\interlinepenalty=10000\relax")

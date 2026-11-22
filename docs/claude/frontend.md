@@ -8,7 +8,37 @@
 -->
 # Tlamatini — Frontend Architecture
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
+
+## Canvas document ownership
+
+`agent_page_canvas_tabs.js` and `canvas_tabs.css` add a tab strip inside the
+existing Canvas surface. `TlamatiniCanvasTabs` owns up to 32 document IDs,
+activation, suspended editor/viewer state and explicit selected context. Each
+text document retains its CodeMirror state, undo history, selection, scroll,
+encoding/baseline and save capability. Markdown retains Preview/Source and local
+resources; PDF keeps its viewer and page/zoom/rotation/scroll state. Opening adds
+a tab; Clear canvas closes the active tab without clearing other documents.
+
+Keep these states separate: **active**, **dirty**, and **selected context**.
+The context strip represents only accepted snapshots; editing/Refresh marks a
+selected snapshot older until Update context succeeds. Closing that tab retains
+its chip. Pending request IDs gate acknowledgements; failed updates keep the
+previous set. A disconnect clears confirmation badges and asks the user to
+verify context on reconnect, preserving editor documents without inventing a
+successful acknowledgement or promising reload restoration.
+
+Save/close protection inspects inactive tabs too. Switching waits for a pending
+save and invalidates pending reads/typing so callbacks cannot land in another
+document. Interactor carries document ID/revision through `documents`, `activate`
+and edits. Keyboard navigation is scoped to the Canvas, excludes chat/terminal
+focus and open dialogs, and forwards navigation only from the owned PDF frame.
+Alt+PageUp/PageDown is reliable; Ctrl+Tab is handled only if delivered by the
+browser. ARIA tab roles, selection, labels and keyboard tab-strip navigation
+remain part of the interface contract.
+
+See [user behavior](../canvas-editing.md), [Interactor](../interactor.md) and
+[the visible verification record](../changes/2026-11-21-canvas-document-tabs.md).
 
 ## Remote-Controller account page · 13 November 2026
 
@@ -296,8 +326,9 @@ Static cache suffix: `-canvas-refresh-1`.
 
 - `agent_page_init.js` - WebSocket setup, app initialization, **Context-menu "Set directory as context"** handler (see *Context directory picker* below)
 - `agent_page_chat.js` - Chat message handling. **Every card carries Copy + Drop (2026-09-30):** a saved message keeps its `AgentMessage` id in `data-message-id` (from `message_id` on live frames, `id` in `initial_messages`); **Drop** asks with a themed `tlmConfirm` (red Drop, Cancel focused), sends `drop-message`, and removes the card(s) on the `message-dropped` reply — the LLM's history is re-read from the DB every request, so no reconnect is needed. A card without an id is a live status line and is only cleared from the screen. Contract: `recent-fixes.md` (2026-09-30). Also handles the `exec-permission-request` frame (Ask Execs — see below) by opening the permission dialog. `appendChatMessage` keeps the Send button on **Cancel** during self-healing "🔁 Tactic…" status frames (via `isSelfHealingStatusMessage()` in `agent_page_ui.js`) instead of re-enabling the controls, so the button only returns to **Send** on the real final answer (see `docs/claude/multi-turn.md` → *Self-healing model steps* and `recent-fixes.md` 2026-07-07)
-- `agent_page_canvas.js` - Canvas file loading, refresh and replacement ownership
-- `agent_page_editing.js` - Authoritative CodeMirror buffer, dirty state, encoding and save controls
+- `agent_page_canvas_tabs.js` / `canvas_tabs.css` - Independent Canvas tabs, activation, retained document/viewer state, selected snapshots and context badges; 32-document limit.
+- `agent_page_canvas.js` - Active-document loading/refresh generation; new opens add a tab and Clear closes the active tab.
+- `agent_page_editing.js` - Authoritative CodeMirror buffer, per-document save state/encoding and dirty checks across every open tab.
 - `agent_page_markdown.js` - **Markdown canvas** (2026-10-11, shipped in `v1.82.0`). `.md` / `.markdown` (any case) open in a sanitized **Preview** (locally vendored Marked 18.1.0 + DOMPurify 3.4.16, no CDN) with a **Source** view and line numbers; **Choose folder** resolves relative images/links from user-selected files; Copy, Use as context and Save always take the SOURCE (Save keeps the original bytes, BOM and CRLF). Styles in `markdown_canvas.css`. Contract: `docs/markdown-canvas.md`; visible proof `scripts/markdown_canvas_visible.py` (30/30)
 - `agent_page_context.js` - RAG context management
 - `agent_page_dialogs.js` - Modal dialogs (incl. `showExecPermissionDialog(detail)` — the Ask-Execs Proceed/Deny prompt)

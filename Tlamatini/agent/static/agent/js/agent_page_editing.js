@@ -26,12 +26,12 @@
     });
     let notice = '';
     const normalize = value => String(value).replace(/\r\n?|\n/g, '\n');
-    const dirty = () => !!current && editor.getText() !== current.baseline;
+    const dirty = () => !!current && (!current.persisted || editor.getText() !== current.baseline);
     const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
         decodeURIComponent(document.cookie.split('; ').find(v => v.startsWith('csrftoken='))?.slice(10) || '');
 
     function beforeUnload(event) {
-        if (!dirty() && !saving) return;
+        if (!(window.TlamatiniCanvasTabs?.anyUnsaved() ?? dirty()) && !saving) return;
         event.preventDefault();
         event.returnValue = '';
     }
@@ -54,7 +54,8 @@
             : pdf ? 'PDF · original document (read only)' : 'Open a file to edit.');
         if (status.textContent !== message) status.textContent = message;
         window.removeEventListener('beforeunload', beforeUnload);
-        if (changed || saving) window.addEventListener('beforeunload', beforeUnload);
+        if ((window.TlamatiniCanvasTabs?.anyUnsaved() ?? changed) || saving) window.addEventListener('beforeunload', beforeUnload);
+        window.TlamatiniCanvasTabs?.updated();
     }
 
     function inferFormat(raw, bytes = null) {
@@ -125,7 +126,7 @@
             textEditorCode.textContent = text;
             notice = '';
             window.TlamatiniMarkdownCanvas?.updateSource(text);
-            if (canvasSettedAsContext) {
+            if (canvasSettedAsContext && !window.TlamatiniCanvasTabs) {
                 unsetContextButton();
                 if (canvasSource) canvasSource.contextPending = true;
             }
@@ -133,11 +134,14 @@
         sync();
     }
 
-    function open(name, raw, file = null, format = null) {
-        current = { name, baseline: normalize(raw), format: format || inferFormat(raw), file };
+    function open(name, raw, file = null, format = null, options = {}) {
+        const previous = options.previous || editor.inspect();
+        current = { name, baseline: normalize(raw), format: format || inferFormat(raw), file,
+            persisted: options.persisted ?? !!file };
         notice = '';
         container.classList.add('canvas-editable');
         editor.mount(host, current.baseline, name, changed);
+        window.TlamatiniCanvasTabs?.adoptEditor(previous);
         editor.setWrap(wrap);
         textEditorCode.textContent = current.baseline;
         sync();
@@ -258,6 +262,7 @@
             filenameSpan.title = result.path || savedName;
             if (state) {
                 state.baseline = text;
+                state.persisted = true;
                 state.name = savedName;
                 state.file = file;
                 state.format = decoded.format;
@@ -295,6 +300,19 @@
         save(event.shiftKey);
     });
     window.TlamatiniCanvasEditing = { open, close, sync, decodeFile, confirmDiscard, save,
+        suspend: () => {
+            const saved = current ? { current, notice, wrap, editor: editor.suspend() } : null;
+            current = null;
+            return saved;
+        },
+        resume: saved => {
+            if (!saved) { close(); return; }
+            ({ current, notice, wrap } = saved);
+            container.classList.add('canvas-editable');
+            editor.resume(host, saved.editor, changed);
+            textEditorCode.textContent = editor.getText();
+            sync();
+        },
         openNative: (...args) => window.TlamatiniCanvasRefresh.openNative(...args),
         acceptFile: (file, format) => {
             if (current && !dirty()) { current.file = file; current.format = format; notice = ''; sync(); }

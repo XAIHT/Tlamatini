@@ -1146,7 +1146,7 @@ class MultiTurnToolAgentExecutor:
         if not tool_name:
             return False
         if tool_name == "interactor" and isinstance(tool_args, dict):
-            return tool_args.get("action") not in {"read", "open", "type", "guide", "select", "stop"}
+            return tool_args.get("action") not in {"read", "documents", "activate", "open", "type", "guide", "select", "stop"}
         return tool_name in _ASK_EXECS_REQUIRED_TOOLS
 
     def _build_exec_permission_detail(self, tool_call: Dict[str, Any]) -> Dict[str, Any]:

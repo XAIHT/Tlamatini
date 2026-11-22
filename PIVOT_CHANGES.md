@@ -8,9 +8,9 @@
 -->
 # Tlamatini — Change Pivot / Rollback Log
 
-> Latest released version: **[v1.96.1](docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](docs/remote-controller.md).
@@ -41,6 +41,47 @@ removed with it. It now begins clean with only the change that survived a real,
 evidence-backed diagnosis.)
 
 ---
+
+## 2026-11-21 — Multi-document Canvas documentation
+
+Verbatim request: "Now update every document, .pdf, .md, .pptx, .\* everywhere where it must be talked about the multi-document posibility!!!!!!!!!!!!!!, go!"
+
+Subsequent verbatim release instructions:
+
+> And please bump everywhere as the latest version 1.97.0 in both Tlamatinis!!, please.
+
+> Remember our golden rule assume the release has been already published completelly as 1.97.0!!!!!!!!
+
+**1.97.0 is the latest released version** in both editions. This pass updates the English user guide, README,
+self-knowledge, Canvas/Markdown/PDF/Refresh/Interactor/settings guides, text
+quick reference, maintainer instructions, architecture/frontend references and
+carriage documentation. It replaces current single-document claims and automatic
+context-refresh claims with the actual 32-tab, explicit-snapshot behavior;
+historical entries and dated verification retain their original scope.
+
+Exact before-file bytes for this English documentation pass are preserved with
+relative paths under `Temp/canvas-docs-20261121/before/`; no private configuration
+is included. The new records [Canvas document tabs](docs/changes/2026-11-21-canvas-document-tabs.md)
+and [v1.97.0](docs/changes/2026-11-21-v1.97.0.md) have no before-files. Current
+version banners, examples, self-knowledge and maintainer memories now use
+1.97.0; historical release identities and dated evidence remain intact.
+Preserve that baseline and the documentation diff with the
+verification artifacts for surgical review/reversal; do not reset unrelated
+uncommitted work. PDF/PPTX generation is tracked separately from prose edits,
+and does not imply a new executable build or installation test. No commit is
+authorized by this documentation request.
+
+### 2026-11-21 follow-up — Commit and local tag authorization
+
+Verbatim subsequent instruction:
+
+> Finally tag both Tlamatini's as 1.97.0 version, and commit, by now, pleasse.
+
+This instruction authorizes commits and local **v1.97.0** tags in both editions,
+superseding the earlier no-commit direction for this work. Private development
+configuration files are excluded from staging. No push was requested. Final
+verification is ongoing at the time of this entry; this authorization record
+does not assert that verification, either commit or either tag has completed.
 
 ## 2026-10-22 — Pin the version across release build stages
 

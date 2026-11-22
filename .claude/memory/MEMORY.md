@@ -1,7 +1,16 @@
 <!-- THE USER IS ANGELA, A WOMAN — always address her by name. -->
-> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../docs/changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## v1.97.0 — Multi-document Canvas
+
+The Canvas keeps up to 32 independent text/Markdown/PDF tabs. Open tabs are
+not context consent: only accepted explicit snapshots enter the selected set;
+edits require Update context, and closing a tab retains its context chip until
+removed. Keep all-tab dirty/save protection and document identity/revision
+checks in Interactor. See [the current Canvas contract](../../docs/canvas-editing.md)
+and [dated verification](../../docs/changes/2026-11-21-canvas-document-tabs.md).
+
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](../../docs/remote-controller.md).

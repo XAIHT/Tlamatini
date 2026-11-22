@@ -6,6 +6,7 @@
     const host = document.getElementById('pdf-canvas-host');
     const editor = document.getElementById('editor-container');
     let current = null;
+    const documents = new Set();
     let pending = null;
     let requestId = 0;
 
@@ -21,8 +22,10 @@
     }
 
     function cancelPreparation(state) {
+        const cancelJob = state.contextRequestId && state.contextJobPending;
+        state.contextJobPending = false;
         state.contextAbort?.abort();
-        if (state.contextRequestId && state.contextJobPending) {
+        if (cancelJob) {
             const form = new FormData();
             form.append('request_id', state.contextRequestId);
             void fetch('/agent/cancel_pdf_context/', {
@@ -30,6 +33,12 @@
                 headers: { 'X-CSRFToken': getCsrfToken() }, body: form,
             }).catch(() => {});
         }
+    }
+
+    function cancelContextPreparation() {
+        if (!current?.contextBusy) return;
+        window.TlamatiniPdfProgress?.cancelPreparation();
+        cancelPreparation(current);
     }
 
     function uploadContext(form, state) {
@@ -69,6 +78,7 @@
             contextButton.textContent = 'Used as context';
         }
         window.TlamatiniCanvasRefresh?.sync();
+        window.TlamatiniCanvasTabs?.updated();
     }
 
     function dispose(state) {
@@ -80,6 +90,7 @@
         // Removing the browsing context terminates its worker, rendering tasks,
         // range reads and observers, even during password/loading/extraction.
         state.frame.remove();
+        documents.delete(state);
     }
 
     function close() {
@@ -99,12 +110,14 @@
         const ready = new Promise(resolve => {
             current = { file, frame, resolve, ready: false, textRequest: null, preparedByMode: new Map() };
         });
+        const state = current;
+        documents.add(state);
         frame.addEventListener('error', () => {
             if (current?.frame === frame) current.resolve(false);
         });
         editor.hidden = true;
         host.hidden = false;
-        host.replaceChildren(frame);
+        host.appendChild(frame);
         syncButtons();
         return ready;
     }
@@ -136,6 +149,7 @@
                 signal.removeEventListener('abort', state.cancel);
                 dispose(current);
                 current = state;
+                documents.add(state);
                 pending = null;
                 frame.style.cssText = '';
                 frame.title = `PDF: ${file.name}`;
@@ -205,6 +219,9 @@
                         credentials: 'same-origin', signal: state.contextAbort.signal,
                     });
                     const result = await poll.json();
+                    if (current !== state || state.contextAbort.signal.aborted) {
+                        throw new DOMException('PDF context preparation cancelled.', 'AbortError');
+                    }
                     if (!poll.ok || ['error', 'cancelled'].includes(result.status)) {
                         throw new Error(result.error || result.message || 'PDF context preparation failed.');
                     }
@@ -254,32 +271,56 @@
             else if (message.type === 'view') pending.view = message.view;
             return;
         }
-        if (!current || event.source !== current.frame.contentWindow || event.origin !== window.location.origin || event.data?.channel !== CHANNEL) return;
+        const state = [...documents].find(item => event.source === item.frame.contentWindow);
+        if (!state || event.origin !== window.location.origin || event.data?.channel !== CHANNEL) return;
         const message = event.data;
-        if (message.type === 'initialized') {
-            current.frame.contentWindow.postMessage({ channel: CHANNEL, type: 'open', file: current.file }, window.location.origin);
+        if (message.type === 'canvas-document-cycle') {
+            if (state !== current || state.frame.hidden || host.hidden || document.hidden || !document.hasFocus() ||
+                document.activeElement !== state.frame || document.querySelector('dialog[open], .modal.show') ||
+                ![-1, 1].includes(message.direction)) return;
+            void Promise.resolve(window.TlamatiniCanvasTabs?.cycle(message.direction)).catch(console.error);
+        } else if (message.type === 'initialized') {
+            state.frame.contentWindow.postMessage({ channel: CHANNEL, type: 'open', file: state.file }, window.location.origin);
         } else if (message.type === 'ready') {
-            current.ready = true;
-            current.password = message.password || '';
-            syncButtons();
-            current.resolve(true);
+            state.ready = true;
+            state.password = message.password || '';
+            if (current === state) syncButtons();
+            state.resolve(true);
         } else if (message.type === 'error') {
-            current.ready = false;
-            syncButtons();
-            current.resolve(false);
-            current.textRequest?.reject(new Error(message.message));
-            current.textRequest = null;
+            state.ready = false;
+            if (current === state) syncButtons();
+            state.resolve(false);
+            state.textRequest?.reject(new Error(message.message));
+            state.textRequest = null;
         } else if (message.type === 'view') {
-            current.view = message.view;
-        } else if (['text', 'text-error'].includes(message.type) && current.textRequest?.id === message.requestId) {
-            if (message.type === 'text') current.textRequest.resolve(message.text);
-            else current.textRequest.reject(new Error(message.message));
-            current.textRequest = null;
+            state.view = message.view;
+        } else if (['text', 'text-error'].includes(message.type) && state.textRequest?.id === message.requestId) {
+            if (message.type === 'text') state.textRequest.resolve(message.text);
+            else state.textRequest.reject(new Error(message.message));
+            state.textRequest = null;
         }
     });
     window.TlamatiniPdfCanvas = {
-        open, close, refresh, getText, prepareContext, syncButtons,
+        open, close, refresh, getText, prepareContext, syncButtons, cancelContextPreparation,
+        suspend: () => {
+            pending?.cancel();
+            const state = current;
+            cancelContextPreparation();
+            if (state) state.frame.hidden = true;
+            current = null;
+            host.hidden = true;
+            editor.hidden = false;
+            return state;
+        },
+        resume: state => {
+            current = state;
+            host.hidden = !state;
+            editor.hidden = !!state;
+            if (state) { state.frame.hidden = false; syncButtons(); }
+        },
+        dispose,
         get active() { return current !== null; },
+        get ready() { return !!current?.ready; },
         get file() { return current?.file || null; },
         get contextFilename() { return current?.prepared?.context_filename || null; },
     };

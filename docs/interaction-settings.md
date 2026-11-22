@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Live Editor and Terminater settings
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 Since v1.92.0, the maximum is 250 WPM for each control. Live Editor defaults to 100 WPM and Terminater to 50.
 
@@ -9,7 +9,8 @@ Open **Config → Live Editor & Terminater**, the canvas Settings button, or the
 terminal Settings button. Live Editor, Terminater and Voice share one dialog.
 Save applies behavior to the next action; Cancel and Escape discard the draft.
 Opening settings stops an active editor teaching action. Live editor access is
-an explicitly immediate tab permission, matching the canvas checkbox.
+an explicitly immediate browser-client permission, matching the canvas checkbox.
+It is not a separate authorization for each document tab.
 
 Standard and Guided learning presets fill the draft. Reset restores the current
 tab's defaults. Preview types a harmless sample in the dialog and can speak it;
@@ -57,6 +58,13 @@ The editor carries a settings snapshot through its existing authenticated tool
 and receipt path. Typing retains document/revision checks, bounded visibility
 pause, user takeover, fresh reads and small tutor mutations. No new Agent or
 tool registration is required.
+
+With [Canvas document tabs](canvas-editing.md), these account preferences govern
+the active document; switching tabs retains each document's own text, history,
+selection and save target. Font/line-number/wrap preferences apply when its
+editor is mounted. Switching interrupts ongoing tutoring, so Interactor reads
+the new target and receives a fresh verified document/revision before continuing.
+The settings dialog does not select documents as chat context or mark them saved.
 
 Terminal narration selects one visible, focused account tab. A receipt belongs
 to that exact connection. Waiting before typing is bounded to 120 seconds and

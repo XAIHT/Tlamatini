@@ -20,10 +20,18 @@
     }
 
     function snapshot() {
-        const state = editor.inspect();
+        let state = editor.inspect();
+        const tabs = window.TlamatiniCanvasTabs;
+        const selected = tabs?.list().find(item => item.active);
+        if (selected?.kind === 'pdf') {
+            state = { document_id: selected.document_id, revision: selected.revision,
+                filename: selected.filename, language: 'pdf', text: '', active: false,
+                selection: { from: 0, to: 0 }, guide: null };
+        }
         if (state.text.length > MAX_UNITS) throw new Error('Live tutoring supports up to 256 Ki characters. The editor keeps the complete file; no content was sent or truncated.');
-        return { ...state, dirty: window.TlamatiniCanvasEditing?.dirty || false,
-            busy: !!active || window.TlamatiniCanvasEditing?.busy || false };
+        return { ...state, dirty: selected?.dirty ?? (window.TlamatiniCanvasEditing?.dirty || false),
+            busy: !!active || window.TlamatiniCanvasEditing?.busy || false,
+            multi_document: !!tabs, kind: selected?.kind || 'text', context: selected?.context || false };
     }
 
     function render() {
@@ -135,9 +143,10 @@
         try {
             await waitForView();
             // A file or selection can change while we wait. Never apply stale work.
-            checkExpected(message.payload, !['prepare', 'open'].includes(message.action), true);
-            showSource();
-            operation.opening = message.action === 'open';
+            checkExpected(message.payload, !['prepare', 'open', 'activate'].includes(message.action), true);
+            if (message.action === 'activate') window.TlamatiniViews?.setCanvasVisible(true);
+            else showSource();
+            operation.opening = ['open', 'activate'].includes(message.action);
             return await run(controller.signal, waitForView);
         } catch (error) {
             lastMessage = error.message;
@@ -155,15 +164,31 @@
         const payload = message.payload || {};
         const action = message.action;
         if (action === 'read') return { ok: true, status: 'read', snapshot: snapshot() };
+        if (action === 'documents') {
+            if (!window.TlamatiniCanvasTabs) throw new Error('Reload this chat to enable canvas document tabs.');
+            return { ok: true, status: 'documents', multi_document: true, documents: window.TlamatiniCanvasTabs.list() };
+        }
         if (action === 'stop') { stop('Tlamatini handed the editor back to you.', true, false); return { ok: true, status: 'stopped', snapshot: snapshot() }; }
-        const current = checkExpected(payload, !['prepare', 'open'].includes(action));
+        const current = checkExpected(payload, !['prepare', 'open', 'activate'].includes(action));
         if (action === 'prepare') {
-            if (current.dirty) throw new Error('Save your unsaved changes before opening another file.');
+            if (current.dirty && !current.multi_document) throw new Error('Save your unsaved changes before opening another file.');
             await visibleAction(message, async () => {});
             return { ok: true, status: 'ready', snapshot: current };
         }
-        if (action === 'open') {
-            if (current.dirty) throw new Error('Unsaved changes were kept. Save before opening another file.');
+        if (action === 'activate') {
+            const tabs = window.TlamatiniCanvasTabs;
+            if (!tabs || typeof payload.target_document_id !== 'string' || !tabs.get(payload.target_document_id)) {
+                throw new Error('The requested canvas tab is no longer open. List the documents again.');
+            }
+            await visibleAction(message, async signal => {
+                const switched = await tabs.activate(payload.target_document_id, { origin: 'interactor' });
+                if (signal.aborted || switched === false || tabs.activeId() !== payload.target_document_id) {
+                    throw new Error('The document switch was not confirmed. Read the editor before continuing.');
+                }
+            });
+            lastMessage = 'Active document changed · other tabs keep their edits';
+        } else if (action === 'open') {
+            if (current.dirty && !current.multi_document) throw new Error('Unsaved changes were kept. Save before opening another file.');
             const data = payload.file;
             if (!data || typeof data.bytes !== 'string' || data.bytes.length > 1500000) throw new Error('Invalid file payload.');
             const bytes = Uint8Array.from(atob(data.bytes), value => value.charCodeAt(0));
@@ -206,7 +231,7 @@
             lastMessage = window.TlamatiniCanvasEditing.dirty ? 'Saved earlier content · newer changes remain unsaved' : 'Saved the editor content';
         } else throw new Error('Unsupported editor action.');
         render();
-        return { ok: true, status: action === 'guide' ? 'waiting_for_user' : action === 'type' ? 'typed' : action === 'save' ? 'saved' : 'completed', snapshot: snapshot(),
+        return { ok: true, status: action === 'guide' ? 'waiting_for_user' : action === 'type' ? 'typed' : action === 'save' ? 'saved' : action === 'activate' ? 'activated' : 'completed', snapshot: snapshot(),
             ...(action === 'save' ? { saved_revision: payload.revision, newer_unsaved_changes: window.TlamatiniCanvasEditing.dirty } : {}) };
     }
 
@@ -294,6 +319,13 @@
         if (guide) editor.interactor.setGuide({ ...guide, enabled: ui.suggestions.checked });
     });
     window.addEventListener('tlm:editor-takeover', () => { if (active) stop(); });
+    window.addEventListener('tlm:canvas-document-switch', event => {
+        if (event.detail?.origin !== 'interactor') {
+            if (active) stop('You changed documents. Editing stopped and your content is kept.');
+            else lastMessage = '';
+        }
+        render();
+    });
     window.addEventListener('tlm:editor-state', event => {
         const ownLoad = active?.opening && event.detail?.origin === 'load';
         if (active && !ownLoad && event.detail?.origin !== 'interactor' && (event.detail?.docChanged || event.detail?.selectionSet)) stop();

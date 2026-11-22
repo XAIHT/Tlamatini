@@ -1,7 +1,24 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Required runtime files: packaging repair and verification
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
+
+## Canvas document-tab assets
+
+The chat page's multi-document behavior requires the tab manager and stylesheet
+as well as the editor, Markdown and PDF adapters. `build_runtime_assets.py`
+requires `agent/js/agent_page_canvas_tabs.js` and `agent/css/canvas_tabs.css`;
+`build.py` freezes `agent.canvas_documents_context`. The source snapshot floor
+in `copy_source_assets.py` includes those files, the Python context tests and the
+visible tab harness. A missing carrier must not quietly restore a single-buffer
+page or leave the context control unhandled on the server.
+
+Verify the served page's local asset bytes and the full receive protocol as
+separate boundaries. Captured browser chat acknowledgements do not prove backend
+dispatch, persistence or account ownership. Use the
+[source test record](changes/2026-11-21-canvas-document-tabs.md) and
+[carriage guide](self-management-carriage.md) to retain that distinction.
+Documentation regeneration is not executable-build acceptance.
 
 ## Carried from v1.92.3 — Downloads, updates and build isolation
 

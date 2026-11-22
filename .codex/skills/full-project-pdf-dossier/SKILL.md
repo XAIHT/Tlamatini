@@ -13,7 +13,7 @@ description: Use when asked to create or update a complete project PDF dossier, 
 
 # Full Project PDF Dossier
 
-> Latest released version: **[v1.96.1](../../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 ## Mandatory release-version rule — every project and session, 2026-11-04
 

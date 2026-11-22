@@ -1108,6 +1108,25 @@ class ChapterOpener(FullPage):
         self.chapter = chapter
         self.st = st
         self._toc = (0, label or f"{chapter.numeral}  ·  {chapter.title}", toc_key)
+        # Keep all sections, including release history, at a readable size.
+        # Large chapters get measured continuation pages instead of tiny type.
+        self.section_titles = [section.title for section in chapter.sections]
+        self.two_cols = len(self.section_titles) > 8
+        self.col_w = 230 if self.two_cols else 440
+        per_col = math.ceil(len(self.section_titles) / 2) if self.two_cols else len(self.section_titles)
+        item_st = style("op_item", "sans", 9.4, 12.6, "light")
+        self.columns = []
+        for col in range(2 if self.two_cols else 1):
+            cells = []
+            for title in self.section_titles[col * per_col:(col + 1) * per_col]:
+                item = para(title, item_st, "sans")
+                cells.append((item, item.wrap(self.col_w - 16, 100)[1]))
+            self.columns.append(cells)
+        title_h = para(chapter.title, style("op_title", "serif", 36, 41, "ivory"), "serif").wrap(430, 300)[1]
+        tag_h = para(chapter.tagline, style("op_tag", "sans-light", 13, 19.4, "light"), "sans-light").wrap(400, 300)[1]
+        available = H - 262 - title_h - 14 - 16 - tag_h - 40 - 12 - 90
+        needed = max((sum(height + 7 for _, height in cells) for cells in self.columns), default=0)
+        self.contents_overflow = bool(self.section_titles) and needed > available
 
     def draw(self):
         canv = self.canv
@@ -1132,40 +1151,45 @@ class ChapterOpener(FullPage):
         gw, gh = gp.wrap(400, 300)
         gp.drawOn(canv, 64, y - 16 - gh)
         y = y - 16 - gh - 40
-        titles = [s.title for s in ch.sections]
-        if ch.key == "release":
-            titles = [s.title for s in ch.sections if s.key in {"release1961_catalog", "release1935_selection", "release1935_execution", "release1935_voice", "release1935_downloads", "release1935_requests", "lineage", "identity_release"}]
+        titles = self.section_titles
         if titles:
             draw_text(canv, 64, y, "IN THIS CHAPTER", "sans-semibold", 7.4, "gold", space=2.2)
             y -= 12
-            two_cols = len(titles) > 8
-            col_w = 230 if two_cols else 440
-            per_col = math.ceil(len(titles) / 2) if two_cols else len(titles)
-            # Measure both columns against the ornament/footer reservation.
-            for scale in (1.0, 0.95, 0.9, 0.85, 0.8, 0.75):
-                item_st = style("op_item", "sans", 9.4 * scale, 12.6 * scale, "light")
-                gap = 7 * scale
+            columns = self.columns
+            if self.contents_overflow:
+                hint = para("The complete section index continues on the following page.",
+                            style("op_hint", "sans", 10.5, 15, "light"), "sans")
+                hint.drawOn(canv, 64, y - hint.wrap(440, 100)[1])
                 columns = []
-                for col in range(2 if two_cols else 1):
-                    cells = []
-                    for title in titles[col * per_col:(col + 1) * per_col]:
-                        ip = para(title, item_st, "sans")
-                        cells.append((ip, ip.wrap(col_w - 16, 100)[1]))
-                    columns.append(cells)
-                if max(sum(ih + gap for _, ih in cells) for cells in columns) <= y - 90:
-                    break
-            else:
-                raise ValueError(f"Chapter contents exceed the reserved area: {ch.title}")
             for col, cells in enumerate(columns):
-                x = 64 + col * (col_w + 16)
+                x = 64 + col * (self.col_w + 16)
                 cy = y
                 for ip, ih in cells:
-                    diamond(canv, x + 3, cy - 5.6 * scale, 2.6, fill=ch.accent)
+                    diamond(canv, x + 3, cy - 5.6, 2.6, fill=ch.accent)
                     ip.drawOn(canv, x + 12, cy - ih)
-                    cy -= ih + gap
+                    cy -= ih + 7
         stepfret(canv, 60, 64, W * 0.55, 2.4, "copper", 0.6, 0.55)
         draw_text(canv, W - 60, 36, f"Tlamatini · Complete Project Dossier · page {canv.getPageNumber()}",
                   "sans", 7.2, "light_muted", anchor="right")
+
+
+def chapter_contents_flow(chapter, st: Styles):
+    """Measured two-column contents that may split across body pages."""
+    entries = [para(f"**{index + 1:02d}**  {section.title}", st.body, "sans")
+               for index, section in enumerate(chapter.sections)]
+    per_col = math.ceil(len(entries) / 2)
+    rows = [[entries[index], entries[index + per_col] if index + per_col < len(entries) else ""]
+            for index in range(per_col)]
+    table = Table(rows, colWidths=[FRAME_W / 2, FRAME_W / 2])
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    return [Kicker("IN THIS CHAPTER"), Spacer(1, 3), para(chapter.title, st.h1, "serif"),
+            TitleRule(chapter.accent), Spacer(1, 12), table, PageBreak()]
 
 
 class ClosingPage(FullPage):
@@ -1471,8 +1495,11 @@ def build_pdf(facts: dict, chapters, output) -> int:
     ]
     story.append(toc)
     for chapter in chapters:
-        story += [NextPageTemplate("dark"), PageBreak(), ChapterOpener(chapter, st, f"ch_{chapter.key}"),
+        opener = ChapterOpener(chapter, st, f"ch_{chapter.key}")
+        story += [NextPageTemplate("dark"), PageBreak(), opener,
                   NextPageTemplate("body"), PageBreak(), ChapterMarker(f"{chapter.numeral} · {chapter.title}")]
+        if opener.contents_overflow:
+            story += chapter_contents_flow(chapter, st)
         for section in chapter.sections:
             story += section_flow(section, facts, st, chapter)
 

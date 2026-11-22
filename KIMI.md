@@ -12,9 +12,26 @@
 
 # ⛔ PRIVATE DATA GUARD — ABSOLUTE, NON-NEGOTIABLE, READ FIRST ⛔
 
-> Latest released version: **[v1.96.1](docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## Canvas navigation and context ownership
+
+Canvas navigation now uses independent document tabs, not one replaceable
+buffer. Identify a document by its ID and revision, preserving its text/history,
+save capability and PDF/Markdown state when another tab becomes active.
+Interactor's `documents` is metadata-only; `activate` verifies the source and
+target before further teaching. The active tab, dirty state and accepted context
+selection are three different facts.
+
+Only explicit snapshots enter ordinary chat context. Editing or Refresh marks
+them older; Update context replaces them, and Remove from context removes them.
+Closing an editor retains its context chip. Account-owned context/reconnect
+tasks hold the execution reservation through persistence and rebuild; preserve
+their cancellation and cleanup. Consult [the architecture](docs/claude/architecture.md)
+and [user-facing limits](docs/canvas-editing.md), including the 32-tab limit,
+all-tab departure warnings and the Alt+PageUp/PageDown browser-key alternative.
+
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](docs/remote-controller.md).

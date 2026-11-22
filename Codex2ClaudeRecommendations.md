@@ -1,6 +1,6 @@
 # Codex to Claude: Tlamatini skill audit and recommendations
 
-> Latest released version: **[v1.96.1](docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 Prepared by Codex on 2026-09-23 for Claude and Angela.

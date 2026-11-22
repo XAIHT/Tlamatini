@@ -8,9 +8,9 @@
 -->
 # docs/claude/ — Tlamatini AI-Assistant Docs Index
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
 
-## v1.96.1 — Voice Commands leaves the Catalog of Prompts
+## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.
 - It carries the Tlamatini-RC work released as v1.94.0, v1.95.0 and v1.96.0: hosted remote control, approval sync and hardening. [Remote-Controller](../remote-controller.md).
@@ -103,8 +103,10 @@ Contracts and evidence: [v1.90.0](../changes/2026-10-22-v1.90.0.md), [Canvas edi
 - **[v1.88.0 release record](../changes/2026-10-20-v1.88.0.md)** — Terminater, the Terminals area, the data-bearing private release, release facts (tag `83e0cbe6`, work in `6e129563`), counts and evidence.
 - **[v1.87.0 release record](../changes/2026-10-18-v1.87.0.md)** — the 85-agent catalog, the recoverable Uninstaller, the smaller payload.
 - **[v1.85.0 release record](../changes/2026-10-16-v1.85.0.md)** — Refresh, Views/Reset, centered avatar, implementation matrix, current counts and dated evidence.
-- **[Interactor live editor tutor](../interactor.md)** — module-based unsaved-buffer reads, visible typing, learner handoff, local field completions and native saving; shipped in v1.90.0.
-- **[Canvas Refresh](../canvas-refresh.md)** — original-source rereading, state feedback, Markdown/PDF preservation, cancellation and visible verification.
+- **[Canvas document tabs](../canvas-editing.md)** — 32 independent documents, save/close guards across all tabs, explicit multi-document context snapshots, stale/update/remove behavior and browser shortcut limits.
+- **[21 November multi-document verification](../changes/2026-11-21-canvas-document-tabs.md)** — actual native saves, PDF rendering, authenticated Interactor operations and separately scoped backend/model-substitution evidence.
+- **[Interactor live editor tutor](../interactor.md)** — live-buffer reads, document listing/activation with revision checks, visible typing, learner handoff, local field completions and native saving.
+- **[Canvas Refresh](../canvas-refresh.md)** — reread the active tab's original source, preserve other documents and explicitly update stale context after review.
 - **[Terminater](../terminater.md)** — visible, user-supervised terminals (workflow agent #86, `chat_agent_terminater`, the Terminals area on three pages, the 8th Prompt Flow Panel operation): typing rules, actions, hub/WebSocket/loopback API, verdict words, carriage, the `check_terminater` build gate. *New in v1.88.0.*
 - **[2026-10-19 Terminater record](../changes/2026-10-19-terminater.md)** and **[private-release data record](../changes/2026-10-19-private-release-data.md)** — what changed, defects found while validating, dated evidence and its limits; the private (keyed) release now carries every External MCP server of the install and the whole `data.keys`.
 

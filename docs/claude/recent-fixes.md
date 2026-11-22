@@ -8,7 +8,23 @@
 -->
 # Tlamatini — Recent Fixes / Gotchas (archived fix log)
 
-> Latest released version: **[v1.96.1](../changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
+
+## 2026-11-21 — Canvas tabs and explicit selected context
+
+The Canvas now retains up to 32 independent text/Markdown/PDF documents.
+Context selection is a separate full-set operation with accepted/stale badges,
+explicit refresh/removal and account-owned atomic publication. Switching no
+longer discards another document's edits, native save target or PDF viewer.
+Interactor lists/activates exact documents; stale typing cannot cross tabs.
+
+Two backend boundaries were covered explicitly: the actual receive parser must
+accept selected-document controls without a chat message, and legacy
+context/reconnect work must retain its account reservation through persistence
+and rebuilding. Source UI tests alone do not prove either property. Both
+editions passed 46 context and 40 Interactor checks; native/browser evidence and
+model/network substitutions are enumerated in the
+[dated multi-document record](../changes/2026-11-21-canvas-document-tabs.md).
 
 ## 2026-11-21 — Voice Commands removed from the Catalog of Prompts (v1.96.1)
 

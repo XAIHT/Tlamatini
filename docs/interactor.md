@@ -1,7 +1,7 @@
 <!-- Tlamatini Author Banner — Angela López Mendoza · @angelahack1 -->
 # Interactor: teaching in the live canvas editor
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
 
 Interactor is a module, not a workflow agent. It connects the existing chat and
 CodeMirror editor without another process or terminal. Enable **Multi-Turn** and
@@ -28,7 +28,7 @@ or consume an existing chat draft. While another request is running, finish or
 cancel it before starting an explanation.
 
 User input, selection, Escape, Stop, chat cancellation, and disconnect interrupt
-AI typing. The typed prefix remains editable and undoable. Switching tabs,
+AI typing. The typed prefix remains editable and undoable. Switching browser tabs,
 minimizing, or covering the browser temporarily pauses the same action instead
 of refusing it. Returning resumes from the exact next character, without another
 chat request or duplicated text. Each visual action has up to two additional
@@ -39,6 +39,39 @@ Markdown to Preview or hiding the canvas during typing still hands control back.
 The model must finish its chat turn after a guide; further tool mutations in that
 turn are refused. Continue starts a new turn. A changed document/revision refuses
 an outdated edit instead of moving the user's caret or overwriting new text.
+
+## Canvas document tabs
+
+Each Canvas tab keeps its own document identity, revision, unsaved buffer, undo
+history, selection and save destination, with a maximum of 32 open documents.
+PDF tabs retain their viewer state and
+remain read-only to Interactor. An asterisk marks unsaved work. Opening or
+activating a tab does not add its content to chat context: the user explicitly
+chooses **Use as context**, and the tab shows that selection separately.
+Multiple selected snapshots can coexist with unselected tabs. Editing a selected
+document marks its context older; the user explicitly updates or removes that
+snapshot. Closing its editor does not remove its context chip. These context
+snapshots are separate from Interactor's fresh live-buffer reads.
+
+For explanations across files, first `read` the current document, then use
+`documents` to list open-tab metadata. Call `activate` with the exact
+`target_document_id` from that list. Activation checks the source document and
+revision, preserves the other tabs, and returns a verified snapshot of the
+target. Subsequent edits refer to that target. The list itself neither reads
+document contents nor replaces the last verified snapshot. A document ID is
+distinct from the browser client's session ID. If the user changes tabs during
+typing, pending edits stop; read again before continuing.
+
+With focus inside the Canvas, **Ctrl+Tab** and **Ctrl+Shift+Tab** switch documents
+when the browser delivers those shortcuts. **Alt+PageDown** and **Alt+PageUp**
+provide alternatives when the browser reserves Ctrl+Tab. The PDF viewer forwards
+only these navigation requests from its currently focused frame. Closing a dirty
+document asks before discarding changes; cancel and save first to retain them.
+Browser-close protection covers unsaved
+documents in every Canvas tab; the browser controls its final confirmation.
+No unsaved-tab restoration after reload is promised. See the
+[multi-document verification record](changes/2026-11-21-canvas-document-tabs.md)
+for actual native saves, PDF rendering and authenticated Interactor checks.
 
 ## Files and saving
 

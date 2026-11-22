@@ -1,6 +1,27 @@
 # Self-modify and self-update carriage review
 
-> Latest released version: **[v1.96.1](changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](changes/2026-11-21-v1.97.0.md)**.
+
+## Multi-document Canvas carriage
+
+Canvas tabs are ordinary application behavior in both Private/Public editions;
+they do not require the Self-modify switch. Keep these existing carriers aligned:
+
+- `build.py` requires and freezes `agent.canvas_documents_context`.
+- `build_runtime_assets.REQUIRED_STATIC` requires
+  `agent/js/agent_page_canvas_tabs.js` and `agent/css/canvas_tabs.css`; the page
+  template, editor adapters and Interactor bridge must load the matching versions.
+- `copy_source_assets.REQUIRED_SNAPSHOT_FILES` carries the new Python module,
+  browser module/style, `Tests/test_canvas_documents_context.py` and
+  `scripts/canvas_tabs_visible.py`, alongside the existing editor/Interactor files.
+
+No dependency, database migration or new service is needed for the tab feature.
+Do not package test accounts, fixture saves or browser profiles as user data.
+Application-owned context bundles are runtime data; updating code is not an
+instruction to delete them or to reconstruct unsaved browser tabs. The
+[21 November evidence](changes/2026-11-21-canvas-document-tabs.md) records source
+behavior; neither those runs nor the inclusion requirements above certify a
+newly built or installed executable.
 
 ## Carried from v1.92.4 — Matching builds, explicit release identity and readable Markdown
 

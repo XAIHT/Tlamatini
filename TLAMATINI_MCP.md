@@ -8,7 +8,7 @@
 -->
 # Tlamatini Agents — MCP connector
 
-> Latest released version: **[v1.96.1](docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
 ## Carried from v1.92.3 — Downloads, updates and build isolation
 
@@ -80,11 +80,11 @@ Contracts and evidence: [v1.90.0](docs/changes/2026-10-22-v1.90.0.md), [Canvas e
 
 
 
-Exposes **every complete live Tlamatini agent directory (87 in v1.96.1, including Torrenter)** as MCP tools so an MCP client (Claude Code, etc.) can drive
+Exposes **every complete live Tlamatini agent directory (87 in v1.97.0, including Torrenter)** as MCP tools so an MCP client (Claude Code, etc.) can drive
 them directly — Executer, Pythonxer, Croner, ACPXer, STM32er, ESP32er,
 Arduiner, Shoter, Playwrighter, Kalier, MCP Doctor, NetSpeed-Calculator, and
 the rest of the live catalog. It also exposes 7 management/skill tools and 10
-ACPX tools: **104 root stdio MCP tools total in v1.96.1**. The server discovers agents
+ACPX tools: **104 root stdio MCP tools total in v1.97.0**. The server discovers agents
 dynamically; these counts are a verified snapshot, not a hardcoded limit.
 
 ## Files

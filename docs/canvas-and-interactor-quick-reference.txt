@@ -1,17 +1,36 @@
 TLAMATINI - CANVAS EDITOR AND INTERACTOR QUICK REFERENCE
 Created by Angela López Mendoza - @angelahack1
-Source release: v1.90.0. Documentation baseline: 2026-10-22, d274f89c.
+Latest released version: v1.97.0. Updated for Canvas document tabs: 2026-11-21.
+Historical verification below retains its original dates and source scope.
 
 EDIT A FILE
 Open or drop text/code/JSON/Markdown into the chat canvas. Markdown has Preview
 and editable Source views. HTML and SVG stay source text. PDF is a viewer and
 exports original bytes; images and workflow files keep their dedicated routes.
+Each document opens in its own tab, up to 32. Tabs retain independent buffers,
+undo history, selection, reading position and save targets. Markdown keeps its
+Preview/Source choice and resources; PDF keeps its viewer and page/zoom state.
 
 Filename bar: Save | Save as... | Undo | Redo | Find/replace | Wrap | Copy |
 Refresh | Clear canvas | Use as context.
 Ctrl/Cmd+S saves. Ctrl/Cmd+Shift+S chooses a destination. Ctrl+[ and Ctrl+]
 change indentation. Tab normally navigates; during an offered tutor completion,
 Tab accepts that suggestion. A dirty marker means changes are not yet saved.
+An asterisk on each tab marks its unsaved work. With Canvas focus, Alt+PageUp /
+Alt+PageDown switches documents. Chrome reserves Ctrl+Tab for browser tabs;
+Canvas also handles it only when the browser delivers the key to the page.
+Clear canvas closes the active tab, asking before discarding dirty text.
+
+SELECT CHAT CONTEXT
+Opening a tab is not permission to include it in ordinary chat context. Click
+Use as context on each chosen document; other tabs remain excluded. Chat context
+chips and Context badges identify accepted snapshots. Context - older means
+the document changed: Update context explicitly replaces its selected snapshot.
+Save does not refresh context; selecting context does not save the source file.
+Remove from context or a chip's X removes only that snapshot. Closing its tab
+keeps the snapshot until removed. PDF context still needs explicit preparation.
+The complete set allows 32 documents / 32 MiB prepared UTF-8 text; excess is
+refused, not truncated. Model capacity remains an additional limit.
 
 SAVE TO A PROJECT FOLDER
 Local Save As and navbar Save open the native Windows picker. Choose any
@@ -28,6 +47,10 @@ editor. Teach one step at a time and let me choose the values.
 Without a path, a new empty file goes into Temp/interactor/<account>/<random>/.
 Tlamatini reads the exact unsaved buffer, types a short known segment, then
 guides the next learner-controlled field and waits. Typing does not save or run.
+Interactor documents lists tab metadata without reading every buffer. After a
+fresh read, activate uses the exact target_document_id and verifies the target.
+Switching tabs stops ongoing typing; a later action must use the target's fresh
+document/revision. PDF tabs can be activated but are not editable text.
 
 COMPLETIONS AND CONTROL
 Suggestions use choices prepared for the current field, matched locally.
@@ -46,9 +69,12 @@ LIMITS AND FIDELITY
 Text editing/native saves: 64 MiB. Live tutoring: 262,144 UTF-16 units; the
 model's tool-result/context budget can impose a smaller limit. No silent truncation.
 Strict UTF-8 and BOM-marked UTF-16 support; encoding/BOM and line endings retained.
-Save before closing: an unsaved canvas buffer is in memory, not a recovery file.
-Use as context refreshes ordinary loaded context. Interactor read is live and
-does not depend on that saved/context snapshot.
+Save every dirty tab before closing: buffers live in memory, not recovery files.
+The departure warning checks inactive tabs and pending saves, but the browser
+controls its final warning and may still close or crash. No reload recovery is
+promised. Interactor read is live and independent of saved/context snapshots.
+A lost connection keeps documents but clears confirmation badges; reconnect
+and verify context instead of assuming a missing acknowledgement meant success.
 
 ACCOUNT-CREATION WIZARD
 The catalog uses Executer to open interactive createsuperuser. Enter passwords
@@ -57,6 +83,14 @@ send notifications. Password input is not ownership of all command execution.
 This wizard creates an administrative superuser, not a limited ordinary account.
 
 EVIDENCE
+2026-11-21: each edition passed 46 context and 40 Interactor checks plus focused
+Python/JavaScript lint. English browser runs: 28 full + 2 targeted + 1 PDF-pixel
+checks; Spanish: 29 full + 1 PDF-pixel checks. Browser chat acknowledgements were
+captured/injected; actual backend dispatch was tested separately with substituted
+model/network edges. Native saves, PDF preparation/rendering and authenticated
+Interactor operations were exercised directly. No installed-build acceptance.
+See docs/changes/2026-11-21-canvas-document-tabs.md for paths and exact scope.
+
 2026-10-21: final source editor/runtime 19/19 visible checks; 136 passed and
 two skipped among 138 Django tests. The earlier v1.89.0 frozen package failed
 hidden-tab and narrow-layout checks. Those results do not certify a new build.

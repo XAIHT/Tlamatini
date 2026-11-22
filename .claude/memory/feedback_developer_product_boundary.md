@@ -1,6 +1,6 @@
 # Developer workflow is not product UX
 
-> Latest released version: **[v1.96.1](../../docs/changes/2026-11-21-v1.96.1.md)**.
+> Latest released version: **[v1.97.0](../../docs/changes/2026-11-21-v1.97.0.md)**.
 
 
 Angela clarified this on 2026-09-27: she is the developer using this machine;
