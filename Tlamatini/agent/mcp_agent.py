@@ -1249,6 +1249,40 @@ class MultiTurnToolAgentExecutor:
             # end of the request instead of N per-tool pop-ups.
             self._orphan_survivors.extend(result.survivors)
 
+    def _canonical_tool_name(self, tool_name: str) -> str:
+        """Return the bound tool key that ``tool_name`` really names.
+
+        A weaker model sometimes calls a wrapped agent by its bare/short name
+        ('terminater' instead of 'chat_agent_terminater') or in another case
+        ('Execute_Command'). The tool IS bound; only the emitted spelling
+        slipped. Resolve it and log the correction (never silent). Every gate
+        that judges a call (Ask Execs, the live-tutorial runner block, dedup,
+        quotas) must see this canonical name, never the raw spelling: judging
+        the raw name let 'executer' skip its approval and then run as
+        chat_agent_executer. Unknown names are returned unchanged.
+        """
+        tool_map = self.tool_map or {}
+        if not tool_name or tool_name in tool_map:
+            return tool_name
+        _bare = tool_name.strip()
+        _norm = re.sub(r"[\s-]+", "_", _bare.lower())
+        _resolved = None
+        for _cand in ("chat_agent_" + _bare, "chat_agent_" + _norm):
+            if _cand in tool_map:
+                _resolved = _cand
+                break
+        if _resolved is None:
+            for _key in tool_map:
+                _kl = _key.lower()
+                if _kl == _bare.lower() or _kl == "chat_agent_" + _norm:
+                    _resolved = _key
+                    break
+        if _resolved is None or _resolved == tool_name:
+            return tool_name
+        logger.info("--- [TOOL-ALIAS] tool name '%s' resolved to '%s' "
+                    "(model used a short name; the agent IS bound)", tool_name, _resolved)
+        return _resolved
+
     def _invoke_tool(self, tool_call: Dict[str, Any]) -> str:
         tool_name = tool_call.get("name", "")
         from .interactor.context import current as interactor_request
@@ -1263,22 +1297,10 @@ class MultiTurnToolAgentExecutor:
             # agent IS bound in this session — only the emitted name slipped.
             # Resolve it to the real key instead of reporting it unavailable,
             # and log the correction (never silent).
-            _bare = tool_name.strip()
-            _norm = re.sub(r"[\s-]+", "_", _bare.lower())
-            _resolved = None
-            for _cand in ("chat_agent_" + _bare, "chat_agent_" + _norm):
-                if _cand in self.tool_map:
-                    _resolved = _cand
-                    break
-            if _resolved is None:
-                for _key in self.tool_map:
-                    _kl = _key.lower()
-                    if _kl == _bare.lower() or _kl == "chat_agent_" + _norm:
-                        _resolved = _key
-                        break
-            if _resolved is not None and _resolved != tool_name:
-                logger.info("--- [TOOL-ALIAS] tool name '%s' resolved to '%s' "
-                            "(model used a short name; the agent IS bound)", tool_name, _resolved)
+            # The main loop normally resolves the name before its gates run
+            # (_canonical_tool_name); this keeps any other caller tolerant too.
+            _resolved = self._canonical_tool_name(tool_name)
+            if _resolved != tool_name:
                 tool_name = _resolved
                 tool = self.tool_map[_resolved]
         if tool is None:
@@ -2481,6 +2503,15 @@ class MultiTurnToolAgentExecutor:
                 if self._run_cancelled():
                     return self._cancelled_result(messages)
                 tool_name = tool_call.get("name", "")
+                # Judge the tool that will actually RUN. _invoke_tool resolves a
+                # short or case-variant name ('executer', 'Execute_Command') to
+                # the bound tool, so resolve it HERE, before Ask Execs, the
+                # live-tutorial block, dedup and quotas look at it. Judging the
+                # raw spelling let such a call skip its approval and run anyway.
+                _canonical = self._canonical_tool_name(tool_name)
+                if _canonical != tool_name:
+                    tool_name = _canonical
+                    tool_call = dict(tool_call, name=tool_name)
                 if tool_name.strip().lower() in {"torrenter", "chat_agent_torrenter"} and "chat_agent_torrenter" in self.tool_map:
                     if tool_name != "chat_agent_torrenter":
                         logger.info("--- [TOOL-ALIAS] %s resolved to chat_agent_torrenter", tool_name)
