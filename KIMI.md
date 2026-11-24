@@ -14,6 +14,17 @@
 
 > Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
+## Phone conversations · 23 November documentation review
+
+**xaiht.org → Tlamatini-RC** sends prompts to an explicitly approved, ready local
+account through XT and Remote-Controller, retaining requests and answers across
+reloads. The website does not launch applications or capture the phone microphone.
+**Ask Execs is selective**: Monitor Netstat does not ask for approval. HTTPS protects
+transport, but the website handles content; this route is not end-to-end or
+post-quantum encrypted. A physical English-account phone prompt, reload and approval
+display were confirmed; denial and cancellation remain pending. See the
+[usage, limits and evidence](docs/changes/2026-11-23-hosted-remote-prompts.md).
+
 ## Canvas navigation and context ownership
 
 Canvas navigation now uses independent document tabs, not one replaceable
@@ -418,7 +429,7 @@ When a task needs Angela to act on her machine (edit configs, click UI, check a 
 5. Chain selection (RAG / Basic / Unified Agent).
 6. **Multi-Turn gate**: checked = planner + full-surface dynamic tool binding; unchecked = legacy one-shot.
 7. **ACPX gate**: when `acpx_enabled=False`, `agent.acpx.filter_acpx_tools()` strips every ACPX/Skill tool before the planner/executor see them.
-8. **Ask-Execs gate** (Multi-Turn only): when enabled, the executor BLOCKS before every state-changing tool on a browser Proceed/Deny prompt, bridged by `agent/exec_permission.py::ExecPermissionBroker`. Deny halts the whole chain (red "Execution interrupted" banner); emit-failure / Cancel / `close()` all resolve to *deny* (fail-safe).
+8. **Ask-Execs gate** (Multi-Turn only): when enabled, the executor BLOCKS before tools classified as requiring approval by the current selective policy on a browser Proceed/Deny prompt, bridged by `agent/exec_permission.py::ExecPermissionBroker`. Deny halts the whole chain (red "Execution interrupted" banner); emit-failure / Cancel / `close()` all resolve to *deny* (fail-safe).
 9. Context prefetch (system/file MCP sidecars).
 10. Execution loop (tool calls, wrapped-agent monitoring, ACPX child drain). **Every model step is wrapped by a per-request self-healing invoker** (`agent/self_healing.py::SelfHealingInvoker`) that retries distinct recovery tactics under a per-attempt watchdog (`unified_agent_llm_step_timeout_seconds`, 80 s) up to `unified_agent_llm_step_max_tactics` — a transient model failure never hangs, never discards completed work, never yields a silent/untruthful answer (a `recovery_preamble` always tells the user what happened; live retry status streams to chat). Only user Cancel or an exhausted tactic ladder stops it (`ModelStepUnrecoverable`).
 11. Streaming response via WebSocket. When Multi-Turn ran with **≥1 successfully-executed agent**, a **Create Flow** button converts the successful-only tool calls into a downloadable `.flw` (POST `/agent/flow_from_tool_calls/`, normalized through `FlowSpec`, secrets redacted). There is no whole-answer SUCCESS/FAILURE classifier (removed 2026-07-06).

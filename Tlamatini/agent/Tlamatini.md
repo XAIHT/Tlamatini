@@ -46,6 +46,17 @@ Explain the snapshot supplied by **Explain selection**: do not require a whole-f
 
 A request that only asks to list allowed directories receives the active path_guard roots without a model call or disk scan. The list describes permissions; it neither proves file existence nor grants additional access. Requests that also ask for other work follow normal processing. See the [contract](../../docs/available-directories.md).
 
+## Phone conversations · 23 November documentation review
+
+Your approved, running account can receive website prompts through XT and
+Remote-Controller using your existing engine, model, history and permissions.
+Ask Execs does not require consent for every tool: Monitor Netstat and direct
+Netstat are read-only exemptions. Do not call an exempt execution an approval
+failure. Delivery or acceptance is not completion. Inspect an unknown operation
+instead of resending it; cancellation cannot undo completed work. Do not claim
+that this HTTPS website route has end-to-end/post-quantum encryption or phone
+microphone capture. [Contract and evidence](../../docs/changes/2026-11-23-hosted-remote-prompts.md).
+
 ## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.

@@ -9,13 +9,65 @@ account-bound text conversations, execution approvals, cancellation and an
 installed-application launch path. English and Spanish use the same behavior
 with separate account identities.
 
-The current connection profile works **on this PC only**, normally at
-`http://127.0.0.1:12481`. Network access, post-quantum transport, independently
-trusted native client distribution and phone microphone capture remain unavailable.
-Source verification does not certify an updated installed package or the complete
-approved remote-access design. Use compatible builds containing both integrations.
+The direct RC client uses a local connection, normally at
+`http://127.0.0.1:12481`. The **Tlamatini-RC page on xaiht.org** also carries prompts
+and answers through XT's approved website connection, so a phone can use a running
+Tlamatini account without exposing its local web server to the Internet. Use
+compatible website, XT, Remote-Controller and Tlamatini builds.
 
-## Enable your account and connect a device
+The website connection uses HTTPS. The relay processes prompt and answer content;
+this path is **not end-to-end or post-quantum encrypted**. Phone microphone capture
+and independently trusted native client distribution are not provided by this
+text-prompt integration. Source checks and real model checks are separate from
+acceptance of an installed package and a physical phone.
+
+## Ask Execs scope and current evidence
+
+Ask Execs is a selective policy, not a confirmation for every tool. Monitor
+Netstat and direct Netstat are exempt read-only operations. Desktop/hardware and
+messaging also have deliberate exceptions. The previously deployed page may show
+the old label; the wording correction is in source and its candidate was not
+promoted. See the [23 November record](changes/2026-11-23-hosted-remote-prompts.md)
+for separate source, production, phone and pending acceptance evidence.
+
+## Send prompts from the website on your phone
+
+1. Start Tlamatini normally on the computer and sign in to the intended account.
+   Start **Remote-Controller** in XT, then enable the account on Tlamatini's
+   **Panels → Tlachihuani · Remote-Controller** page using its current password.
+2. Sign in to [Tlamatini-RC on xaiht.org](https://xaiht.org/tlamatini-rc), add the
+   computer and create its connection key. On the computer, use
+   **XT → Services → xaiht.org → Connect…** to save that key for the website link.
+   An already connected computer can keep its existing connection.
+3. In **XT → Services → xaiht.org → Accounts…**, explicitly approve the local
+   Tlamatini accounts that this website connection may use. A matching display
+   name does not link accounts automatically. English and Spanish remain distinct.
+4. On the phone, choose the computer and explicitly select the intended account
+   under **Talk to Tlamatini**. Sending stays disabled until an approved, ready
+   account is selected. The website does not start Tlamatini or the services.
+5. Type a prompt and choose **Send prompt**. **Multi-Turn**, **Ask before protected
+   actions** and **Execution report** retain their normal Tlamatini behavior.
+   Review pending actions before choosing **Proceed** or **Deny**; use
+   **Cancel prompt** to request cancellation of that exact operation.
+
+The page distinguishes queued delivery, accepted work, execution and completion.
+It retains recent website requests and their answers for the selected account.
+Reloading retrieves the existing receipt; a delivery retry keeps its request ID
+instead of creating a second prompt. An unknown outcome is not proof that work
+stopped, so inspect it before submitting another request.
+
+Long answers show an explicit preview and **Retrieve complete answer**. Retrieval
+uses the original account-bound signed ticket and checks the complete chunked
+response before displaying it. Missing or expired content remains an explicit
+error rather than an apparently complete answer. The website displays answer
+content as inert text.
+
+Keep XT running for the outgoing website connection. Remove an account's approval
+in **Accounts…**, disconnect the website link, or disable the account's remote
+access locally to revoke its authority. Existing cancellation and account-ownership
+rules continue to apply; revocation does not undo actions already completed.
+
+## Enable your account and connect the direct RC client
 
 1. Open **XT → Show panel → Services → Remote-Controller** and start the service.
    Installation leaves it Manual and stopped. Torrenter has its own controls.
@@ -35,8 +87,9 @@ reconnect using its signing key without another invitation. The account's displa
 name is a label; authorization uses immutable identifiers and the edition.
 An English account and a Spanish account with the same name are separate.
 
-The address above is loopback: opening it on a phone addresses the phone itself.
-This implementation does not make the PC reachable over a LAN or the Internet.
+The direct client's address above is loopback: opening it on a phone addresses
+the phone itself. For the website prompt path, use the xaiht.org page and its
+outgoing XT connection described above; do not expose the local address publicly.
 
 ## Conversation and execution control
 
@@ -75,7 +128,7 @@ work has ended is a separate result; cancellation does not undo completed action
 The adapter keeps ownership until its active work ends, so a second request cannot
 take over a still-running conversation.
 
-## Starting Tlamatini from the RC client
+## Starting Tlamatini from the direct RC client
 
 Grant **Start Tlamatini** when creating the device invitation. The normal XT tray
 must be running in the delegated Windows account's unelevated signed-in session.

@@ -10,6 +10,17 @@
 
 > Latest released version: **[v1.97.0](../changes/2026-11-21-v1.97.0.md)**.
 
+## Phone conversations · 23 November documentation review
+
+**xaiht.org → Tlamatini-RC** sends prompts to an explicitly approved, ready local
+account through XT and Remote-Controller, retaining requests and answers across
+reloads. The website does not launch applications or capture the phone microphone.
+**Ask Execs is selective**: Monitor Netstat does not ask for approval. HTTPS protects
+transport, but the website handles content; this route is not end-to-end or
+post-quantum encrypted. A physical English-account phone prompt, reload and approval
+display were confirmed; denial and cancellation remain pending. See the
+[usage, limits and evidence](../changes/2026-11-23-hosted-remote-prompts.md).
+
 ## Canvas tabs, snapshots and the account execution lane
 
 The browser owns independent editor/viewer documents; ordinary chat uses only

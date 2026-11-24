@@ -14,6 +14,17 @@
 
 > Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
+## Phone conversations · 23 November documentation review
+
+**xaiht.org → Tlamatini-RC** sends prompts to an explicitly approved, ready local
+account through XT and Remote-Controller, retaining requests and answers across
+reloads. The website does not launch applications or capture the phone microphone.
+**Ask Execs is selective**: Monitor Netstat does not ask for approval. HTTPS protects
+transport, but the website handles content; this route is not end-to-end or
+post-quantum encrypted. A physical English-account phone prompt, reload and approval
+display were confirmed; denial and cancellation remain pending. See the
+[usage, limits and evidence](docs/changes/2026-11-23-hosted-remote-prompts.md).
+
 ## Maintaining Canvas document tabs
 
 Start with [the Canvas guide](docs/canvas-editing.md) and
@@ -649,7 +660,7 @@ LLM Backends: Ollama (local) | Anthropic Claude (cloud) | Qwen (vision)
 5. Chain selection (RAG / Basic / Unified Agent)
 6. Multi-Turn gate: checked = planner/dynamic binding; unchecked = legacy one-shot
 7. ACPX gate: when `acpx_enabled=False`, `agent.acpx.filter_acpx_tools()` strips every ACPX/Skill tool name from the bound tool list before the planner / executor see them, forcing the system back onto its legacy Multi-Turn / one-shot behavior
-7b. Ask-Execs gate (Multi-Turn-only): when `ask_execs_enabled=True`, the executor BLOCKS before every state-changing tool on a browser Proceed/Deny prompt, bridged by `agent/exec_permission.py::ExecPermissionBroker` (consumer registers a per-request broker keyed by user id; executor thread emits `exec_permission_request` onto the consumer loop via `run_coroutine_threadsafe` and waits on a `threading.Event`; the browser's `exec-permission-response` → `resolve_permission` unblocks it). **Deny halts the whole chain** and surfaces a red "Execution interrupted" banner; the round-trip is fail-safe (emit failure / Cancel / `close()` all resolve to *deny*). The flag must stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist alongside `conversation_user_id` (same drop-on-rebuild bug class as `exec_report_enabled`). See `docs/claude/multi-turn.md` → *Ask Execs* and `docs/claude/recent-fixes.md` (2026-05-29)
+7b. Ask-Execs gate (Multi-Turn-only): when `ask_execs_enabled=True`, the executor BLOCKS before tools classified as requiring approval by the current selective policy on a browser Proceed/Deny prompt, bridged by `agent/exec_permission.py::ExecPermissionBroker` (consumer registers a per-request broker keyed by user id; executor thread emits `exec_permission_request` onto the consumer loop via `run_coroutine_threadsafe` and waits on a `threading.Event`; the browser's `exec-permission-response` → `resolve_permission` unblocks it). **Deny halts the whole chain** and surfaces a red "Execution interrupted" banner; the round-trip is fail-safe (emit failure / Cancel / `close()` all resolve to *deny*). The flag must stay in `UnifiedAgentChain.invoke`'s payload-rebuild whitelist alongside `conversation_user_id` (same drop-on-rebuild bug class as `exec_report_enabled`). See `docs/claude/multi-turn.md` → *Ask Execs* and `docs/claude/recent-fixes.md` (2026-05-29)
 8. Context prefetch (system/file MCP)
 9. Execution loop (tool calls, wrapped agent monitoring, ACPX child-process drain); **every model step is wrapped by a per-request self-healing invoker** (`agent/self_healing.py::SelfHealingInvoker`, 2026-07-06) that retries distinct recovery tactics under a per-attempt watchdog (`unified_agent_llm_step_timeout_seconds`, 80 s) up to `unified_agent_llm_step_max_tactics` (4096) — so a transient model failure **never hangs, never discards work already done** (it degrades gracefully from the agents that already ran, preserving the Create-Flow button + Exec report), and **never yields a silent/untruthful answer** (a `recovery_preamble` always tells the user what happened, and live retry status is streamed to the chat via `register_status_broadcaster`). Only the user's Cancel or an exhausted tactic ladder stops it (`ModelStepUnrecoverable`). See `docs/claude/multi-turn.md` → *Self-healing model steps* and `docs/claude/recent-fixes.md` (2026-07-06)
 9b. **Per-tool verdict (v1.48.15 vocabulary guard)**: after each wrapped agent returns, `agent/agent_verdict.py` decides SUCCESS/FAILED **deterministically** — it parses the agent's own `INI_SECTION` self-report into a typed AST and runs an ORDERED rule table over it, and **the agent's self-report OUTRANKS the process exit code**. A read-only diagnostic that reports an adverse finding (`invalid`, `findings`, `no_matches`, …) is a **SUCCESS** because the finding is the deliverable; degraded work (`tokens_only`, `compiled_with_errors`, `operator_required`, …), work not done, and agent errors stay red. Intact named completions are explicit greens, and unknown tokens fail open but are identified under `R8b`. The self-report is never dropped: on a key collision the process view stays under `<key>` and the agent view lands on `agent_<key>`. `agent/test_status_vocabulary.py` statically sweeps every pool agent so undeclared tokens and numeric `status:` interpolations cannot ship. See `docs/claude/exec-report.md` → *Success/failure classification* and `docs/claude/recent-fixes.md` (2026-08-16)

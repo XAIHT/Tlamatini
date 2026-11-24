@@ -10,6 +10,17 @@
 
 > Latest released version: **[v1.97.0](docs/changes/2026-11-21-v1.97.0.md)**.
 
+## Phone conversations · 23 November documentation review
+
+**xaiht.org → Tlamatini-RC** sends prompts to an explicitly approved, ready local
+account through XT and Remote-Controller, retaining requests and answers across
+reloads. The website does not launch applications or capture the phone microphone.
+**Ask Execs is selective**: Monitor Netstat does not ask for approval. HTTPS protects
+transport, but the website handles content; this route is not end-to-end or
+post-quantum encrypted. A physical English-account phone prompt, reload and approval
+display were confirmed; denial and cancellation remain pending. See the
+[usage, limits and evidence](docs/changes/2026-11-23-hosted-remote-prompts.md).
+
 ## Carried from v1.96.1 — Voice Commands leaves the Catalog of Prompts
 
 - The **Voice Commands** section leaves the Catalog of Prompts: the microphone button beside Send replaces it. Migration 0226 hides its two cards (prompts 121 and 122) without renumbering, and the catalog now opens with Getting Started.

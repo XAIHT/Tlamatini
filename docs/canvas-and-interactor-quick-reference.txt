@@ -97,3 +97,7 @@ hidden-tab and narrow-layout checks. Those results do not certify a new build.
 2026-10-22: wizard guard suite 179 passed; exact installed request replay passed.
 See docs/canvas-editing.md, docs/interactor.md, docs/user-creation-wizard.md,
 and docs/changes/2026-10-22-v1.90.0.md for contracts and verification limits.
+
+REMOTE-CONTROLLER / XAIHT.ORG — 2026-11-23
+
+Canvas tabs, their buffers and context indicators remain in the local browser. The website route carries prompts, status, approvals and answers for the approved account; it does not promise tab replication or phone microphone capture. Ask Execs is selective; Netstat is exempt. See docs/changes/2026-11-23-hosted-remote-prompts.md.
