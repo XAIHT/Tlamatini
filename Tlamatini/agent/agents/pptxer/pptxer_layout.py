@@ -732,7 +732,9 @@ def fit_image_box(region: Box, native_w: int, native_h: int,
     native_aspect = native_w / float(native_h)
     region_aspect = region.width / float(region.height)
 
-    if (m == "cover") == (native_aspect > region_aspect):
+    # Both modes branch on the image being WIDER than the region; tying the
+    # test to the mode as well made 'contain' behave like 'cover' and overflow.
+    if native_aspect > region_aspect:
         # cover + wider image  → match height;  contain + wider image → match width
         height = region.height if m == "cover" else int(region.width / native_aspect)
         width = int(region.height * native_aspect) if m == "cover" else region.width
