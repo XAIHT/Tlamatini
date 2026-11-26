@@ -79,6 +79,7 @@ import re
 import pdfer_docmodel as dm
 import pdfer_tables as ptab
 import pdfer_artwork
+import pdfer_typography as ptypo
 
 __all__ = ["Atelier", "PAGE_SIZES", "render_document"]
 
@@ -271,7 +272,7 @@ class Atelier:
         paragraph (and only this one) to character wrapping.
         """
         from reportlab.lib.styles import ParagraphStyle
-        from reportlab.platypus import Paragraph
+        Paragraph = ptypo.fallback_flowable_class()
 
         available = width if width is not None else self.frame_width
         available -= getattr(style, "leftIndent", 0) + getattr(style,
@@ -339,7 +340,15 @@ class Atelier:
         wrapped = self._wrap_code(block.text, inner, self.fonts["mono"],
                                   self.sizes["code"])
         code_style = ParagraphStyle("tlm_code_inner", parent=styles["code"])
-        pre = Preformatted(wrapped, code_style)
+        if ptypo.needs_glyph_fallback(wrapped, self.fonts["mono"]):
+            # A character the code face lacks would print as a blank; the
+            # marked-up variant lets a fallback face draw it.
+            markup = (wrapped.replace("&", "&amp;").replace("<", "&lt;")
+                      .replace(">", "&gt;"))
+            pre = ptypo.fallback_flowable_class("XPreformatted")(
+                markup, code_style)
+        else:
+            pre = Preformatted(wrapped, code_style)
         table = Table([[pre]], colWidths=[width])
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), self._c("code_bg")),
@@ -357,7 +366,8 @@ class Atelier:
     # ─────────────────────────────────────────────────────────────────
     def _table_flowables(self, block, width):
         from reportlab.lib.styles import ParagraphStyle
-        from reportlab.platypus import KeepTogether, Paragraph, Table, TableStyle
+        from reportlab.platypus import KeepTogether, Table, TableStyle
+        Paragraph = ptypo.fallback_flowable_class()
 
         styles = self.stylesheet()
         rows = block.normalised()
@@ -525,7 +535,8 @@ class Atelier:
 
     def _callout_flowables(self, block, width):
         from reportlab.lib.styles import ParagraphStyle
-        from reportlab.platypus import Paragraph, Table, TableStyle
+        from reportlab.platypus import Table, TableStyle
+        Paragraph = ptypo.fallback_flowable_class()
         import pdfer_color as pc
 
         styles = self.stylesheet()
@@ -560,7 +571,8 @@ class Atelier:
         return [table]
 
     def _image_flowables(self, block, width, base_dir=""):
-        from reportlab.platypus import Image as RLImage, Paragraph
+        from reportlab.platypus import Image as RLImage
+        Paragraph = ptypo.fallback_flowable_class()
 
         styles = self.stylesheet()
         path = self._resolve_image(block.src, base_dir)
@@ -697,7 +709,8 @@ class Atelier:
     # ─────────────────────────────────────────────────────────────────
     def flow(self, blocks, width=None, base_dir="", quote_style=None):
         """Block list → Platypus flowables. Per-block fail-open."""
-        from reportlab.platypus import Paragraph, Spacer
+        from reportlab.platypus import Spacer
+        Paragraph = ptypo.fallback_flowable_class()
 
         styles = self.stylesheet()
         width = self.frame_width if width is None else width
@@ -820,7 +833,8 @@ class Atelier:
         return out
 
     def toc_flowables(self, entries):
-        from reportlab.platypus import PageBreak, Paragraph, Spacer
+        from reportlab.platypus import PageBreak, Spacer
+        Paragraph = ptypo.fallback_flowable_class()
 
         if not entries:
             return []
@@ -900,7 +914,9 @@ class Atelier:
             if self.footer_note:
                 # Reserve the folio's measured width; 90 characters was not a
                 # width bound and long notes used to collide with the number.
-                from reportlab.pdfbase.pdfmetrics import stringWidth
+                # Fallback-aware: a glyph from a fallback face is measured
+                # in that face.
+                stringWidth = self.book.text_width
                 font, size = self.fonts["body"], self.sizes["footer"]
                 available = max(0, self.frame_width - stringWidth(label, font, size) - 24)
                 note = re.sub(r"\s+", " ", self.footer_note).strip()
@@ -913,10 +929,13 @@ class Atelier:
                         else:
                             hi = mid - 1
                     note = note[:lo].rstrip() + "..." if lo else ""
-                canvas.drawString(self.margin, y, note)
-                canvas.drawRightString(width - self.margin, y, label)
+                ptypo.draw_text(canvas, self.margin, y, note, font, size)
+                ptypo.draw_text(canvas, width - self.margin, y, label, font,
+                                size, anchor="end")
             else:
-                canvas.drawCentredString(width / 2.0, y, label)
+                ptypo.draw_text(canvas, width / 2.0, y, label,
+                                self.fonts["body"], self.sizes["footer"],
+                                anchor="middle")
             # A hairline above the footer, in the rule colour.
             canvas.setStrokeColor(self._c("border_soft"))
             canvas.setLineWidth(0.4)
@@ -945,6 +964,7 @@ class Atelier:
         self._total_pages = 0
         report = {"engine": "atelier", "pages": 0, "notes": self.notes,
                   "repairs": self.repairs, "images": 0, "tables": 0}
+        ptypo.reset_glyph_ledger()
 
         def make_story():
             self._toc_entries = []
@@ -1001,6 +1021,15 @@ class Atelier:
         report["pages"] = pages
         report["tables"] = document.count("table")
         report["images"] = document.count("image")
+        ledger = ptypo.glyph_ledger()
+        if ledger.substituted:
+            self.repairs.append("glyph fallback: " + ledger.describe())
+        if ledger.missing:
+            self.notes.append(
+                "MISSING GLYPHS: no installed font can draw %s; each is "
+                "printed as U+FFFD" % ledger.describe_missing())
+        report["glyph_substitutions"] = dict(ledger.substituted)
+        report["missing_glyphs"] = sorted(ledger.missing)
         report["repairs"] = sorted(set(self.repairs))
         return report
 

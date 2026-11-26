@@ -1,0 +1,1754 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Handiy Design Dossier</title>
+<meta name="description" content="Research and an extremely low-latency architecture for Handiy: camera hand-gesture control of the cursor, volume and other Windows settings on an Alienware m16 R2 with an RTX 4070 Laptop GPU.">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f5f7fb;--surface:#ffffff;--surface-2:#eef2f8;--surface-3:#e3e9f2;
+  --text:#14203a;--muted:#55627a;--faint:#77839a;--line:#d6dde8;
+  --accent:#0b8587;--accent-ink:#ffffff;--accent-soft:#ddf2f1;--violet:#6d4aff;
+  --good:#16753a;--good-soft:#e1f4e7;--warn:#9c5306;--warn-soft:#fcefd9;--bad:#b42323;--bad-soft:#fde4e4;
+  --c-cap:#0b7a99;--c-cap-bg:#e0f3f8;--c-gpu:#4a7d0c;--c-gpu-bg:#eaf6dc;--c-logic:#6a36d6;--c-logic-bg:#efe8ff;
+  --c-os:#ad5806;--c-os-bg:#fdefdc;--c-svc:#4a5568;--c-svc-bg:#edf1f6;--c-fb:#b8226a;--c-fb-bg:#fde6f0;
+  --code-bg:#0f172a;--code-ink:#e3e8f2;--code-line:#26324a;
+  --radius:14px;--shadow:0 1px 2px rgba(16,24,40,.06),0 10px 30px rgba(16,24,40,.07);
+  --font:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Code","Cascadia Mono",Consolas,ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0c111c;--surface:#131a28;--surface-2:#1a2335;--surface-3:#222d43;
+    --text:#e6ebf5;--muted:#a7b2c6;--faint:#8590a6;--line:#2b3750;
+    --accent:#33c4c1;--accent-ink:#062221;--accent-soft:#0f3233;--violet:#a08bff;
+    --good:#4fcf7c;--good-soft:#12301f;--warn:#f2a64a;--warn-soft:#352612;--bad:#ff7a7a;--bad-soft:#3a1717;
+    --c-cap:#4fc4e2;--c-cap-bg:#0e2c36;--c-gpu:#9ad44c;--c-gpu-bg:#1c2e10;--c-logic:#b398ff;--c-logic-bg:#241a42;
+    --c-os:#f4ae60;--c-os-bg:#352411;--c-svc:#aab6c9;--c-svc-bg:#1d2534;--c-fb:#f37db3;--c-fb-bg:#3a1528;
+    --code-bg:#0a0f1a;--code-ink:#dfe6f3;--code-line:#1f2a40;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0c111c;--surface:#131a28;--surface-2:#1a2335;--surface-3:#222d43;
+  --text:#e6ebf5;--muted:#a7b2c6;--faint:#8590a6;--line:#2b3750;
+  --accent:#33c4c1;--accent-ink:#062221;--accent-soft:#0f3233;--violet:#a08bff;
+  --good:#4fcf7c;--good-soft:#12301f;--warn:#f2a64a;--warn-soft:#352612;--bad:#ff7a7a;--bad-soft:#3a1717;
+  --c-cap:#4fc4e2;--c-cap-bg:#0e2c36;--c-gpu:#9ad44c;--c-gpu-bg:#1c2e10;--c-logic:#b398ff;--c-logic-bg:#241a42;
+  --c-os:#f4ae60;--c-os-bg:#352411;--c-svc:#aab6c9;--c-svc-bg:#1d2534;--c-fb:#f37db3;--c-fb-bg:#3a1528;
+  --code-bg:#0a0f1a;--code-ink:#dfe6f3;--code-line:#1f2a40;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.62 var(--font)}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px;overflow-wrap:anywhere}
+a:hover{text-decoration-thickness:2px}
+h1,h2,h3,h4{line-height:1.25;margin:1.6em 0 .6em}
+h2{font-size:1.65rem;letter-spacing:-.01em;padding-top:1.1em;border-top:1px solid var(--line);scroll-margin-top:12px}
+h3{font-size:1.18rem;scroll-margin-top:12px}
+h4{font-size:.86rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+p{margin:.6em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.25em 0}
+strong{font-weight:680}
+code{font-family:var(--mono);font-size:.87em;background:var(--surface-2);padding:.08em .35em;border-radius:6px;overflow-wrap:anywhere}
+pre{font-family:var(--mono);font-size:.83rem;line-height:1.55;background:var(--code-bg);color:var(--code-ink);padding:16px 18px;border-radius:12px;overflow:auto;margin:.8em 0;border:1px solid var(--code-line);tab-size:4}
+pre code{background:none;padding:0;color:inherit;font-size:inherit;overflow-wrap:normal}
+.wrap{max-width:1400px;margin:0 auto;padding:0 16px}
+.hero{background:radial-gradient(1100px 420px at 8% -15%,color-mix(in srgb,var(--accent) 26%,transparent),transparent),radial-gradient(900px 380px at 100% 0%,color-mix(in srgb,var(--violet) 22%,transparent),transparent),var(--surface);border-bottom:1px solid var(--line);padding:30px 0 26px}
+.hero-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.2em;font-size:1rem;color:var(--muted)}
+.logo{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--violet));color:#fff;font-size:21px;letter-spacing:0}
+.hero h1{font-size:clamp(1.9rem,4.4vw,3.2rem);letter-spacing:-.025em;margin:.45em 0 .3em;max-width:24ch}
+.lede{font-size:1.12rem;color:var(--muted);max-width:78ch}
+.chips{margin:14px 0 6px}
+.meta{font-size:.85rem;color:var(--faint);margin-top:8px}
+.btn{font:inherit;font-size:.9rem;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.layout{display:grid;grid-template-columns:268px minmax(0,1fr);gap:32px;align-items:start;padding-top:22px}
+nav.toc{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:12px 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);font-size:.89rem;box-shadow:var(--shadow)}
+nav.toc summary{font-weight:750;cursor:pointer;padding:4px 8px;color:var(--text)}
+nav.toc a{display:block;padding:4px 8px;border-radius:8px;color:var(--muted);text-decoration:none;line-height:1.35}
+nav.toc a:hover{background:var(--surface-2);color:var(--text)}
+nav.toc a.active{background:var(--accent-soft);color:var(--text);font-weight:650}
+nav.toc a span{display:inline-block;width:1.9em;color:var(--faint);font-variant-numeric:tabular-nums}
+main{min-width:0;padding-bottom:60px}
+main>section:first-child h2{border-top:0;padding-top:0;margin-top:.2em}
+.sec-num{display:inline-block;min-width:2.1em;color:var(--accent);font-variant-numeric:tabular-nums}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));margin:14px 0}
+.two{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));margin:14px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);min-width:0}
+.card h3{margin-top:0}
+.card.verdict{border-top:4px solid var(--accent)}
+.card.v-warn{border-top:4px solid var(--warn)}
+.card.v-bad{border-top:4px solid var(--bad)}
+.card.v-good{border-top:4px solid var(--good)}
+.k{font-size:.74rem;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:750}
+.big{font-size:1.75rem;font-weight:780;letter-spacing:-.02em;line-height:1.15;margin:4px 0 6px}
+.pill{display:inline-block;font-size:.78rem;font-weight:620;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);margin:3px 4px 3px 0}
+.tag{display:inline-block;font-size:.72rem;font-weight:720;padding:1px 7px;border-radius:6px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.tag.good{background:var(--good-soft);color:var(--good)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.info{background:var(--accent-soft);color:var(--accent)}
+.callout{border:1px solid var(--line);border-left:5px solid var(--accent);background:var(--surface);padding:12px 16px;border-radius:10px;margin:14px 0}
+.callout.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.callout.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.callout.good{border-left-color:var(--good);background:var(--good-soft)}
+.callout>:first-child{margin-top:0}.callout>:last-child{margin-bottom:0}
+.muted{color:var(--muted)}.small{font-size:.86rem}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:8px 0}
+.kv dt{color:var(--muted)}.kv dd{margin:0;font-weight:600;min-width:0;overflow-wrap:anywhere}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:12px 0}
+ol.steps>li{counter-increment:s;position:relative;padding:11px 14px 11px 54px;margin:8px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+ol.steps>li::before{content:counter(s);position:absolute;left:13px;top:11px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:.9rem}
+ul.tl{list-style:none;padding:0 0 0 2px;margin:10px 0 4px 6px;border-left:3px solid var(--line)}
+ul.tl li{position:relative;padding:5px 0 5px 18px}
+ul.tl li::before{content:"";position:absolute;left:-9px;top:12px;width:13px;height:13px;border-radius:50%;background:var(--surface);border:3px solid var(--accent)}
+ul.tl li.hot::before{border-color:var(--bad)}
+ul.tl b{font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:12px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.87rem;min-width:760px}
+table.narrow{min-width:560px}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+thead th{background:var(--surface-2);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:color-mix(in srgb,var(--surface-2) 60%,transparent)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td b{font-weight:680}
+.diagram{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;margin:16px 0;overflow-x:auto;box-shadow:var(--shadow)}
+.diagram svg{display:block;width:100%;height:auto;min-width:760px}
+figure{margin:16px 0}
+figcaption{font-size:.85rem;color:var(--muted);padding:6px 8px 2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.8rem;color:var(--muted);padding:4px 8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1.5px solid}
+.lg-cap{background:var(--c-cap-bg);border-color:var(--c-cap)!important}.lg-gpu{background:var(--c-gpu-bg);border-color:var(--c-gpu)!important}
+.lg-logic{background:var(--c-logic-bg);border-color:var(--c-logic)!important}.lg-os{background:var(--c-os-bg);border-color:var(--c-os)!important}
+.lg-svc{background:var(--c-svc-bg);border-color:var(--c-svc)!important}.lg-fb{background:var(--c-fb-bg);border-color:var(--c-fb)!important}
+svg text{font-family:var(--font);fill:var(--text);font-size:14px}
+svg .t-b{font-weight:700;font-size:15px}
+svg .t-s{font-size:12px;fill:var(--muted)}
+svg .t-xs{font-size:11px;fill:var(--muted)}
+svg .t-bad{fill:var(--bad);font-weight:700}
+svg .t-acc{fill:var(--accent);font-weight:700}
+svg rect,svg circle{stroke-width:1.6}
+svg .cap{fill:var(--c-cap-bg);stroke:var(--c-cap)}
+svg .gpu{fill:var(--c-gpu-bg);stroke:var(--c-gpu)}
+svg .logic{fill:var(--c-logic-bg);stroke:var(--c-logic)}
+svg .os{fill:var(--c-os-bg);stroke:var(--c-os)}
+svg .svc{fill:var(--c-svc-bg);stroke:var(--c-svc)}
+svg .fb{fill:var(--c-fb-bg);stroke:var(--c-fb)}
+svg .plain{fill:var(--surface-2);stroke:var(--line)}
+svg .good-f{fill:var(--good-soft);stroke:var(--good)}
+svg .warn-f{fill:var(--warn-soft);stroke:var(--warn)}
+svg .dashb{stroke-dasharray:6 4}
+svg .zone{fill:none;stroke:var(--faint);stroke-dasharray:5 5;stroke-width:1.3}
+svg .edge{fill:none;stroke:var(--muted);stroke-width:1.6}
+svg .edge.hot{stroke:var(--accent);stroke-width:2.4}
+svg .edge.dash{stroke-dasharray:6 5}
+svg .edge.bad{stroke:var(--bad)}
+svg .grid-l{stroke:var(--line);stroke-width:1}
+svg .thr{stroke:var(--faint);stroke-width:1.2;stroke-dasharray:4 4;fill:none}
+svg .curve{fill:none;stroke:var(--violet);stroke-width:3}
+svg .ev{stroke:var(--accent);stroke-width:1.8;stroke-dasharray:3 3}
+svg .lane{fill:var(--surface-2);stroke:none}
+.ahead{fill:var(--muted)}.ahead-hot{fill:var(--accent)}
+details.more{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 14px;margin:10px 0}
+details.more>summary{cursor:pointer;font-weight:650}
+.codebox{position:relative}
+.copy{position:absolute;top:8px;right:8px;font:600 .74rem var(--font);color:var(--code-ink);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:4px 9px;cursor:pointer;z-index:1}
+.copy:hover{background:rgba(255,255,255,.18)}
+.calc{margin:14px 0}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.calc-grid{display:grid;gap:10px 20px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.field label{display:flex;justify-content:space-between;gap:8px;font-size:.83rem;color:var(--muted);font-weight:620}
+.field output{color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.field input[type=range]{width:100%;accent-color:var(--accent)}
+.field select{width:100%;font:inherit;font-size:.9rem;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.result{display:flex;flex-wrap:wrap;gap:8px 28px;align-items:baseline;margin:16px 0 8px}
+.result .big{margin:0}
+.bar{display:flex;height:30px;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
+.seg{height:100%;min-width:2px;transition:width .25s}
+.calc-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:3px 16px;font-size:.83rem;margin-top:10px}
+.calc-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.calc-legend b{font-variant-numeric:tabular-nums}
+.note{font-size:.8rem;color:var(--faint)}
+footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--faint);font-size:.85rem}
+@media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr);gap:14px}nav.toc{position:static;max-height:none}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.seg{transition:none}}
+@media print{nav.toc,.btn,.copy{display:none}.layout{display:block}.diagram svg{min-width:0}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="ahead"/></marker>
+    <marker id="ahh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="ahead-hot"/></marker>
+  </defs>
+</svg>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <div class="brand"><span class="logo" aria-hidden="true">✋</span>HANDIY</div>
+      <button id="themeBtn" class="btn" type="button" aria-label="Switch between light and dark theme">◐ Theme</button>
+    </div>
+    <h1>Control Windows with your hands, at camera speed</h1>
+    <p class="lede">Research dossier and low-latency architecture for a gesture engine that moves the cursor with your index finger, raises the volume when you raise your hand, and learns the gestures you teach it. Designed for Angela López Mendoza's Alienware m16 R2 with an RTX 4070 Laptop GPU (8 GB), with fallbacks for modest PCs.</p>
+    <div class="chips">
+      <span class="pill">Intel Core Ultra 7 155H · 16 cores / 22 threads</span>
+      <span class="pill">RTX 4070 Laptop · 8 GB · up to 140 W · driver 621.14</span>
+      <span class="pill">Intel Arc iGPU drives the 2560×1600 @ 240 Hz panel</span>
+      <span class="pill">Intel AI Boost NPU</span>
+      <span class="pill">Integrated IR Webcam · clip recorded at 1920×1080 @ 30 fps</span>
+      <span class="pill">15.5 GB RAM · Windows 11 Pro (build 26300)</span>
+    </div>
+    <p class="meta">Prepared 25 November 2026. Numbers marked <b>est.</b> are engineering estimates. Measure them on the real machine before you trust them (section 18 explains how).</p>
+  </div>
+</header>
+
+<div class="wrap layout">
+<nav class="toc" aria-label="Contents">
+  <details id="tocd" open>
+    <summary>Contents</summary>
+    <a href="#verdict"><span>01</span>The verdict</a>
+    <a href="#video"><span>02</span>What your video shows</a>
+    <a href="#goals"><span>03</span>Goals &amp; targets</a>
+    <a href="#latency"><span>04</span>Where the milliseconds go</a>
+    <a href="#landscape"><span>05</span>What already exists</a>
+    <a href="#blocks"><span>06</span>Building blocks compared</a>
+    <a href="#architecture"><span>07</span>Architecture</a>
+    <a href="#gestures"><span>08</span>Gestures &amp; state machine</a>
+    <a href="#volume"><span>09</span>The raise-hand volume gesture</a>
+    <a href="#cursor"><span>10</span>Cursor control done right</a>
+    <a href="#checklist"><span>11</span>Low-latency checklist</a>
+    <a href="#windows"><span>12</span>Windows rules &amp; impediments</a>
+    <a href="#security"><span>13</span>Security, privacy &amp; safety</a>
+    <a href="#training"><span>14</span>Teaching new gestures</a>
+    <a href="#code"><span>15</span>Code skeletons</a>
+    <a href="#tiers"><span>16</span>Hardware tiers &amp; fallbacks</a>
+    <a href="#roadmap"><span>17</span>Roadmap</a>
+    <a href="#testing"><span>18</span>Measuring &amp; testing</a>
+    <a href="#risks"><span>19</span>Risk register</a>
+    <a href="#tlamatini"><span>20</span>Optional Tlamatini bridge</a>
+    <a href="#glossary"><span>21</span>Glossary</a>
+    <a href="#refs"><span>22</span>Sources &amp; links</a>
+  </details>
+</nav>
+
+<main id="main">
+
+<section id="verdict">
+<h2><span class="sec-num">01</span>The verdict in one screen</h2>
+<p>Angela, the short answer: <strong>the idea is fully buildable on this laptop, and nothing found on the Internet blocks it.</strong> Several products already move a cursor from a webcam, but none covers the whole brief. The hard limits are the <strong>camera</strong> and <strong>Windows session rules</strong>, not the GPU.</p>
+<div class="grid">
+  <div class="card verdict">
+    <div class="k">Is there a complete solution?</div>
+    <div class="big">Partly</div>
+    <p class="small">UCL MotionInput, HandX and Virtual Touch Screen 2 already drive a cursor from a webcam. Ultraleap TouchFree does it with its own infrared camera. None combines <b>trainable gestures</b>, <b>GPU-level latency</b>, a <b>supervised always-on service</b> and <b>control of elevated windows</b>. Build it, but reuse their models and lessons.</p>
+  </div>
+  <div class="card v-warn">
+    <div class="k">Biggest latency term</div>
+    <div class="big">The camera</div>
+    <p class="small">Your built-in webcam recorded at 30 fps. Waiting for and reading a frame costs roughly 25–45 ms before any code runs. The RTX 4070 finishes both hand networks in about 1–2 ms (est.). Buy frames, not FLOPs: a 120 fps global-shutter camera removes more latency than any GPU trick.</p>
+  </div>
+  <div class="card v-bad">
+    <div class="k">Biggest impediment</div>
+    <div class="big">Session 0</div>
+    <p class="small">A true Windows service runs in Session 0. It cannot use your desktop, and its input does not reach your apps. Handiy therefore runs as a <b>user-session agent</b> that a small service starts and supervises. To control administrator windows it also needs <b>uiAccess</b> (a signed binary in Program Files).</p>
+  </div>
+  <div class="card v-good">
+    <div class="k">Recommended stack</div>
+    <div class="big">C++ + TensorRT</div>
+    <p class="small">WinRT frame reader in real-time mode → one fused CUDA kernel → TensorRT FP16 hand and pose networks → tiny gesture networks → SendInput and Core Audio. Python is used only for the training Studio and for the first prototype.</p>
+  </div>
+  <div class="card verdict">
+    <div class="k">Expected glass-to-cursor latency</div>
+    <div class="big">≈ 65 → ≈ 18 ms</div>
+    <p class="small">Est.: built-in 30 fps camera ≈ 55–75 ms. A 120 fps global-shutter camera ≈ 15–22 ms, or about 10 ms as felt with 8 ms of motion prediction. Section 04 has a calculator you can play with.</p>
+  </div>
+</div>
+
+<h3>Five decisions that matter most</h3>
+<ol class="steps">
+  <li><b>Find the hand once, then track it.</b> Run the palm detector only when the hand is lost; in steady state, one tiny landmark network per hand runs on a crop around the previous position. This is MediaPipe's own design, and it is the reason hand tracking can be this cheap.</li>
+  <li><b>Never queue frames.</b> Always process the newest frame and drop older ones (WinRT <code>MediaFrameReader</code> in <code>Realtime</code> mode, or a latest-frame slot). A queue of three frames at 30 fps silently adds 100 ms.</li>
+  <li><b>Decouple the pointer from the camera.</b> A 240 Hz pointer thread predicts between camera frames, so the cursor glides on your 240 Hz panel instead of jumping 30 times a second.</li>
+  <li><b>Use the body for big gestures.</b> Decide "hand raised" from the pose (wrist above nose or shoulder line). Pose survives the motion blur and the fingers leaving the frame, and your video shows both.</li>
+  <li><b>Make every action deliberate.</b> An engage state, hysteresis, cool-downs and a kill gesture defeat the "Midas touch" problem, where every movement you make becomes a command.</li>
+</ol>
+
+<figure class="diagram">
+<svg viewBox="0 0 1000 110" role="img" aria-label="Pipeline overview: camera, capture, GPU, gesture brain, actions, Windows">
+  <rect class="cap" x="10" y="20" width="140" height="70" rx="12"/><text x="80" y="50" text-anchor="middle" class="t-b">Camera</text><text x="80" y="70" text-anchor="middle" class="t-s">30 → 120 fps</text>
+  <rect class="cap" x="175" y="20" width="140" height="70" rx="12"/><text x="245" y="50" text-anchor="middle" class="t-b">Capture</text><text x="245" y="70" text-anchor="middle" class="t-s">newest frame only</text>
+  <rect class="gpu" x="340" y="20" width="140" height="70" rx="12"/><text x="410" y="50" text-anchor="middle" class="t-b">RTX · TensorRT</text><text x="410" y="70" text-anchor="middle" class="t-s">hand + pose ≈ 1–2 ms</text>
+  <rect class="logic" x="505" y="20" width="140" height="70" rx="12"/><text x="575" y="50" text-anchor="middle" class="t-b">Gesture brain</text><text x="575" y="70" text-anchor="middle" class="t-s">filter · classify · FSM</text>
+  <rect class="os" x="670" y="20" width="140" height="70" rx="12"/><text x="740" y="50" text-anchor="middle" class="t-b">Actions</text><text x="740" y="70" text-anchor="middle" class="t-s">cursor · volume · media</text>
+  <rect class="fb" x="835" y="20" width="140" height="70" rx="12"/><text x="905" y="50" text-anchor="middle" class="t-b">Windows</text><text x="905" y="70" text-anchor="middle" class="t-s">240 Hz panel</text>
+  <line class="edge hot" x1="150" y1="55" x2="173" y2="55" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="315" y1="55" x2="338" y2="55" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="480" y1="55" x2="503" y2="55" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="645" y1="55" x2="668" y2="55" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="810" y1="55" x2="833" y2="55" marker-end="url(#ahh)"/>
+</svg>
+<figcaption>The whole idea in one line. Every arrow is a place where latency hides; section 04 measures each one.</figcaption>
+</figure>
+</section>
+
+<section id="video">
+<h2><span class="sec-num">02</span>What your video shows</h2>
+<div class="two">
+  <div class="card">
+    <div class="k">The clip</div>
+    <dl class="kv">
+      <dt>File</dt><dd>WIN_20261125_12_55_57_Pro.mp4 (Windows Camera, Pro mode)</dd>
+      <dt>Video</dt><dd>1920×1080, 30.07 fps, H.264</dd>
+      <dt>Length</dt><dd>167 frames · 5.55 s</dd>
+      <dt>Camera</dt><dd>Integrated IR Webcam (RGB stream)</dd>
+      <dt>Scene</dt><dd>Seated at a desk, bright window behind on the left, overhead office light</dd>
+    </dl>
+    <p class="small muted">Reviewed as 20 evenly spaced frames. No frame from the video is embedded in this page, so the page is safe to share.</p>
+  </div>
+  <div class="card">
+    <div class="k">Timeline</div>
+    <ul class="tl">
+      <li><b>0.00–1.40 s</b> Neutral, hands out of view.</li>
+      <li class="hot"><b>≈ 1.43 s</b> Right hand enters low on the left of the image. It is strongly motion-blurred.</li>
+      <li class="hot"><b>≈ 1.73 s</b> Open palm rising past the face, fingers still smeared.</li>
+      <li><b>≈ 2.03–2.29 s</b> Open palm above head height. The fingertips leave the top edge of the image.</li>
+      <li><b>≈ 2.59 s</b> The hand closes into a fist near head height (blurred).</li>
+      <li><b>≈ 2.89 s</b> Hand gone; neutral until the end.</li>
+    </ul>
+    <p class="small">The whole gesture takes about <b>1.5 s</b>, and the rise about <b>0.6 s</b>.</p>
+  </div>
+</div>
+
+<h3>What the clip teaches the design</h3>
+<div class="grid">
+  <div class="card v-bad"><div class="k">Lesson 1</div><h3>Motion blur at 30 fps</h3><p class="small">During the fastest part of the rise, finger detail is smeared. Hand-landmark networks lose the hand exactly when it moves fastest. <b>Fix:</b> a shorter fixed exposure (more light, or infrared), decide big gestures from the wrist trajectory in the pose, and bridge 2–3 lost frames with prediction.</p></div>
+  <div class="card v-warn"><div class="k">Lesson 2</div><h3>Fingers leave the frame</h3><p class="small">A laptop webcam has a limited vertical field of view; a raised hand exits at the top. <b>Fix:</b> judge "raised" with the wrist and elbow from the pose network, with the face as a reference, never with fingertips alone.</p></div>
+  <div class="card v-warn"><div class="k">Lesson 3</div><h3>Backlight</h3><p class="small">The bright window on the left makes auto-exposure lengthen the exposure for your face, which adds blur. In dim rooms, many webcams also drop to 15 fps. <b>Fix:</b> while Handiy runs, lock a short exposure profile, add front light, or use the IR stream.</p></div>
+  <div class="card verdict"><div class="k">Lesson 4</div><h3>The gesture's shape</h3><p class="small">Open palm rises, holds, closes into a fist, drops. That reads naturally as <b>"raise to increase, close the fist to finish"</b>. Section 09 turns it into two exact designs with thresholds.</p></div>
+  <div class="card v-good"><div class="k">Lesson 5</div><h3>Different budgets</h3><p class="small">A 1.5 s volume gesture is not latency-critical; the cursor is. Handiy gives each gesture its own budget: cursor &lt; 20 ms of processing, discrete gestures confirmed within 100–150 ms of their end.</p></div>
+</div>
+</section>
+
+<section id="goals">
+<h2><span class="sec-num">03</span>Goals &amp; latency targets</h2>
+<p><b>Glass-to-cursor</b> latency is the time from a real movement of your hand to the cursor moving on the panel. <b>Processing</b> latency is the part Handiy controls: from a frame arriving in memory to <code>SendInput</code> returning.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Metric</th><th>Built-in 30 fps camera</th><th>120 fps global-shutter camera</th><th>How it is measured</th></tr></thead>
+<tbody>
+<tr><td><b>Glass-to-cursor, median</b></td><td class="num">≤ 70 ms</td><td class="num">≤ 20 ms</td><td>LED + photodiode rig, or a 240 fps phone video (section 18)</td></tr>
+<tr><td><b>Processing, 99th percentile</b></td><td class="num">≤ 4 ms</td><td class="num">≤ 3 ms</td><td>Frame timestamp (QPC) to <code>SendInput</code> return, logged per frame</td></tr>
+<tr><td><b>Cursor jitter at rest</b></td><td class="num">≤ 1 px RMS</td><td class="num">≤ 0.5 px RMS</td><td>Hold a pointing hand still for 10 s on the 2560×1600 panel</td></tr>
+<tr><td><b>False activations</b></td><td class="num">≤ 1 per 8 h</td><td class="num">≤ 1 per 8 h</td><td>Soak test during ordinary work: typing, drinking, phone, talking</td></tr>
+<tr><td><b>Static gesture accuracy</b></td><td class="num">≥ 98 %</td><td class="num">≥ 98 %</td><td>Held-out recording sessions, different light and distance</td></tr>
+<tr><td><b>Dynamic gesture recall</b></td><td class="num">≥ 95 %</td><td class="num">≥ 97 %</td><td>At the threshold that gives ≤ 1 false activation per hour</td></tr>
+<tr><td><b>CPU</b></td><td class="num">&lt; 3 % (est.)</td><td class="num">&lt; 5 % (est.)</td><td>Average over all logical processors</td></tr>
+<tr><td><b>GPU / VRAM</b></td><td class="num">&lt; 5 % · &lt; 600 MB</td><td class="num">&lt; 8 % · &lt; 600 MB</td><td><code>nvidia-smi dmon</code> during a 10 min session</td></tr>
+<tr><td><b>Idle behaviour</b></td><td colspan="2">Camera at 5–10 fps and RTX allowed to sleep after 10 s with no hand; full speed again within 150 ms of a hand appearing</td><td>Power meter + log</td></tr>
+<tr><td><b>Start-up</b></td><td colspan="2">Tracking within 2 s of logon (engines built ahead of time, never at logon)</td><td>Logon trace</td></tr>
+</tbody></table></div>
+<div class="callout"><p><b>Non-goals.</b> No cloud. No frames written to disk. No network listener. No keystroke logging. No control of the secure desktop (lock screen, UAC prompts, Ctrl+Alt+Del); Windows forbids it, and that is a good thing.</p></div>
+</section>
+
+<section id="latency">
+<h2><span class="sec-num">04</span>Where the milliseconds go</h2>
+<p>Latency is a chain, and the chain starts in the sensor. The table shows each link with today's built-in webcam and with a 120 fps global-shutter camera. Inference times are estimates for TensorRT FP16 on the RTX 4070 Laptop GPU; measure them with <code>trtexec</code> before you trust them.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Stage</th><th>What happens</th><th>Built-in 1080p30 (est.)</th><th>Global shutter 120 fps (est.)</th><th>Main knob</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Waiting for an exposure</b></td><td>Your movement happens at a random moment between two frames</td><td class="num">16.7 ms (½ of 33.3)</td><td class="num">4.2 ms</td><td>Higher frame rate</td></tr>
+<tr><td>2</td><td><b>Exposure</b></td><td>Light is integrated; the image represents its centre. Blur grows with exposure time</td><td class="num">4–16 ms (auto)</td><td class="num">1–2 ms (fixed)</td><td>Manual exposure, more light, IR</td></tr>
+<tr><td>3</td><td><b>Readout</b></td><td>A rolling shutter reads row by row; the average row is half a readout late</td><td class="num">≈ 10–16 ms</td><td class="num">≈ 1–3 ms</td><td>Global shutter, lower resolution</td></tr>
+<tr><td>4</td><td><b>ISP + transfer + driver</b></td><td>Demosaic, compression, USB/MIPI transfer, Media Foundation buffering</td><td class="num">10–30 ms</td><td class="num">3–6 ms</td><td>Uncompressed format, real-time acquisition, no queue</td></tr>
+<tr><td>5</td><td><b>Decode / convert</b></td><td>MJPEG decode or NV12/Y8 passthrough</td><td class="num">0–4 ms</td><td class="num">0–0.3 ms</td><td>NV12 or Y8, convert on GPU</td></tr>
+<tr><td>6</td><td><b>Inference</b></td><td>Hand landmarks (×2) + pose on RTX, palm detector only when lost</td><td class="num">1–2 ms</td><td class="num">1–2 ms</td><td>ROI tracking, batch 2, CUDA graphs</td></tr>
+<tr><td>7</td><td><b>Logic + injection</b></td><td>Filters, classifiers, state machine, <code>SendInput</code></td><td class="num">&lt; 0.5 ms</td><td class="num">&lt; 0.5 ms</td><td>Allocation-free C++</td></tr>
+<tr><td>8</td><td><b>Display</b></td><td>Hardware cursor waits for the next vblank, then scans out</td><td class="num">≈ 4–6 ms @ 240 Hz</td><td class="num">≈ 4–6 ms @ 240 Hz</td><td>240 Hz internal panel; a 60 Hz external monitor adds ≈ 12 ms</td></tr>
+<tr><td></td><td><b>Total</b></td><td></td><td class="num"><b>≈ 55–90 ms</b></td><td class="num"><b>≈ 15–22 ms</b></td><td></td></tr>
+<tr><td></td><td>Felt, with prediction</td><td>Velocity extrapolation hides part of the delay during smooth motion</td><td class="num">≈ 50–85 ms</td><td class="num">≈ 8–14 ms</td><td>Prediction horizon ≤ 1 frame</td></tr>
+</tbody></table></div>
+
+<div class="card calc" id="calc">
+  <div class="k">Interactive latency calculator</div>
+  <div class="presets" role="group" aria-label="Presets">
+    <button class="btn" type="button" data-preset="builtin">Built-in webcam 1080p30</button>
+    <button class="btn" type="button" data-preset="w60">USB webcam 720p60</button>
+    <button class="btn" type="button" data-preset="gs120">Global shutter 120 fps</button>
+    <button class="btn" type="button" data-preset="ext60">Built-in cam + 60 Hz monitor</button>
+    <button class="btn" type="button" data-preset="cpu">Modest PC, CPU only</button>
+  </div>
+  <div class="calc-grid">
+    <div class="field"><label for="c-fps">Camera frame rate <output id="o-fps" for="c-fps"></output></label><input id="c-fps" type="range" min="15" max="240" step="1"></div>
+    <div class="field"><label for="c-exp">Exposure time <output id="o-exp" for="c-exp"></output></label><input id="c-exp" type="range" min="0.5" max="66" step="0.5"></div>
+    <div class="field"><label for="c-ro">Sensor readout, full frame <output id="o-ro" for="c-ro"></output></label><input id="c-ro" type="range" min="0.5" max="40" step="0.5"></div>
+    <div class="field"><label for="c-tr">ISP + USB + driver <output id="o-tr" for="c-tr"></output></label><input id="c-tr" type="range" min="1" max="60" step="0.5"></div>
+    <div class="field"><label for="c-dec">Decode / convert <output id="o-dec" for="c-dec"></output></label><input id="c-dec" type="range" min="0" max="10" step="0.1"></div>
+    <div class="field"><label for="c-inf">Inference, hand + pose <output id="o-inf" for="c-inf"></output></label><input id="c-inf" type="range" min="0.2" max="30" step="0.1"></div>
+    <div class="field"><label for="c-lg">Filters, logic, SendInput <output id="o-lg" for="c-lg"></output></label><input id="c-lg" type="range" min="0" max="5" step="0.1"></div>
+    <div class="field"><label for="c-hz">Display refresh</label><select id="c-hz"><option value="60">60 Hz (external 1080p)</option><option value="120">120 Hz</option><option value="144">144 Hz</option><option value="165">165 Hz</option><option value="240">240 Hz (internal panel)</option></select></div>
+    <div class="field"><label for="c-pred">Motion prediction <output id="o-pred" for="c-pred"></output></label><input id="c-pred" type="range" min="0" max="20" step="0.5"></div>
+  </div>
+  <div class="result" aria-live="polite">
+    <div><div class="k">Raw glass-to-cursor</div><div class="big" id="r-raw">–</div></div>
+    <div><div class="k">As felt, with prediction</div><div class="big" id="r-pred">–</div></div>
+    <div><div class="k">Share caused by the camera</div><div class="big" id="r-cam">–</div></div>
+    <div><div class="k">Motion blur at 1.5 m/s</div><div class="big" id="r-blur">–</div></div>
+  </div>
+  <div class="bar" id="r-bar" role="img" aria-label="Latency breakdown bar"></div>
+  <div class="calc-legend" id="r-legend"></div>
+  <p class="note" id="r-note">Model: waiting = ½ frame period; exposure counted at its centre; rolling readout counted at the average row; display = next vblank + scanout ≈ one refresh period with a hardware cursor. Blur assumes a hand 60 cm from a 70° camera, imaged 640 px wide. Prediction can hide smooth motion, never sudden starts or stops.</p>
+</div>
+
+<div class="two">
+  <div class="callout warn"><p><b>Why GPU speed barely matters for the cursor.</b> At 30 fps the gap between two frames (33 ms) is about 20 times the inference time. Halving inference saves ≈ 1 ms; doubling the frame rate saves ≈ 15–25 ms. The first purchase for cursor-grade latency is a faster camera, not a faster GPU.</p></div>
+  <div class="callout good"><p><b>Where the RTX does matter.</b> It makes <b>robustness</b> cheap: full-size landmark models, both hands, pose on every frame, and a spare 12× headroom for 120–240 fps cameras. The CPU path costs a few milliseconds per frame (est.) and cannot keep up with a 120 fps camera together with pose.</p></div>
+</div>
+<div class="callout"><p><b>Blur, in numbers (est.).</b> At 60 cm a 70° webcam sees about 84 cm of width. A hand moving at 1.5 m/s with a 16 ms exposure smears 2.4 cm, about 55 px at 1080p. With a 2 ms exposure it smears 3 mm, about 7 px. Short exposure needs light: a small 850 nm IR illuminator with a mono global-shutter camera solves both problems without dazzling you.</p></div>
+</section>
+
+<section id="landscape">
+<h2><span class="sec-num">05</span>What already exists, and whether it helps</h2>
+<p>The search covered commercial apps, accessibility tools, dedicated hardware, open-source projects, research models and datasets. Verdict tags: <span class="tag good">reuse</span> means take it into Handiy; <span class="tag info">reference</span> means learn from it; <span class="tag warn">caution</span> means a licence or technical trap; <span class="tag bad">blocker</span> means it cannot serve as the foundation.</p>
+
+<h3>Complete or near-complete products</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Product</th><th>Body part / sensor</th><th>Platform</th><th>What it does</th><th>Trainable gestures?</th><th>Licence</th><th>Verdict for Handiy</th></tr></thead>
+<tbody>
+<tr><td><b>UCL MotionInput 3.x</b></td><td>Hands, face, eyes, body · webcam</td><td>Windows; Microsoft Store (UK, US, CA) and UCL XIP</td><td>In-air mouse: index pinch = left click, middle pinch = right click, fist = double click; in-air multitouch; facial navigation; JSON configuration</td><td>No, fixed gesture set</td><td>Free, non-commercial</td><td><span class="tag info">reference</span> The closest complete webcam mouse. Install it as the UX baseline; it does not target GPU latency or custom training.</td></tr>
+<tr><td><b>HandX</b></td><td>Hand skeleton · webcam</td><td>Windows (Microsoft Store)</td><td>Cursor, clicks, scrolling, volume control</td><td>Not stated</td><td>Commercial</td><td><span class="tag info">reference</span> Closed source. Benchmark it against your latency rig.</td></tr>
+<tr><td><b>Virtual Touch Screen 2</b></td><td>Hand · webcam</td><td>Windows (Steam)</td><td>Touch emulation with pinch-to-click</td><td>No</td><td>Commercial</td><td><span class="tag info">reference</span> UX ideas only.</td></tr>
+<tr><td><b>Pawvis</b>, <b>HandMouse Pro</b>, <b>GestureOS</b></td><td>Hand · webcam</td><td>Windows (indie)</td><td>Touchless cursor; Pawvis claims custom gesture bindings and window management</td><td>Pawvis claims so</td><td>Paid / indie</td><td><span class="tag info">reference</span> Check claims hands-on.</td></tr>
+<tr><td><b>Google Project Gameface</b></td><td>Head + 52 facial blendshapes · webcam</td><td>Windows app (Python 3.9, <code>run_app.exe</code>); Android version 2024</td><td>Cursor by head movement; clicks and keys by expressions (PyAutoGUI / PyDirectInput)</td><td>Per-expression thresholds</td><td>Open source (see repository)</td><td><span class="tag info">reference</span> Excellent threshold UX and PyInstaller packaging; different body part.</td></tr>
+<tr><td><b>Camera Mouse</b>, <b>Enable Viacam</b></td><td>Head · webcam</td><td>Windows</td><td>Head-tracking mouse with dwell click</td><td>No</td><td>Free</td><td><span class="tag info">reference</span> Proven dwell-click design for accessibility.</td></tr>
+<tr><td><b>Ultraleap TouchFree</b> + Leap Motion Controller 2</td><td>Hands · stereo infrared camera</td><td>Windows only</td><td>Touchless cursor; "Air Push" selection with visual feedback; Unity and Web tooling</td><td>No</td><td>Proprietary</td><td><span class="tag warn">caution</span> The ready-made route if extra hardware is acceptable. Kiosk-oriented; hands only; needs Ultraleap cameras.</td></tr>
+<tr><td><b>Windows Eye Control</b>, <b>Voice Access</b>, <b>Talon</b></td><td>Eyes (Tobii) / voice</td><td>Windows</td><td>Built-in and third-party hands-free control</td><td>Talon: scripts</td><td>Mixed</td><td><span class="tag info">reference</span> Complementary, not a replacement.</td></tr>
+<tr><td><b>NPointer</b> (Neurotechnology)</td><td>Hand, head, voice · webcam</td><td>Windows</td><td>Early webcam gesture mouse</td><td>No</td><td>Freeware</td><td><span class="tag info">reference</span> Historical.</td></tr>
+</tbody></table></div>
+
+<h3>Open-source building blocks</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Project</th><th>What it gives you</th><th>Licence</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td><b>MediaPipe Hand Landmarker</b> and <b>Gesture Recognizer</b></td><td>Palm detector + 21 hand landmarks + handedness; 7 canned gestures (Open_Palm, Closed_Fist, Pointing_Up, Thumb_Up, Thumb_Down, Victory, ILoveYou); custom gestures through <b>Model Maker</b> (folder per label plus a required <code>none</code> folder)</td><td>Apache-2.0</td><td><span class="tag good">reuse</span> The primary hand models, converted to ONNX → TensorRT. In Python on Windows, MediaPipe runs on the CPU only; its GPU delegate targets Linux, macOS and mobile.</td></tr>
+<tr><td><b>hand-gesture-recognition-using-mediapipe</b> (Kazuhito Takahashi; English fork by kinivi)</td><td>Keypoint MLP for static gestures + point-history classifier for motion gestures, with in-app sample recording</td><td>Apache-2.0</td><td><span class="tag good">reuse</span> The blueprint for "gestures you teach it".</td></tr>
+<tr><td><b>PINTO model zoo</b> / <b>hand-gesture-recognition-using-onnx</b></td><td>MediaPipe palm and landmark models already converted to ONNX</td><td>Per model</td><td><span class="tag good">reuse</span> Shortcut to TensorRT engines.</td></tr>
+<tr><td><b>HaGRID / HaGRIDv2</b> + <b>ai-forever/dynamic_gestures</b></td><td>1,086,158 Full HD images, 33 gestures + no_gesture; dynamic gestures (swipes, drag, zoom) recognised by a model trained only on static images</td><td>Modified CC-BY 4.0 (read the terms)</td><td><span class="tag good">reuse</span> Data for pre-training, hard negatives and dynamic logic.</td></tr>
+<tr><td><b>rtmlib</b> (RTMPose, RTMW, DWPose)</td><td>21-point hand and 133-point whole-body models through ONNX Runtime, OpenVINO or TensorRT, without mmcv/mmpose</td><td>Apache-2.0</td><td><span class="tag good">reuse</span> High-accuracy alternative and offline auto-labeller (RTMW-l reaches 70.2 mAP on COCO-WholeBody).</td></tr>
+<tr><td><b>Ultralytics YOLO26 / YOLO11 pose</b> + hand-keypoints dataset</td><td>One-stage multi-hand pose; dataset of 26,768 images × 21 keypoints; no official pretrained hand weights, so fine-tune from <code>yolo26n-pose</code></td><td>AGPL-3.0 or paid Enterprise</td><td><span class="tag warn">caution</span> Technically excellent; AGPL obliges you to publish the whole program if you distribute it.</td></tr>
+<tr><td><b>WiLoR</b> (CVPR 2025) / <b>HaMeR</b></td><td>Fast hand detector (45× faster than prior detectors) + transformer 3D MANO hand mesh</td><td>Code licence + MANO model licence</td><td><span class="tag warn">caution</span> Offline 3D labelling only; too heavy and licence-bound for the hot path.</td></tr>
+<tr><td><b>depthai_hand_tracker</b> (geaxgx) / OpenCV "Universal Hand Control"</td><td>MediaPipe hands running inside OAK cameras plus a gesture → action framework</td><td>Open source</td><td><span class="tag info">reference</span> Proof that inference can live in the camera.</td></tr>
+<tr><td><b>cvzone</b>, "AI Virtual Mouse" tutorials, <b>pycaw</b>, many GitHub projects (Gesture Control System, LyraPointer…)</td><td>MediaPipe + PyAutoGUI + pycaw volume + brightness demos</td><td>Mostly MIT</td><td><span class="tag info">reference</span> Good to learn from, including their latency mistakes (below).</td></tr>
+<tr><td><b>Intel XRDrive gesture sample</b>, <b>OpenVINO</b></td><td>Hand-gesture pipeline on Intel CPU, Arc iGPU and NPU</td><td>Apache-2.0</td><td><span class="tag info">reference</span> The battery-mode path on this laptop.</td></tr>
+</tbody></table></div>
+
+<div class="callout bad">
+<p><b>Why the typical GitHub "virtual mouse" feels laggy.</b> The same five mistakes appear again and again:</p>
+<ol>
+  <li><code>pyautogui</code> sleeps <b>0.1 s after every call</b> by default (<code>pyautogui.PAUSE = 0.1</code>). Each cursor move adds 100 ms.</li>
+  <li><code>cv2.VideoCapture.read()</code> returns frames from an internal queue, so the code often processes a stale frame.</li>
+  <li><code>cv2.imshow</code> + <code>waitKey</code> sit in the hot loop and add a frame or more.</li>
+  <li>Jitter is "fixed" with a heavy moving average or a smoothing divisor, which adds 3–5 frames of lag (100–170 ms at 30 fps).</li>
+  <li>Full 1080p frames are processed on the CPU, and Python's garbage collector pauses at random.</li>
+</ol>
+</div>
+
+<h3>Datasets worth knowing</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Dataset</th><th>Content</th><th>Use in Handiy</th></tr></thead>
+<tbody>
+<tr><td><b>HaGRID</b> → <b>HaGRIDv2</b></td><td>≈ 0.55 M → 1.09 M Full HD images; 18 → 33 gesture classes + no_gesture; two-handed gestures such as "timeout"</td><td>Static pre-training; the "timeout" T-sign is a natural kill gesture; hard negatives</td></tr>
+<tr><td><b>Ultralytics hand-keypoints</b></td><td>26,768 images, 21 keypoints each (labels produced with MediaPipe)</td><td>Fine-tuning a one-stage detector</td></tr>
+<tr><td><b>Jester</b></td><td>≈ 148 k short videos, 27 dynamic hand gestures</td><td>Dynamic gesture pre-training (check licence)</td></tr>
+<tr><td><b>IPN Hand</b></td><td>Continuous gestures for touchless screen control, 13 classes (arXiv 2005.02134)</td><td>Closest dataset to "controlling a PC"</td></tr>
+<tr><td><b>EgoGesture</b>, <b>NVGesture</b></td><td>RGB-D dynamic gestures, 83 and 25 classes</td><td>Benchmarks for the dynamic model</td></tr>
+<tr><td><b>FreiHAND</b>, <b>InterHand2.6M</b></td><td>3D hand pose and shape; two interacting hands</td><td>Only if you add 3D or two-hand gestures</td></tr>
+<tr><td><b>COCO-WholeBody</b></td><td>133 keypoints: body, feet, face, hands</td><td>Pose + hands in one model (RTMW)</td></tr>
+</tbody></table></div>
+
+<div class="callout good"><p><b>Bottom line of the research.</b> Nothing ready-made meets the brief; several things are worth reusing. Take the hand models from <b>MediaPipe</b> (or RTMPose), the training idea from <b>Kazuhito's</b> project, data and dynamic logic from <b>HaGRIDv2</b>, run them through <b>TensorRT</b>, and build the latency-critical shell yourself. <b>Licence traps:</b> Ultralytics (AGPL), MANO/WiLoR, OpenPose (non-commercial), UCL MotionInput (non-commercial).</p></div>
+</section>
+
+<section id="blocks">
+<h2><span class="sec-num">06</span>Building blocks compared</h2>
+<p>Seven decisions, one table each. The ★ row is the recommendation for this laptop; the other rows are the fallbacks used by the hardware tiers in section 16.</p>
+
+<h3>6.1 Hand and body models</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Model</th><th>Output</th><th>Input</th><th>RTX 4070L, FP16 (est.)</th><th>Strengths</th><th>Weaknesses</th><th>Licence</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><b>★ MediaPipe palm detector + hand landmark (full)</b></td><td>21 landmarks with relative depth, handedness, presence score</td><td>192² / 224²</td><td class="num">≈ 0.2–0.5 ms each</td><td>Tiny, proven, designed for ROI tracking</td><td>Loses blurred or partly hidden hands</td><td>Apache-2.0</td><td>Primary hand tracker (ONNX → TensorRT)</td></tr>
+<tr><td><b>★ RTMPose-t/s body (or MediaPipe Pose lite)</b></td><td>17 / 33 body keypoints</td><td>256×192</td><td class="num">≈ 0.5–1 ms</td><td>Robust to blur; wrist, elbow, shoulders, nose</td><td>Needs a person box (one detector call when lost)</td><td>Apache-2.0</td><td>"Hand raised" and arm gestures</td></tr>
+<tr><td>RTMPose hand (rtmlib)</td><td>21 hand keypoints (SimCC)</td><td>256×256</td><td class="num">≈ 0.5–1.5 ms</td><td>Accurate, ONNX/TensorRT ready</td><td>Needs a hand detector</td><td>Apache-2.0</td><td>Alternative tracker; A/B against MediaPipe</td></tr>
+<tr><td>RTMW-m / RTMW-l</td><td>133 whole-body keypoints</td><td>256×192 / 384×288</td><td class="num">≈ 3–8 ms</td><td>Hands, face and body in one model</td><td>Heavier, lower hand resolution</td><td>Apache-2.0</td><td>Offline auto-labeller in the Studio</td></tr>
+<tr><td>YOLO26n-pose fine-tuned on hand-keypoints</td><td>Boxes + 21 keypoints for every hand, NMS-free</td><td>320–640</td><td class="num">≈ 1–2 ms</td><td>One stage, many hands, strong detector</td><td>No official hand weights; AGPL</td><td>AGPL-3.0 / Enterprise</td><td>Only with a commercial licence or an open-source Handiy</td></tr>
+<tr><td>HaGRID detectors (ai-forever)</td><td>Hand box + static gesture class</td><td>≈ 320</td><td class="num">≈ 1 ms</td><td>Trained on 1 M+ images, 33 gestures</td><td>No landmarks</td><td>Dataset terms</td><td>Bootstrap classes and negatives</td></tr>
+<tr><td>WiLoR / HaMeR</td><td>3D MANO hand mesh</td><td>ViT crops</td><td class="num">≈ 10–40 ms</td><td>Best 3D quality</td><td>Heavy; MANO licence</td><td>Non-commercial parts</td><td>Offline research only</td></tr>
+<tr><td>Ultraleap Gemini (LMC2)</td><td>Full 3D hand skeleton</td><td>Stereo IR</td><td class="num">on device</td><td>Works in the dark, very stable</td><td>Extra hardware, hands only</td><td>Proprietary</td><td>Hardware option</td></tr>
+</tbody></table></div>
+
+<h3>6.2 Inference runtimes on this laptop</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Runtime</th><th>Device</th><th>Latency for tiny networks</th><th>Engine build</th><th>Notes</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td><b>★ TensorRT 10, native C++</b></td><td>RTX 4070</td><td>Best; CUDA graphs; FP16 / INT8 / FP8</td><td>Offline, per GPU + TensorRT version</td><td>Full control of streams, memory and priorities (<code>enqueueV3</code>)</td><td><span class="tag good">hot path</span></td></tr>
+<tr><td><b>★ TensorRT for RTX</b> (standalone, ONNX Runtime EP, or Windows ML)</td><td>RTX (Ampere and newer)</td><td>Near native</td><td>Just-in-time on the user's PC, portable across RTX GPUs</td><td>Windows ML uses it by default on RTX; Microsoft ships it as a Windows Update component (for example KB5121777, v2.2607.0.0, for 24H2/25H2)</td><td><span class="tag good">distribution</span></td></tr>
+<tr><td>ONNX Runtime + TensorRT EP</td><td>RTX</td><td>Near native</td><td>Engine cache on disk</td><td>Easiest from Python, C# or Rust</td><td><span class="tag info">Studio, prototype</span></td></tr>
+<tr><td>ONNX Runtime + CUDA EP</td><td>RTX</td><td>Good</td><td>None</td><td>No engine build; slower than TensorRT for tiny networks</td><td><span class="tag info">fallback</span></td></tr>
+<tr><td>DirectML / Windows ML (generic)</td><td>Any DX12 GPU, including Arc</td><td>Good</td><td>None</td><td>Vendor-neutral</td><td><span class="tag info">tier B</span></td></tr>
+<tr><td>OpenVINO 2026</td><td>CPU, Arc iGPU, AI Boost NPU</td><td>Good on iGPU; NPU good for small fixed-shape CNNs</td><td>On-device compile</td><td>Lets the RTX sleep on battery; ideal for the idle "is there a hand?" watcher</td><td><span class="tag good">battery tier</span></td></tr>
+<tr><td>MediaPipe Tasks (LiteRT, XNNPACK)</td><td>CPU</td><td>A few ms per frame (est.)</td><td>None</td><td>Fastest way to a working prototype; no Windows GPU delegate in Python</td><td><span class="tag info">phase 1, tier C</span></td></tr>
+</tbody></table></div>
+
+<h3>6.3 Camera capture APIs</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>API</th><th>Stale-frame handling</th><th>Sharing with Teams, Zoom…</th><th>IR stream</th><th>Effort</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td><b>★ WinRT MediaCapture + MediaFrameReader</b> (C++/WinRT)</td><td><code>AcquisitionMode = Realtime</code> drops frames the reader has not consumed; frames carry <code>SystemRelativeTime</code> (QPC)</td><td><code>SharingMode = SharedReadOnly</code>; Windows 11 also has the "multi-app camera" option</td><td>Yes, <code>MediaFrameSourceKind.Infrared</code> sources where the driver exposes them</td><td>Medium</td><td><span class="tag good">recommended</span></td></tr>
+<tr><td>Media Foundation Source Reader (async)</td><td>Your callback decides; set <code>MF_LOW_LATENCY</code></td><td>Exclusive by default</td><td>Via sensor groups</td><td>Medium</td><td><span class="tag info">alternative</span></td></tr>
+<tr><td>OpenCV <code>VideoCapture</code> (MSMF / DSHOW)</td><td>Internal queue; buffer-size control not honoured by every backend</td><td>No</td><td>No</td><td>Trivial</td><td><span class="tag warn">prototype only</span>, always with a grabber thread</td></tr>
+<tr><td>DirectShow</td><td>Manual</td><td>No</td><td>Rarely</td><td>High, legacy</td><td>Only if a camera hides a mode elsewhere</td></tr>
+<tr><td>Vendor SDKs (Ultraleap, DepthAI, RealSense)</td><td>Own pipelines</td><td>Own</td><td>Native</td><td>Medium</td><td>For dedicated hardware</td></tr>
+</tbody></table></div>
+
+<h3>6.4 Windows control APIs (the effectors)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Action</th><th>API</th><th>Gotchas</th></tr></thead>
+<tbody>
+<tr><td><b>Move cursor</b></td><td><code>SendInput</code> with <code>MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK</code> (0–65535 across all monitors), or relative <code>MOVE</code></td><td>Absolute moves skip pointer acceleration. The process must be per-monitor DPI aware (v2). Injected input carries the <code>LLMHF_INJECTED</code> flag, and some games and anti-cheat systems ignore it.</td></tr>
+<tr><td><b>Clicks, drag, scroll</b></td><td><code>SendInput</code>: <code>LEFTDOWN/UP</code>, <code>RIGHTDOWN/UP</code>, <code>WHEEL</code> / <code>HWHEEL</code> (120 = one notch)</td><td>Send fractional wheel deltas (&lt; 120) for smooth scrolling in apps that support it; accumulate remainders.</td></tr>
+<tr><td><b>Keys and shortcuts</b></td><td><code>SendInput</code> with virtual keys or <code>KEYEVENTF_UNICODE</code></td><td>Cannot produce Ctrl+Alt+Del. Elevated targets need uiAccess (section 12).</td></tr>
+<tr><td><b>System volume</b></td><td>Core Audio <code>IAudioEndpointVolume</code>: <code>SetMasterVolumeLevelScalar</code>, <code>VolumeStepUp</code>, <code>SetMute</code></td><td>Pass your own event-context GUID so your callback ignores its own changes. Watch default-device changes with <code>IMMNotificationClient</code>. Sending <code>VK_VOLUME_UP</code> instead shows the native flyout, in 2 % steps.</td></tr>
+<tr><td><b>Per-app volume</b></td><td><code>IAudioSessionManager2</code> → <code>ISimpleAudioVolume</code></td><td>"Turn the music down, not the call."</td></tr>
+<tr><td><b>Media</b></td><td><code>GlobalSystemMediaTransportControlsSessionManager</code> (play/pause, next, previous) or <code>VK_MEDIA_*</code> keys</td><td>The manager knows which app is playing.</td></tr>
+<tr><td><b>Brightness</b></td><td>Internal panel: WMI <code>WmiMonitorBrightnessMethods.WmiSetBrightness</code>. External: DXVA2 <code>SetMonitorBrightness</code> (DDC/CI)</td><td>DDC/CI is slow (tens of ms, est.); run it on a worker and rate-limit it.</td></tr>
+<tr><td><b>Windows and desktops</b></td><td><code>SetWindowPos</code>, <code>ShowWindow</code>; Win+Ctrl+←/→ for virtual desktops; Win+Tab</td><td>Use the foreground window's process to pick a per-app profile.</td></tr>
+<tr><td><b>Lock, screenshot, launch</b></td><td><code>LockWorkStation</code>, Win+Shift+S, <code>ShellExecuteEx</code></td><td>Keep "launch arbitrary program" off by default.</td></tr>
+<tr><td><b>Feedback overlay</b></td><td>Layered top-most window: <code>WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW</code>, drawn with Direct2D / DirectComposition</td><td>Must never take focus or swallow clicks.</td></tr>
+</tbody></table></div>
+
+<h3>6.5 Smoothing filters</h3>
+<div class="tablewrap"><table class="narrow">
+<thead><tr><th>Filter</th><th>Added lag</th><th>Jitter at rest</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>Moving average (N frames)</td><td class="num">(N−1)/2 frames</td><td>OK</td><td><span class="tag bad">avoid</span> the cause of "floaty" cursors</td></tr>
+<tr><td>Exponential (fixed α)</td><td class="num">(1−α)/α frames</td><td>OK</td><td>Only for slow features (hand size, lighting)</td></tr>
+<tr><td><b>★ One Euro filter</b></td><td class="num">≈ 0 when moving fast</td><td>Excellent</td><td><span class="tag good">pointer + landmarks</span> two parameters: <code>min_cutoff</code>, <code>beta</code></td></tr>
+<tr><td><b>★ Kalman, constant velocity</b></td><td class="num">≈ 0, plus prediction</td><td>Good</td><td><span class="tag good">prediction + gap filling</span> bridges dropped frames</td></tr>
+<tr><td>Savitzky–Golay / median</td><td class="num">needs future samples</td><td>Excellent</td><td>Offline analysis only</td></tr>
+<tr><td><b>★ Hysteresis + N-of-M voting</b></td><td class="num">N frames</td><td>n/a</td><td><span class="tag good">discrete gestures</span></td></tr>
+</tbody></table></div>
+
+<h3>6.6 Cameras</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>Camera</th><th>Mode</th><th>Shutter</th><th>Glass-to-cursor (est.)</th><th>Pros</th><th>Cons</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td><b>Integrated IR Webcam</b> (this laptop)</td><td>1080p30 colour; IR stream for Windows Hello</td><td>Rolling</td><td class="num">55–90 ms</td><td>Free, always present</td><td>30 fps, blur under backlight, raised hands leave the frame</td><td><span class="tag info">v1</span> fine for volume and media gestures</td></tr>
+<tr><td>60 fps USB webcam (for example Logitech C922 at 720p60, Brio or Elgato Facecam at 1080p60)</td><td>60 fps</td><td>Rolling</td><td class="num">30–40 ms</td><td>Cheap, colour, plug and play</td><td>Still rolling shutter</td><td><span class="tag good">good upgrade</span></td></tr>
+<tr><td><b>★ Global-shutter USB 3 camera</b> (OV9281 class, 1280×800 at about 120 fps, mono, M12 lens) + 850 nm IR light</td><td>120+ fps</td><td>Global</td><td class="num">15–22 ms</td><td>No skew, 1–2 ms exposure, works in the dark</td><td>Mono; models trained on colour need a short fine-tune (est.)</td><td><span class="tag good">cursor-grade</span></td></tr>
+<tr><td>Leap Motion Controller 2</td><td>Stereo IR, hand SDK</td><td>Global</td><td class="num">low</td><td>3D, robust</td><td>Proprietary; desk zone only; no body pose</td><td>Turnkey option</td></tr>
+<tr><td>Luxonis OAK-1 / OAK-D</td><td>Inference inside the camera</td><td>Varies</td><td class="num">moderate</td><td>Frees the PC; depth</td><td>Separate toolchain</td><td>Edge option</td></tr>
+<tr><td>Intel RealSense D405 / D435</td><td>Depth + colour</td><td>Global (depth)</td><td class="num">moderate</td><td>Depth makes "push" and pinch reliable</td><td>Bulk, SDK</td><td>Optional</td></tr>
+</tbody></table></div>
+
+<h3>6.7 Languages</h3>
+<div class="tablewrap"><table class="narrow">
+<thead><tr><th>Language</th><th>Pros</th><th>Cons</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><b>★ C++20</b></td><td>Native TensorRT, CUDA, WinRT and Win32; no garbage collector; lowest jitter</td><td>Most effort; memory safety is on you</td><td>Real-time core</td></tr>
+<tr><td>Rust</td><td>Memory safety; <code>windows</code> crate; <code>ort</code> crate with TensorRT EP</td><td>Native TensorRT bindings less mature</td><td>Alternative core</td></tr>
+<tr><td>C# / .NET</td><td>Easy WinRT, services, WinUI tray</td><td>GC pauses (use <code>SustainedLowLatency</code>)</td><td>Service, tray, Studio UI</td></tr>
+<tr><td>Python</td><td>MediaPipe, PyTorch, fastest iteration</td><td>GIL, GC, PyAutoGUI pitfalls</td><td>Phase 1 prototype + training</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="architecture">
+<h2><span class="sec-num">07</span>Architecture</h2>
+<p>Three views: which processes exist and where they live, how one frame becomes a cursor move, and which thread does what in time.</p>
+
+<h3>7.1 Processes and sessions</h3>
+<figure class="diagram">
+<svg viewBox="0 0 1000 500" role="img" aria-label="Process and session architecture">
+  <rect class="zone" x="188" y="10" width="620" height="352" rx="16"/>
+  <text x="204" y="352" class="t-xs">INTERACTIVE USER SESSION · Medium integrity + uiAccess</text>
+  <rect class="zone" x="188" y="376" width="620" height="112" rx="16"/>
+  <text x="204" y="480" class="t-xs">SESSION 0 · services · LocalSystem</text>
+
+  <rect class="cap" x="16" y="176" width="150" height="104" rx="12"/>
+  <text x="91" y="206" text-anchor="middle" class="t-b">Camera</text>
+  <text x="91" y="228" text-anchor="middle" class="t-s">Integrated IR Webcam</text>
+  <text x="91" y="246" text-anchor="middle" class="t-s">or 120 fps global</text>
+  <text x="91" y="264" text-anchor="middle" class="t-s">shutter (USB 3)</text>
+
+  <rect class="logic" x="210" y="34" width="280" height="172" rx="12"/>
+  <text x="350" y="64" text-anchor="middle" class="t-b">HandiyAgent.exe</text>
+  <text x="350" y="88" text-anchor="middle" class="t-s">real-time core · C++20</text>
+  <text x="350" y="108" text-anchor="middle" class="t-s">capture → track → classify → act</text>
+  <text x="350" y="128" text-anchor="middle" class="t-s">240 Hz pointer pump</text>
+  <text x="350" y="148" text-anchor="middle" class="t-s">profiles · hot-reload · local pipe</text>
+  <text x="350" y="168" text-anchor="middle" class="t-s">never stores frames</text>
+  <text x="350" y="188" text-anchor="middle" class="t-s">uiAccess = true (signed)</text>
+
+  <rect class="gpu" x="210" y="236" width="280" height="104" rx="12"/>
+  <text x="350" y="264" text-anchor="middle" class="t-b">RTX 4070 Laptop GPU</text>
+  <text x="350" y="286" text-anchor="middle" class="t-s">TensorRT FP16 · CUDA graphs</text>
+  <text x="350" y="304" text-anchor="middle" class="t-s">hands ×2 + pose ≈ 1–2 ms (est.)</text>
+  <text x="350" y="322" text-anchor="middle" class="t-s">≈ 300–600 MB VRAM</text>
+  <line class="edge hot" x1="320" y1="206" x2="320" y2="233" marker-end="url(#ahh)"/>
+  <line class="edge" x1="380" y1="236" x2="380" y2="209" marker-end="url(#ah)"/>
+  <text x="314" y="225" text-anchor="end" class="t-xs">frames</text>
+  <text x="386" y="225" class="t-xs">landmarks</text>
+
+  <rect class="fb" x="516" y="34" width="270" height="64" rx="12"/>
+  <text x="651" y="60" text-anchor="middle" class="t-b">Overlay + tray</text>
+  <text x="651" y="82" text-anchor="middle" class="t-s">OSD · hand state · kill switch</text>
+  <rect class="fb" x="516" y="112" width="270" height="64" rx="12"/>
+  <text x="651" y="138" text-anchor="middle" class="t-b">HandiyStudio</text>
+  <text x="651" y="160" text-anchor="middle" class="t-s">record · train · bind · test</text>
+  <rect class="os" x="516" y="196" width="270" height="144" rx="12"/>
+  <text x="651" y="222" text-anchor="middle" class="t-b">Windows effectors</text>
+  <text x="651" y="246" text-anchor="middle" class="t-s">SendInput: cursor · clicks · keys</text>
+  <text x="651" y="266" text-anchor="middle" class="t-s">Core Audio: volume · mute</text>
+  <text x="651" y="286" text-anchor="middle" class="t-s">GSMTC: play · pause · next</text>
+  <text x="651" y="306" text-anchor="middle" class="t-s">WMI / DDC-CI: brightness</text>
+  <text x="651" y="326" text-anchor="middle" class="t-s">Win32: windows · desktops</text>
+
+  <rect class="os" x="828" y="196" width="156" height="144" rx="12"/>
+  <text x="906" y="222" text-anchor="middle" class="t-b">Displays</text>
+  <text x="906" y="246" text-anchor="middle" class="t-s">internal 2560×1600</text>
+  <text x="906" y="264" text-anchor="middle" class="t-s">240 Hz · Arc iGPU</text>
+  <text x="906" y="290" text-anchor="middle" class="t-s">external 1080p</text>
+  <text x="906" y="308" text-anchor="middle" class="t-s">60 Hz · RTX</text>
+  <rect class="plain" x="828" y="34" width="156" height="120" rx="12"/>
+  <text x="906" y="62" text-anchor="middle" class="t-b">Tlamatini</text>
+  <text x="906" y="84" text-anchor="middle" class="t-s">optional bridge</text>
+  <text x="906" y="104" text-anchor="middle" class="t-s">gesture → flow</text>
+  <text x="906" y="124" text-anchor="middle" class="t-s">gesture → mic</text>
+
+  <rect class="svc" x="210" y="392" width="280" height="60" rx="12"/>
+  <text x="350" y="418" text-anchor="middle" class="t-b">HandiySvc (Windows service)</text>
+  <text x="350" y="438" text-anchor="middle" class="t-s">launch · watchdog · update</text>
+  <rect class="plain" x="516" y="392" width="270" height="60" rx="12"/>
+  <text x="651" y="418" text-anchor="middle" class="t-b">%ProgramData%\Handiy</text>
+  <text x="651" y="438" text-anchor="middle" class="t-s">signed models · profiles · logs</text>
+
+  <path class="edge hot" d="M166 214 C 188 214, 186 120, 207 120" marker-end="url(#ahh)"/>
+  <line class="edge" x1="490" y1="66" x2="513" y2="66" marker-end="url(#ah)"/>
+  <line class="edge dash" x1="516" y1="144" x2="493" y2="144" marker-end="url(#ah)"/>
+  <path class="edge hot" d="M490 184 C 503 184, 502 250, 513 250" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="786" y1="268" x2="825" y2="268" marker-end="url(#ahh)"/>
+  <path class="edge dash" d="M350 34 V22 H906 V31" marker-end="url(#ah)"/>
+  <path class="edge dash" d="M210 422 H198 V176 H207" marker-end="url(#ah)"/>
+  <text x="182" y="330" text-anchor="end" class="t-xs">starts &amp;</text>
+  <text x="182" y="344" text-anchor="end" class="t-xs">restarts</text>
+</svg>
+<div class="legend"><span><i class="lg-cap"></i>capture</span><span><i class="lg-gpu"></i>GPU</span><span><i class="lg-logic"></i>decision logic</span><span><i class="lg-os"></i>Windows effects</span><span><i class="lg-fb"></i>user-facing</span><span><i class="lg-svc"></i>service</span></div>
+<figcaption>D1 · The service lives in Session 0 and only supervises. Everything that touches the camera, the GPU and the desktop runs in the user's session. Dashed arrows are control paths; solid teal arrows are the real-time path.</figcaption>
+</figure>
+<ul>
+  <li><b>HandiyAgent.exe</b> runs once per interactive user session, at medium integrity, with <code>uiAccess="true"</code> in its manifest. It owns the camera, the CUDA context, the overlay and the effectors.</li>
+  <li><b>HandiySvc</b> (LocalSystem, Automatic, delayed start) listens for session events, starts the agent in the active session, restarts it after a crash with back-off, and applies updates. It never touches frames.</li>
+  <li><b>HandiyStudio</b> is a separate process for recording and training. It talks to the agent over a named pipe whose ACL admits only SYSTEM and the signed-in user, and it can pause the live agent while it uses the camera.</li>
+  <li><b>Storage.</b> Signed, hash-checked models live in <code>%ProgramData%\Handiy\models</code>; per-user profiles and gesture samples (landmarks only, never images) in <code>%LOCALAPPDATA%\Handiy</code>.</li>
+</ul>
+
+<h3>7.2 One frame, end to end</h3>
+<figure class="diagram">
+<svg viewBox="0 0 1000 540" role="img" aria-label="Real-time pipeline from sensor to effectors">
+  <rect class="cap" x="16" y="24" width="220" height="76" rx="12"/>
+  <text x="126" y="52" text-anchor="middle" class="t-b">Sensor</text>
+  <text x="126" y="72" text-anchor="middle" class="t-s">exposure + readout</text>
+  <text x="126" y="90" text-anchor="middle" class="t-s">rolling 1080p30 · global 120</text>
+  <rect class="cap" x="266" y="24" width="220" height="76" rx="12"/>
+  <text x="376" y="52" text-anchor="middle" class="t-b">ISP · USB / MIPI · driver</text>
+  <text x="376" y="72" text-anchor="middle" class="t-s">NV12 · YUY2 · MJPEG · Y8</text>
+  <text x="376" y="90" text-anchor="middle" class="t-s">exposure and focus locked</text>
+  <rect class="cap" x="516" y="24" width="220" height="76" rx="12"/>
+  <text x="626" y="52" text-anchor="middle" class="t-b">WinRT MediaFrameReader</text>
+  <text x="626" y="72" text-anchor="middle" class="t-s">AcquisitionMode = Realtime</text>
+  <text x="626" y="90" text-anchor="middle" class="t-s">SharedReadOnly · QPC stamp</text>
+  <rect class="logic" x="766" y="24" width="218" height="76" rx="12"/>
+  <text x="875" y="52" text-anchor="middle" class="t-b">Latest-frame slot</text>
+  <text x="875" y="72" text-anchor="middle" class="t-s">triple buffer · drop stale</text>
+  <text x="875" y="90" text-anchor="middle" class="t-s">pinned host memory</text>
+  <line class="edge hot" x1="236" y1="62" x2="263" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="486" y1="62" x2="513" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="736" y1="62" x2="763" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="875" y1="100" x2="875" y2="133" marker-end="url(#ahh)"/>
+
+  <rect class="gpu" x="766" y="136" width="218" height="80" rx="12"/>
+  <text x="875" y="164" text-anchor="middle" class="t-b">H2D copy</text>
+  <text x="875" y="184" text-anchor="middle" class="t-s">cudaMemcpyAsync, pinned</text>
+  <text x="875" y="202" text-anchor="middle" class="t-s">≈ 0.05–0.3 ms (est.)</text>
+  <rect class="gpu" x="516" y="136" width="220" height="80" rx="12"/>
+  <text x="626" y="164" text-anchor="middle" class="t-b">Fused CUDA kernel</text>
+  <text x="626" y="184" text-anchor="middle" class="t-s">NV12→RGB · ROI warp</text>
+  <text x="626" y="202" text-anchor="middle" class="t-s">normalise · FP16 · CHW</text>
+  <rect class="gpu" x="266" y="136" width="220" height="80" rx="12"/>
+  <text x="376" y="164" text-anchor="middle" class="t-b">TensorRT: hand landmarks</text>
+  <text x="376" y="184" text-anchor="middle" class="t-s">batch 2 · 224² · ≈ 0.3–0.6 ms</text>
+  <text x="376" y="202" text-anchor="middle" class="t-s">21 pts + presence + handedness</text>
+  <rect class="gpu" x="16" y="136" width="220" height="80" rx="12"/>
+  <text x="126" y="164" text-anchor="middle" class="t-b">TensorRT: pose</text>
+  <text x="126" y="184" text-anchor="middle" class="t-s">every 2nd frame (≥ 30 Hz)</text>
+  <text x="126" y="202" text-anchor="middle" class="t-s">nose · shoulders · elbows · wrists</text>
+  <line class="edge hot" x1="766" y1="176" x2="739" y2="176" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="516" y1="176" x2="489" y2="176" marker-end="url(#ahh)"/>
+  <path class="edge" d="M560 136 V120 H126 V133" marker-end="url(#ah)"/>
+  <text x="340" y="116" text-anchor="middle" class="t-xs">downscaled full frame → pose</text>
+
+  <rect class="gpu dashb" x="516" y="244" width="220" height="56" rx="12"/>
+  <text x="626" y="267" text-anchor="middle" class="t-b">TensorRT: palm detector</text>
+  <text x="626" y="287" text-anchor="middle" class="t-s">only when a hand is lost</text>
+  <line class="edge dash" x1="680" y1="216" x2="680" y2="241" marker-end="url(#ah)"/>
+  <text x="686" y="234" class="t-xs">re-acquire</text>
+  <path class="edge dash" d="M516 272 H420 V219" marker-end="url(#ah)"/>
+  <text x="428" y="266" class="t-xs">new ROI</text>
+
+  <rect class="gpu" x="16" y="330" width="220" height="76" rx="12"/>
+  <text x="126" y="358" text-anchor="middle" class="t-b">Copy back ≈ 1 KB</text>
+  <text x="126" y="378" text-anchor="middle" class="t-s">2×21 + 17 points</text>
+  <text x="126" y="396" text-anchor="middle" class="t-s">one event sync</text>
+  <rect class="logic" x="266" y="330" width="220" height="76" rx="12"/>
+  <text x="376" y="358" text-anchor="middle" class="t-b">Features + filters</text>
+  <text x="376" y="378" text-anchor="middle" class="t-s">normalise · One Euro · Kalman</text>
+  <text x="376" y="396" text-anchor="middle" class="t-s">velocity · pose geometry</text>
+  <rect class="logic" x="516" y="330" width="220" height="76" rx="12"/>
+  <text x="626" y="358" text-anchor="middle" class="t-b">Classifiers</text>
+  <text x="626" y="378" text-anchor="middle" class="t-s">static MLP (µs, on CPU)</text>
+  <text x="626" y="396" text-anchor="middle" class="t-s">dynamic TCN · $Q templates</text>
+  <rect class="logic" x="766" y="330" width="218" height="76" rx="12"/>
+  <text x="875" y="358" text-anchor="middle" class="t-b">Intent state machine</text>
+  <text x="875" y="378" text-anchor="middle" class="t-s">engage · hysteresis · cooldown</text>
+  <text x="875" y="396" text-anchor="middle" class="t-s">per-app profiles</text>
+  <line class="edge hot" x1="100" y1="216" x2="100" y2="327" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M300 216 V312 H150 V327" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="236" y1="368" x2="263" y2="368" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="486" y1="368" x2="513" y2="368" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="736" y1="368" x2="763" y2="368" marker-end="url(#ahh)"/>
+
+  <rect class="os" x="16" y="452" width="300" height="72" rx="12"/>
+  <text x="166" y="478" text-anchor="middle" class="t-b">Pointer pump @ display Hz</text>
+  <text x="166" y="498" text-anchor="middle" class="t-s">high-res timer · predict ≤ 1 frame</text>
+  <text x="166" y="514" text-anchor="middle" class="t-s">SendInput, absolute, virtual desk</text>
+  <rect class="os" x="350" y="452" width="300" height="72" rx="12"/>
+  <text x="500" y="478" text-anchor="middle" class="t-b">Action workers</text>
+  <text x="500" y="498" text-anchor="middle" class="t-s">Core Audio · GSMTC · WMI / DDC</text>
+  <text x="500" y="514" text-anchor="middle" class="t-s">keys · windows · scripts</text>
+  <rect class="fb" x="684" y="452" width="300" height="72" rx="12"/>
+  <text x="834" y="478" text-anchor="middle" class="t-b">Feedback</text>
+  <text x="834" y="498" text-anchor="middle" class="t-s">overlay OSD · earcons · tray</text>
+  <text x="834" y="514" text-anchor="middle" class="t-s">never steals focus</text>
+  <line class="edge hot" x1="860" y1="406" x2="860" y2="449" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M820 406 V428 H500 V449" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M790 406 V420 H166 V449" marker-end="url(#ahh)"/>
+</svg>
+<figcaption>D2 · Everything between "latest-frame slot" and "copy back" is one CUDA graph on one high-priority stream. Only about 1 KB of landmarks returns to the CPU. The palm detector (dashed) runs only when tracking is lost.</figcaption>
+</figure>
+<ul>
+  <li><b>Zero queues.</b> The frame reader drops what it cannot deliver, and the slot keeps only the newest frame. A slow stage can never build up a backlog.</li>
+  <li><b>GPU-resident pre-processing.</b> One kernel converts NV12 to RGB, warps the rotated hand ROI (as MediaPipe does), letterboxes, normalises and writes FP16. No CPU resize, no OpenCV in the hot path.</li>
+  <li><b>Track, don't re-detect.</b> The next ROI comes from this frame's landmarks. The palm detector runs only when presence drops below a threshold, plus a slow low-priority scan (every 15 frames) to notice a second hand.</li>
+  <li><b>Pose on its own clock.</b> Body keypoints change slowly relative to fingers, so pose runs at ≥ 30 Hz on a downscaled full frame. It feeds the "raised hand" logic and gives the tracker a fallback when the hand blurs.</li>
+  <li><b>The gesture classifier runs on the CPU.</b> A 63→128→64→K network needs about 17 k multiply-adds, a few microseconds. Launching a GPU kernel would take longer.</li>
+</ul>
+
+<h3>7.3 Threads and timing</h3>
+<figure class="diagram">
+<svg viewBox="0 0 1000 420" role="img" aria-label="Thread timing for two camera frames at 120 fps">
+  <line class="edge" x1="502" y1="12" x2="588" y2="12"/><line class="edge" x1="502" y1="7" x2="502" y2="17"/><line class="edge" x1="588" y1="7" x2="588" y2="17"/>
+  <text x="596" y="16" class="t-xs">frame in memory → SendInput ≈ 1.8 ms (est.)</text>
+  <text x="12" y="40" class="t-s">Camera sensor</text><rect class="lane" x="190" y="22" width="800" height="30"/>
+  <text x="12" y="82" class="t-s">T1 · capture (MMCSS)</text><rect class="lane" x="190" y="64" width="800" height="30"/>
+  <text x="12" y="124" class="t-s">T2 · GPU orchestration</text><rect class="lane" x="190" y="106" width="800" height="30"/>
+  <text x="12" y="166" class="t-s">GPU · CUDA stream</text><rect class="lane" x="190" y="148" width="800" height="30"/>
+  <text x="12" y="208" class="t-s">T2 · features + FSM</text><rect class="lane" x="190" y="190" width="800" height="30"/>
+  <text x="12" y="250" class="t-s">T3 · pointer pump 240 Hz</text><rect class="lane" x="190" y="232" width="800" height="30"/>
+  <text x="12" y="292" class="t-s">T4 · action worker (COM)</text><rect class="lane" x="190" y="274" width="800" height="30"/>
+  <text x="12" y="334" class="t-s">Display · 240 Hz vblank</text><rect class="lane" x="190" y="316" width="800" height="30"/>
+
+  <rect class="cap" x="190" y="24" width="96" height="26" rx="4"/><text x="238" y="42" text-anchor="middle" class="t-xs">exposure</text>
+  <rect class="svc" x="286" y="24" width="216" height="26" rx="4"/><text x="394" y="42" text-anchor="middle" class="t-xs">readout + USB + driver</text>
+  <rect class="cap" x="590" y="24" width="96" height="26" rx="4"/><text x="638" y="42" text-anchor="middle" class="t-xs">exposure</text>
+  <rect class="svc" x="686" y="24" width="216" height="26" rx="4"/><text x="794" y="42" text-anchor="middle" class="t-xs">readout + USB + driver</text>
+  <rect class="logic" x="502" y="66" width="10" height="26" rx="2"/><rect class="logic" x="902" y="66" width="10" height="26" rx="2"/>
+  <text x="518" y="84" class="t-xs">frame arrives → slot</text>
+  <rect class="logic" x="512" y="108" width="12" height="26" rx="2"/><rect class="logic" x="912" y="108" width="12" height="26" rx="2"/>
+  <text x="530" y="126" class="t-xs">launch graph + flush</text>
+  <rect class="gpu" x="516" y="150" width="58" height="26" rx="3"/><rect class="gpu" x="915" y="150" width="58" height="26" rx="3"/>
+  <text x="580" y="168" class="t-xs">H2D · kernel · TensorRT ≈ 1.2 ms</text>
+  <rect class="logic" x="574" y="192" width="14" height="26" rx="2"/>
+  <text x="594" y="210" class="t-xs">filters · classifiers · FSM</text>
+  <rect class="os" x="186" y="234" width="8" height="26" rx="2"/><rect class="os" x="386" y="234" width="8" height="26" rx="2"/><rect class="os" x="586" y="234" width="8" height="26" rx="2"/><rect class="os" x="786" y="234" width="8" height="26" rx="2"/><rect class="os" x="982" y="234" width="8" height="26" rx="2"/>
+  <text x="400" y="252" class="t-xs">newest filtered state + prediction</text>
+  <rect class="os" x="588" y="276" width="24" height="26" rx="3"/>
+  <text x="618" y="294" class="t-xs">volume step (async, never blocks T2)</text>
+  <rect class="fb" x="189" y="318" width="3" height="26"/><rect class="fb" x="389" y="318" width="3" height="26"/><rect class="fb" x="589" y="318" width="3" height="26"/><rect class="fb" x="789" y="318" width="3" height="26"/><rect class="fb" x="986" y="318" width="3" height="26"/>
+
+  <line class="grid-l" x1="190" y1="360" x2="990" y2="360"/>
+  <line class="grid-l" x1="190" y1="356" x2="190" y2="364"/><text x="190" y="378" text-anchor="middle" class="t-xs">0</text>
+  <line class="grid-l" x1="390" y1="356" x2="390" y2="364"/><text x="390" y="378" text-anchor="middle" class="t-xs">4.2</text>
+  <line class="grid-l" x1="590" y1="356" x2="590" y2="364"/><text x="590" y="378" text-anchor="middle" class="t-xs">8.3</text>
+  <line class="grid-l" x1="790" y1="356" x2="790" y2="364"/><text x="790" y="378" text-anchor="middle" class="t-xs">12.5</text>
+  <line class="grid-l" x1="990" y1="356" x2="990" y2="364"/><text x="980" y="378" text-anchor="end" class="t-xs">16.7 ms</text>
+  <line class="edge" x1="190" y1="396" x2="590" y2="396"/><line class="edge" x1="190" y1="391" x2="190" y2="401"/><line class="edge" x1="590" y1="391" x2="590" y2="401"/>
+  <text x="390" y="414" text-anchor="middle" class="t-xs">8.33 ms between frames at 120 fps</text>
+</svg>
+<figcaption>D3 · Two frames from a 120 fps camera. The GPU works for about 1.2 ms per frame. The pointer pump runs on its own 240 Hz clock and always uses the newest filtered state, so the cursor never waits for the camera.</figcaption>
+</figure>
+<div class="tablewrap"><table>
+<thead><tr><th>Thread</th><th>Job</th><th>Priority and scheduling</th><th>Rule</th></tr></thead>
+<tbody>
+<tr><td><b>T1 capture</b></td><td>Receives frames, stamps QPC time, writes the latest slot</td><td>MMCSS task "Capture"; power throttling off</td><td>Never blocks, never allocates</td></tr>
+<tr><td><b>T2 inference + logic</b></td><td>Launches the CUDA graph, waits on one event, runs filters, classifiers and the state machine</td><td>Above normal on tier S; high-priority CUDA stream</td><td>One wait per frame; no locks shared with UI</td></tr>
+<tr><td><b>T3 pointer pump</b></td><td>Every vblank period: extrapolates the pointer and calls <code>SendInput</code> if it moved</td><td>MMCSS "Games"; high-resolution waitable timer</td><td>Skips the call when the cursor would not move a whole pixel</td></tr>
+<tr><td><b>T4 action worker</b></td><td>Core Audio, media, brightness, keys, scripts</td><td>Normal; COM multithreaded apartment</td><td>Fed by a lock-free queue; a slow device can never stall T2</td></tr>
+<tr><td><b>T5 UI + IPC</b></td><td>Overlay, tray, named pipe to Studio and service</td><td>Normal</td><td>Reads state snapshots; never touches the hot path</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="gestures">
+<h2><span class="sec-num">08</span>Gesture vocabulary &amp; state machine</h2>
+<p>A gesture system fails in one of two ways: it misses what you meant, or it acts on something you did not mean. The second is worse. The default vocabulary below is small, built from shapes that rarely happen by accident, and everything sits behind an "engaged" state.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Gesture</th><th>How it looks</th><th>Type</th><th>Detected from</th><th>Default action</th><th>Confirmation</th></tr></thead>
+<tbody>
+<tr><td><b>Point</b></td><td>Index extended, other fingers curled</td><td>Continuous</td><td>Finger-curl angles from hand landmarks</td><td>Move the cursor</td><td>3 frames to enter; hysteresis to leave</td></tr>
+<tr><td><b>Pinch tap</b></td><td>Thumb and index touch for &lt; 300 ms</td><td>Discrete</td><td>Tip distance ÷ palm width, enter &lt; 0.25, leave &gt; 0.38</td><td>Left click (cursor rewound 80 ms, see §10)</td><td>2 frames</td></tr>
+<tr><td><b>Pinch hold</b></td><td>Thumb and index stay together</td><td>Continuous</td><td>Same</td><td>Drag</td><td>After 300 ms</td></tr>
+<tr><td><b>Middle pinch</b></td><td>Thumb and middle finger touch</td><td>Discrete</td><td>Same rule on landmarks 4 and 12</td><td>Right click</td><td>2 frames</td></tr>
+<tr><td><b>Two-finger slide</b></td><td>Index + middle up, moving vertically</td><td>Continuous</td><td>Shape + vertical velocity</td><td>Smooth scroll</td><td>3 frames</td></tr>
+<tr><td><b>Raise open palm</b> (your video)</td><td>Open palm, wrist above the nose line</td><td>Discrete + repeat, or analog</td><td>Pose (wrist, shoulders, nose) + hand shape</td><td>Volume up</td><td>120 ms above the line</td></tr>
+<tr><td><b>Palm-down push</b></td><td>Palm facing down, pushed below the shoulder line</td><td>Discrete + repeat</td><td>Pose + palm normal</td><td>Volume down</td><td>120 ms</td></tr>
+<tr><td><b>Swipe left / right</b></td><td>Open palm travels ≥ 25 % of the frame width in &lt; 400 ms</td><td>Dynamic</td><td>Wrist trajectory (pose or hand)</td><td>Previous / next track</td><td>At the end of the swipe; 600 ms cool-down</td></tr>
+<tr><td><b>Push</b></td><td>Palm grows ≥ 20 % in &lt; 300 ms (moves toward the camera)</td><td>Dynamic</td><td>Hand scale</td><td>Play / pause</td><td>800 ms cool-down</td></tr>
+<tr><td><b>Finger to lips</b></td><td>Index up, touching the mouth region</td><td>Static + context</td><td>Hand + face box</td><td>Mute toggle</td><td>300 ms hold</td></tr>
+<tr><td><b>Fist hold</b></td><td>Closed fist for 600 ms</td><td>Static</td><td>Hand shape</td><td>Freeze the cursor (clutch) / finish a mode</td><td>600 ms</td></tr>
+<tr><td><b>Two-hand "T"</b></td><td>The HaGRID "timeout" sign</td><td>Static, two hands</td><td>Both hands</td><td><b>Pause Handiy</b> (kill gesture)</td><td>400 ms hold</td></tr>
+<tr><td><b>Your own</b></td><td>Anything you record in the Studio</td><td>Static or dynamic</td><td>Trained models or templates</td><td>Any allowed action</td><td>Calibrated per gesture</td></tr>
+</tbody></table></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 1000 440" role="img" aria-label="Intent state machine">
+  <rect class="svc" x="24" y="196" width="136" height="64" rx="12"/><text x="92" y="222" text-anchor="middle" class="t-b">PAUSED</text><text x="92" y="244" text-anchor="middle" class="t-xs">kill · hotkey · locked</text>
+  <rect class="plain" x="214" y="196" width="144" height="64" rx="12"/><text x="286" y="222" text-anchor="middle" class="t-b">IDLE</text><text x="286" y="244" text-anchor="middle" class="t-xs">5–10 fps watcher</text>
+  <rect class="cap" x="412" y="196" width="150" height="64" rx="12"/><text x="487" y="222" text-anchor="middle" class="t-b">TRACKING</text><text x="487" y="244" text-anchor="middle" class="t-xs">hand present</text>
+  <rect class="logic" x="616" y="196" width="140" height="64" rx="12"/><text x="686" y="222" text-anchor="middle" class="t-b">ARMED</text><text x="686" y="244" text-anchor="middle" class="t-xs">intent confirmed</text>
+  <rect class="os" x="820" y="24" width="164" height="52" rx="12"/><text x="902" y="46" text-anchor="middle" class="t-b">POINTER</text><text x="902" y="66" text-anchor="middle" class="t-xs">index up → cursor</text>
+  <rect class="os" x="820" y="104" width="164" height="52" rx="12"/><text x="902" y="126" text-anchor="middle" class="t-b">SCROLL</text><text x="902" y="146" text-anchor="middle" class="t-xs">two fingers → wheel</text>
+  <rect class="os" x="820" y="184" width="164" height="52" rx="12"/><text x="902" y="206" text-anchor="middle" class="t-b">VOLUME</text><text x="902" y="226" text-anchor="middle" class="t-xs">palm raised → level</text>
+  <rect class="os" x="820" y="264" width="164" height="52" rx="12"/><text x="902" y="286" text-anchor="middle" class="t-b">MEDIA</text><text x="902" y="306" text-anchor="middle" class="t-xs">swipe · push</text>
+  <rect class="os" x="820" y="344" width="164" height="52" rx="12"/><text x="902" y="366" text-anchor="middle" class="t-b">CUSTOM</text><text x="902" y="386" text-anchor="middle" class="t-xs">your trained gestures</text>
+
+  <path class="edge" d="M92 196 C 92 150, 286 150, 286 193" marker-end="url(#ah)"/>
+  <text x="189" y="146" text-anchor="middle" class="t-xs">resume gesture · hotkey · unlock</text>
+  <path class="edge bad" d="M286 260 C 286 310, 92 310, 92 263" marker-end="url(#ah)"/>
+  <text x="189" y="324" text-anchor="middle" class="t-xs">kill gesture · hotkey · lock</text>
+  <line class="edge hot" x1="358" y1="214" x2="409" y2="214" marker-end="url(#ahh)"/>
+  <text x="385" y="186" text-anchor="middle" class="t-xs">hand ≥ 3 frames</text>
+  <line class="edge" x1="412" y1="244" x2="361" y2="244" marker-end="url(#ah)"/>
+  <text x="386" y="280" text-anchor="middle" class="t-xs">no hand 1.5 s</text>
+  <line class="edge hot" x1="562" y1="214" x2="613" y2="214" marker-end="url(#ahh)"/>
+  <text x="589" y="170" text-anchor="middle" class="t-xs">engage: hand in zone</text>
+  <text x="589" y="184" text-anchor="middle" class="t-xs">+ shape held 150–300 ms</text>
+  <line class="edge" x1="616" y1="244" x2="565" y2="244" marker-end="url(#ah)"/>
+  <text x="590" y="280" text-anchor="middle" class="t-xs">2 s idle · leaves zone</text>
+  <path class="edge hot" d="M756 214 C 790 214, 790 50, 817 50" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M756 220 C 790 220, 790 130, 817 130" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M756 226 C 790 226, 790 210, 817 210" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M756 236 C 790 236, 790 290, 817 290" marker-end="url(#ahh)"/>
+  <path class="edge hot" d="M756 244 C 790 244, 790 370, 817 370" marker-end="url(#ahh)"/>
+  <text x="500" y="424" text-anchor="middle" class="t-s">From every state: kill gesture, Ctrl+Alt+H or session lock → PAUSED. Every mode returns to ARMED when its gesture ends.</text>
+</svg>
+<figcaption>D5 · The intent state machine. Nothing reaches an effector unless the machine is in ARMED or one of its modes; this is the main defence against the Midas touch problem.</figcaption>
+</figure>
+
+<div class="two">
+<div class="card"><h3>Rules that keep it trustworthy</h3>
+<ul class="small">
+  <li><b>Engage first.</b> A hand that wanders into view does nothing until it holds an engage shape inside the active zone.</li>
+  <li><b>Active zone.</b> A box at desk height, calibrated in the Studio. Hands outside it are ignored, so reaching for a cup is safe.</li>
+  <li><b>Hysteresis everywhere.</b> Entering a state needs a stronger signal than staying in it, so states never flicker.</li>
+  <li><b>N-of-M voting.</b> Discrete gestures need 2–4 agreeing frames out of the last few.</li>
+  <li><b>Cool-downs.</b> One swipe gives one "next track", never three.</li>
+  <li><b>Arbitration.</b> When two gestures fire together, a fixed priority wins: kill &gt; click &gt; mode change &gt; continuous.</li>
+</ul></div>
+<div class="card"><h3>Rules that keep it personal</h3>
+<ul class="small">
+  <li><b>One owner.</b> Only the largest hand in the zone, attached (through pose) to the nearest body, controls the PC; other people in the room are ignored.</li>
+  <li><b>Handedness.</b> Left-handed mode mirrors every gesture.</li>
+  <li><b>Per-app profiles.</b> In PowerPoint a swipe changes the slide; in Spotify it changes the track.</li>
+  <li><b>Typing guard.</b> If the real keyboard or mouse was used in the last 300 ms, pointer gestures are suppressed.</li>
+  <li><b>Visible feedback.</b> Every state change shows on the overlay; a mode never runs silently.</li>
+  <li><b>Undo.</b> A volume change shows its OSD for 1.5 s, and the opposite gesture reverts it.</li>
+</ul></div>
+</div>
+</section>
+
+<section id="volume">
+<h2><span class="sec-num">09</span>The raise-hand volume gesture</h2>
+<p>This section turns your clip into a specification. The timeline below is drawn from the 20 reviewed frames: the violet curve is the wrist height, and the markers show what Handiy would do.</p>
+<figure class="diagram">
+<svg viewBox="0 0 1000 310" role="img" aria-label="Volume gesture timeline reconstructed from the video">
+  <line class="thr" x1="60" y1="50" x2="960" y2="50"/><text x="56" y="54" text-anchor="end" class="t-xs">image top</text>
+  <line class="thr" x1="60" y1="105" x2="960" y2="105"/><text x="56" y="109" text-anchor="end" class="t-xs">nose line</text>
+  <line class="thr" x1="60" y1="150" x2="960" y2="150"/><text x="56" y="154" text-anchor="end" class="t-xs">shoulder</text>
+  <text x="56" y="199" text-anchor="end" class="t-xs">not raised</text>
+  <path class="curve" d="M60 195 H287 C 310 190, 325 160, 341 128 C 352 106, 365 76, 389 58 C 400 54, 420 54, 449 60 C 465 66, 470 84, 480 96 C 500 132, 515 180, 529 195 H960"/>
+  <line class="edge bad" x1="292" y1="168" x2="292" y2="202"/><line class="edge bad" x1="341" y1="118" x2="341" y2="202"/>
+  <text x="286" y="186" text-anchor="end" class="t-xs t-bad">motion blur</text>
+  <line class="edge" x1="389" y1="42" x2="431" y2="42"/><text x="542" y="46" class="t-xs">← fingertips leave the frame (2.0–2.3 s)</text>
+  <line class="ev" x1="360" y1="36" x2="360" y2="263"/><text x="360" y="30" text-anchor="middle" class="t-xs t-acc">ENTER</text>
+  <line class="ev" x1="474" y1="36" x2="474" y2="263"/><text x="466" y="30" text-anchor="end" class="t-xs t-acc">COMMIT</text>
+  <line class="ev" x1="530" y1="36" x2="530" y2="263"/><text x="536" y="30" class="t-xs t-acc">EXIT</text>
+  <text x="56" y="228" text-anchor="end" class="t-xs">shape</text>
+  <rect class="good-f" x="320" y="214" width="150" height="20" rx="4"/><text x="395" y="228" text-anchor="middle" class="t-xs">open palm</text>
+  <rect class="warn-f" x="470" y="214" width="52" height="20" rx="4"/><text x="496" y="228" text-anchor="middle" class="t-xs">fist</text>
+  <text x="56" y="259" text-anchor="end" class="t-xs">volume</text>
+  <circle class="os" cx="368" cy="254" r="9"/><text x="368" y="258" text-anchor="middle" class="t-xs">+</text>
+  <circle class="os" cx="409" cy="254" r="9"/><text x="409" y="258" text-anchor="middle" class="t-xs">+</text>
+  <circle class="os" cx="449" cy="254" r="9"/><text x="449" y="258" text-anchor="middle" class="t-xs">+</text>
+  <text x="560" y="258" class="t-xs">+4 % on entry, then every 250 ms while held above the nose line</text>
+  <line class="grid-l" x1="60" y1="285" x2="960" y2="285"/>
+  <text x="60" y="302" text-anchor="middle" class="t-xs">0 s</text><text x="222" y="302" text-anchor="middle" class="t-xs">1 s</text><text x="384" y="302" text-anchor="middle" class="t-xs">2 s</text><text x="547" y="302" text-anchor="middle" class="t-xs">3 s</text><text x="709" y="302" text-anchor="middle" class="t-xs">4 s</text><text x="871" y="302" text-anchor="middle" class="t-xs">5 s</text><text x="958" y="302" text-anchor="end" class="t-xs">5.55 s</text>
+</svg>
+<figcaption>D6 · Your 1.5 s gesture as Handiy would see it. Entry is decided by the wrist (pose), so the blurred frames and the cropped fingertips do not break it.</figcaption>
+</figure>
+
+<div class="two">
+  <div class="card v-good">
+    <div class="k">Variant A · recommended default</div>
+    <h3>Step and repeat</h3>
+    <p class="small">Matches the video exactly and is the easiest to learn.</p>
+    <ul class="small">
+      <li><b>Enter</b> when an open palm (probability ≥ 0.85 in 3 of the last 4 frames) has its wrist above the nose line for 120 ms.</li>
+      <li><b>On entry</b> raise the volume 4 % and show the OSD.</li>
+      <li><b>While held</b> add 4 % every 250 ms (6 % after one second).</li>
+      <li><b>Finish</b> on a fist (2 frames) or when the wrist falls below 0.6 of the nose line, then a 500 ms cool-down.</li>
+      <li><b>Volume down</b> uses the palm-down push below the shoulder line, with the same timing.</li>
+    </ul>
+  </div>
+  <div class="card verdict">
+    <div class="k">Variant B · precise</div>
+    <h3>Volume lever</h3>
+    <p class="small">For setting an exact level.</p>
+    <ul class="small">
+      <li><b>Enter</b> exactly as in A; remember the starting volume and wrist height.</li>
+      <li><b>While held</b> volume = start + k × (height − start height); the OSD follows live.</li>
+      <li><b>Fist</b> locks the new value.</li>
+      <li><b>Dropping the open hand</b> cancels and restores the starting volume.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="codebox"><pre><code>// Variant A, evaluated every frame (pose at ≥ 30 Hz, hand at camera rate)
+h    = (shoulderY - wristY) / max(shoulderY - noseY, eps)   // 0 = shoulder line, 1 = nose line
+palm = votes(OPEN_PALM, p &gt;= 0.85, 3 of last 4)
+fist = votes(CLOSED_FIST, p &gt;= 0.80, 2 of last 2)
+
+switch (state) {
+case IDLE:
+    if (palm &amp;&amp; h &gt;= 1.0 for 120 ms) { state = VOLUME; step(+0.04); next = now + 250 ms; t0 = now; }
+    break;
+case VOLUME:
+    if (fist || h &lt; 0.6)          { state = COOLDOWN; until = now + 500 ms; }   // commit, hysteresis 1.0 / 0.6
+    else if (now &gt;= next)         { step(now - t0 &gt; 1 s ? +0.06 : +0.04); next += 250 ms; }
+    if (handLost &gt; 300 ms)         { state = COOLDOWN; }                          // Kalman bridges shorter gaps
+    break;
+case COOLDOWN:
+    if (now &gt;= until) state = IDLE;
+}</code></pre></div>
+<div class="callout"><p><b>Why the pose decides, not the fingers.</b> In the clip the fingertips leave the top of the image at the very moment the gesture should register, and the hand is blurred on the way up. The wrist, elbow and nose stay visible, and body keypoints tolerate blur far better than finger landmarks. The hand model is still used, but only to tell "open palm" from "fist", and its last confident answer stays valid for 300 ms.</p></div>
+</section>
+
+<section id="cursor">
+<h2><span class="sec-num">10</span>Cursor control done right</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Mapping</th><th>How it works</th><th>Pros</th><th>Cons</th></tr></thead>
+<tbody>
+<tr><td>Absolute "active box"</td><td>A calibrated rectangle of the camera image maps onto the screen</td><td>Predictable; easy to understand</td><td>Hand jitter is magnified; reaching corners tires the arm</td></tr>
+<tr><td>Relative "air mouse"</td><td>Hand velocity × gain moves the cursor, like a mouse</td><td>Small movements; precise; arm stays low</td><td>Drift; needs a clutch to re-centre</td></tr>
+<tr><td><b>★ Hybrid</b></td><td>Relative with a speed-dependent gain; fist = clutch; absolute re-centre when the hand re-enters</td><td>Precise and fast with little effort</td><td>Needs tuning (the Studio has live sliders)</td></tr>
+</tbody></table></div>
+<ol class="steps">
+  <li><b>Pick a stable point.</b> Steer with the knuckle area (blend of landmarks 0, 5 and 9), not the fingertip. The fingertip jitters most and moves when you pinch.</li>
+  <li><b>Filter in camera space.</b> Apply the One Euro filter to the normalised point before mapping. Starting values: <code>min_cutoff = 1.0 Hz</code>, <code>beta = 0.007</code>, <code>d_cutoff = 1.0 Hz</code>; tune them live.</li>
+  <li><b>Speed-dependent gain.</b> gain(v) = g<sub>min</sub> + (g<sub>max</sub> − g<sub>min</sub>) · smoothstep(v<sub>lo</sub>, v<sub>hi</sub>, v). Slow hand ≈ 1–1.5 for precision; fast hand ≈ 6–10 to cross the screen.</li>
+  <li><b>Click without the jump.</b> A pinch moves the hand a little, so the cursor slips just before the click. Keep a ring buffer of the last 32 cursor positions; at pinch onset, click at the position from 80 ms earlier and freeze the pointer for 120 ms.</li>
+  <li><b>Predict, carefully.</b> A constant-velocity Kalman filter extrapolates by at most one camera frame. Prediction turns off during pinches and when the hand decelerates sharply, so the cursor does not overshoot on stops.</li>
+  <li><b>Sub-pixel accumulation.</b> Keep the fractional remainder between moves; otherwise slow motion stalls and then jumps.</li>
+  <li><b>Multi-monitor and DPI.</b> Declare per-monitor DPI awareness v2 and send absolute coordinates normalised to the whole virtual desktop. Display scaling (for example 150 %) then cannot shift the target.</li>
+  <li><b>Edge help.</b> Mild magnetism near screen edges and the taskbar; an optional dwell click for accessibility.</li>
+</ol>
+<div class="callout"><p><b>How good is good?</b> Measure throughput (bits per second) with the ISO 9241-411 multi-directional tapping test. A desktop mouse typically scores about 4–5 bits/s; mid-air pointing usually scores lower. Track Handiy's score release by release.</p></div>
+</section>
+
+<section id="checklist">
+<h2><span class="sec-num">11</span>The low-latency checklist</h2>
+<div class="grid">
+  <div class="card"><h3>Camera</h3><ul class="small">
+    <li>Prefer the highest frame rate at a modest resolution (640×480 or 720p at 60+ fps) over 1080p30.</li>
+    <li>Lock exposure while Handiy runs (≤ 4 ms if the light allows); disable auto-exposure priority.</li>
+    <li>Set the power-line frequency to 60 Hz (Mexico) to avoid flicker banding.</li>
+    <li>Turn off automatic framing and other Studio Effects for this camera.</li>
+    <li>Prefer uncompressed NV12/YUY2 or Y8 when USB bandwidth allows; MJPEG adds decode time.</li>
+  </ul></div>
+  <div class="card"><h3>Capture</h3><ul class="small">
+    <li><code>MediaFrameReader</code> with <code>AcquisitionMode::Realtime</code>; at most one frame in flight.</li>
+    <li>Stamp every frame with <code>SystemRelativeTime</code> and drop any frame older than one frame period.</li>
+    <li>Register capture buffers with <code>cudaHostRegister</code> so the copy to the GPU is direct.</li>
+    <li>Never call <code>imshow</code>, save images or log per pixel in the hot path.</li>
+  </ul></div>
+  <div class="card"><h3>GPU</h3><ul class="small">
+    <li>TensorRT FP16 engines with fixed shapes, built at install time, never at logon.</li>
+    <li>One CUDA graph per pipeline variant; highest-priority non-blocking stream.</li>
+    <li>Call <code>cudaStreamQuery</code> right after launching so the WDDM driver submits the work immediately instead of batching it.</li>
+    <li>One event wait per frame; copy back about 1 KB, nothing more.</li>
+    <li>Keep the context warm while a hand is present; let the RTX sleep when idle.</li>
+    <li>Optional on AC: "Prefer maximum performance" for <code>HandiyAgent.exe</code> in the NVIDIA control panel, so low GPU load does not lower clocks (measure first).</li>
+  </ul></div>
+  <div class="card"><h3>CPU &amp; Windows</h3><ul class="small">
+    <li>MMCSS for capture and pointer threads (<code>AvSetMmThreadCharacteristicsW</code>).</li>
+    <li>Opt hot threads out of power throttling (EcoQoS) with <code>SetThreadInformation</code>.</li>
+    <li>High-resolution waitable timers; never <code>Sleep(1)</code> loops.</li>
+    <li>No heap allocation, no locks shared with the UI, lock-free SPSC queues.</li>
+    <li>Logging goes to a ring buffer flushed by a low-priority thread.</li>
+    <li>Above-normal priority only on tier S; Normal everywhere else.</li>
+  </ul></div>
+  <div class="card"><h3>Effectors</h3><ul class="small">
+    <li>One <code>SendInput</code> call per event, with move and button packed together.</li>
+    <li>Skip moves smaller than a whole pixel; keep the remainder.</li>
+    <li>Audio, brightness and media calls go to the worker thread, with cached COM objects.</li>
+    <li>React to default-device changes instead of re-opening the device per call.</li>
+  </ul></div>
+  <div class="card"><h3>Display &amp; measurement</h3><ul class="small">
+    <li>Use the 240 Hz internal panel; the 60 Hz external monitor adds about 12 ms.</li>
+    <li>Let Windows draw the hardware cursor; never draw a fake cursor in the overlay.</li>
+    <li>Keep per-stage timing histograms always on (each sample costs well under a microsecond) and show them in the Studio.</li>
+  </ul></div>
+</div>
+</section>
+
+<section id="windows">
+<h2><span class="sec-num">12</span>Windows rules &amp; impediments</h2>
+<p>These are the real obstacles found during the research, with how Handiy gets past each one.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>Impediment</th><th>What happens</th><th>Severity</th><th>How Handiy handles it</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>Session 0 isolation</b></td><td>Services run in Session 0, separate from the user's desktop. Their windows are invisible, and input they send does not reach the user's applications.</td><td><span class="tag bad">blocker</span></td><td>The service only supervises. It starts the agent in the user's session with <code>WTSQueryUserToken</code> + <code>CreateProcessAsUser</code> (or a logon task).</td></tr>
+<tr><td>2</td><td><b>UIPI</b> (User Interface Privilege Isolation)</td><td>A normal process cannot send input to elevated windows such as Task Manager or an administrator console.</td><td><span class="tag warn">high</span></td><td><code>uiAccess="true"</code> manifest + Authenticode signature + installation under Program Files. Running the agent elevated is not recommended.</td></tr>
+<tr><td>3</td><td><b>Secure desktop</b></td><td>Lock screen, UAC prompts and Ctrl+Alt+Del cannot be driven by injected input.</td><td><span class="tag info">by design</span></td><td>Pause on lock; resume on unlock with engines already loaded.</td></tr>
+<tr><td>4</td><td><b>Camera privacy switch</b></td><td>"Let desktop apps access your camera" must be on.</td><td><span class="tag warn">medium</span></td><td>First-run check with a clear message. Handiy also appears in Windows' camera activity list, which is good for transparency.</td></tr>
+<tr><td>5</td><td><b>Camera already in use</b></td><td>Teams or Zoom may hold the camera exclusively.</td><td><span class="tag warn">medium</span></td><td>Open in <code>SharedReadOnly</code> mode. Windows 11 also has a multi-app camera option (Settings → Bluetooth &amp; devices → Cameras → your camera → advanced); with it on, camera settings change only from Windows' camera settings.</td></tr>
+<tr><td>6</td><td><b>Windows Studio Effects</b> (this laptop has a "Camera AI Effect" device)</td><td>Automatic framing, eye contact and background effects change the frames that every app receives.</td><td><span class="tag warn">high for the cursor</span></td><td>Turn off automatic framing for this camera; Handiy checks that the field of view is not zooming.</td></tr>
+<tr><td>7</td><td><b>Low-light frame-rate drop</b></td><td>Auto-exposure lengthens the exposure and many webcams fall to 15 fps.</td><td><span class="tag warn">high latency</span></td><td>Locked exposure profile, front light, or the IR stream.</td></tr>
+<tr><td>8</td><td><b>Hybrid graphics</b> (the panel is on the Arc iGPU)</td><td>The RTX may be asleep; waking it adds a noticeable delay, and keeping CUDA busy costs battery.</td><td><span class="tag warn">medium</span></td><td>Idle watcher on the NPU or iGPU; RTX context active only while a hand is present; battery tier uses OpenVINO.</td></tr>
+<tr><td>9</td><td><b>Hybrid CPU scheduling</b></td><td>Background processes can be throttled (EcoQoS) and placed on efficiency cores.</td><td><span class="tag warn">medium</span></td><td>Power-throttling opt-out and MMCSS for the hot threads.</td></tr>
+<tr><td>10</td><td><b>Injected-input flag</b></td><td>Games, anti-cheat software and some remote tools ignore input marked as injected.</td><td><span class="tag info">low</span></td><td>Accept for v1. A signed virtual-HID driver would remove it, but it is out of scope.</td></tr>
+<tr><td>11</td><td><b>Antivirus heuristics</b></td><td>Camera + global input injection + a service resembles spyware.</td><td><span class="tag warn">medium</span></td><td>Code signing, no network, visible tray icon, documented behaviour; submit false positives to Microsoft.</td></tr>
+<tr><td>12</td><td><b>Sleep, lid closed, device changes</b></td><td>The camera disappears and comes back.</td><td><span class="tag info">low</span></td><td>Handle device removal and power notifications; reopen on resume.</td></tr>
+<tr><td>13</td><td><b>Remote Desktop sessions</b></td><td>A remote session has no local camera.</td><td><span class="tag info">low</span></td><td>Agent stays idle in remote sessions.</td></tr>
+<tr><td>14</td><td><b>MediaPipe on Windows</b></td><td>The Python package runs on the CPU; its GPU delegate targets Linux, macOS and mobile.</td><td><span class="tag info">prototype only</span></td><td>Prototype on the CPU; production through TensorRT.</td></tr>
+<tr><td>15</td><td><b>Licences</b></td><td>Ultralytics (AGPL), MANO / WiLoR, OpenPose and UCL MotionInput (non-commercial).</td><td><span class="tag warn">legal</span></td><td>Ship Apache-2.0 / MIT models only, unless Handiy is open source or a licence is bought.</td></tr>
+<tr><td>16</td><td><b>Midas touch and gorilla arm</b></td><td>Every movement becomes a command; holding an arm up quickly tires it.</td><td><span class="tag bad">UX blocker if ignored</span></td><td>Engage state, desk-height active zone, relative mapping with gain, automatic disarm, raise-hand gestures only for rare actions.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="security">
+<h2><span class="sec-num">13</span>Security, privacy &amp; safety</h2>
+<div class="grid">
+  <div class="card"><h3>Privacy</h3><ul class="small">
+    <li>Frames live only in a ring of three RAM buffers, overwritten continuously, never written to disk.</li>
+    <li>The Studio stores landmarks (63 numbers per hand per frame), not pictures. Saving a debug clip is an explicit, per-session opt-in to a folder you choose.</li>
+    <li>No network listener and no telemetry.</li>
+  </ul></div>
+  <div class="card"><h3>Integrity</h3><ul class="small">
+    <li>Models are listed in a signed SHA-256 manifest; the agent refuses anything else.</li>
+    <li>The named pipe is per user, with an ACL for SYSTEM and that user only; messages are validated against a schema and size-limited.</li>
+    <li>There is no "run this command" message on the pipe.</li>
+  </ul></div>
+  <div class="card"><h3>Allowed actions</h3><ul class="small">
+    <li>Default allowlist: cursor, clicks, scroll, volume, media, brightness, windows and desktops.</li>
+    <li>"Launch program" and "type text" are off unless a profile enables them.</li>
+    <li>Rate limits and a volume ceiling (for example 85 %) protect your ears.</li>
+  </ul></div>
+  <div class="card"><h3>Kill switches</h3><ul class="small">
+    <li>Ctrl+Alt+H (<code>RegisterHotKey</code>), the two-hand "T" gesture, and the tray toggle.</li>
+    <li>A small "camera live" indicator in the overlay, in addition to Windows' own camera indicator.</li>
+    <li>Pointer gestures pause automatically while you use the real keyboard or mouse.</li>
+  </ul></div>
+  <div class="card"><h3>Spoofing</h3><ul class="small">
+    <li>A video of hands on another screen could trigger gestures. Pose association (the hand must belong to the nearest body) blocks most cases.</li>
+    <li>Optional IR-only mode: an infrared camera usually sees LCD screens as dark, which resists replay (est.; verify with your camera).</li>
+    <li>Optional local owner check by face embedding, off by default for privacy.</li>
+  </ul></div>
+  <div class="card"><h3>Accessibility</h3><ul class="small">
+    <li>Dwell click, sticky drag, larger targets in the overlay, high-contrast OSD.</li>
+    <li>Every gesture can be re-recorded to fit the user's range of motion.</li>
+    <li>Works alongside Voice Access and Eye Control.</li>
+  </ul></div>
+</div>
+</section>
+
+<section id="training">
+<h2><span class="sec-num">14</span>Teaching Handiy new gestures</h2>
+<p>"Trained gestures" means you record a few examples and Handiy learns them in seconds. The Studio does the work; the live agent only receives a new, verified model.</p>
+<figure class="diagram">
+<svg viewBox="0 0 1000 250" role="img" aria-label="Training pipeline">
+  <rect class="fb" x="10" y="24" width="170" height="76" rx="12"/><text x="95" y="52" text-anchor="middle" class="t-b">Record</text><text x="95" y="72" text-anchor="middle" class="t-xs">Studio · 5 sessions × 20</text><text x="95" y="90" text-anchor="middle" class="t-xs">+ 10 min of "nothing"</text>
+  <rect class="gpu" x="210" y="24" width="170" height="76" rx="12"/><text x="295" y="52" text-anchor="middle" class="t-b">Auto-label</text><text x="295" y="72" text-anchor="middle" class="t-xs">MediaPipe + RTMW-l</text><text x="295" y="90" text-anchor="middle" class="t-xs">offline, best quality</text>
+  <rect class="logic" x="410" y="24" width="170" height="76" rx="12"/><text x="495" y="52" text-anchor="middle" class="t-b">Normalise + augment</text><text x="495" y="72" text-anchor="middle" class="t-xs">wrist origin · palm scale</text><text x="495" y="90" text-anchor="middle" class="t-xs">rotate · scale · mirror</text>
+  <rect class="gpu" x="610" y="24" width="170" height="76" rx="12"/><text x="695" y="52" text-anchor="middle" class="t-b">Train</text><text x="695" y="72" text-anchor="middle" class="t-xs">PyTorch on the RTX</text><text x="695" y="90" text-anchor="middle" class="t-xs">seconds to minutes</text>
+  <rect class="logic" x="810" y="24" width="170" height="76" rx="12"/><text x="895" y="52" text-anchor="middle" class="t-b">Calibrate</text><text x="895" y="72" text-anchor="middle" class="t-xs">threshold for ≤ 1 FA/h</text><text x="895" y="90" text-anchor="middle" class="t-xs">on recorded negatives</text>
+  <rect class="logic" x="810" y="150" width="170" height="76" rx="12"/><text x="895" y="178" text-anchor="middle" class="t-b">Export ONNX</text><text x="895" y="198" text-anchor="middle" class="t-xs">opset 17 · fixed shapes</text><text x="895" y="216" text-anchor="middle" class="t-xs">hash + sign</text>
+  <rect class="gpu" x="610" y="150" width="170" height="76" rx="12"/><text x="695" y="178" text-anchor="middle" class="t-b">Build engine</text><text x="695" y="198" text-anchor="middle" class="t-xs">TensorRT / TRT for RTX</text><text x="695" y="216" text-anchor="middle" class="t-xs">or CPU for tiny MLPs</text>
+  <rect class="logic" x="410" y="150" width="170" height="76" rx="12"/><text x="495" y="178" text-anchor="middle" class="t-b">Shadow test</text><text x="495" y="198" text-anchor="middle" class="t-xs">runs silently beside</text><text x="495" y="216" text-anchor="middle" class="t-xs">the live model</text>
+  <rect class="logic" x="210" y="150" width="170" height="76" rx="12"/><text x="295" y="178" text-anchor="middle" class="t-b">Hot-swap</text><text x="295" y="198" text-anchor="middle" class="t-xs">atomic · versioned</text><text x="295" y="216" text-anchor="middle" class="t-xs">one-click rollback</text>
+  <rect class="fb" x="10" y="150" width="170" height="76" rx="12"/><text x="95" y="178" text-anchor="middle" class="t-b">Live feedback</text><text x="95" y="198" text-anchor="middle" class="t-xs">"that was wrong" hotkey</text><text x="95" y="216" text-anchor="middle" class="t-xs">→ new negatives</text>
+  <line class="edge hot" x1="180" y1="62" x2="207" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="380" y1="62" x2="407" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="580" y1="62" x2="607" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="780" y1="62" x2="807" y2="62" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="895" y1="100" x2="895" y2="147" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="810" y1="188" x2="783" y2="188" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="610" y1="188" x2="583" y2="188" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="410" y1="188" x2="383" y2="188" marker-end="url(#ahh)"/>
+  <line class="edge hot" x1="210" y1="188" x2="183" y2="188" marker-end="url(#ahh)"/>
+  <line class="edge dash" x1="95" y1="150" x2="95" y2="103" marker-end="url(#ah)"/>
+</svg>
+<figcaption>D7 · From "record five examples" to a live, signed model, with a shadow test before the swap and your corrections flowing back as training data.</figcaption>
+</figure>
+<div class="two">
+  <div class="card"><h3>Recording protocol</h3><ul class="small">
+    <li><b>Static gestures:</b> 5 sessions × 20 samples, in different light (window, lamp, evening), at 45, 60 and 90 cm, with and without glasses.</li>
+    <li><b>Dynamic gestures:</b> 30 repetitions at slow, normal and fast speed.</li>
+    <li><b>Negatives:</b> at least 10 minutes of ordinary activity: typing, phone, drinking, scratching your head, talking with your hands. This one recording decides the false-activation rate more than any model choice.</li>
+    <li>Only landmarks are saved, never images, unless you opt in.</li>
+  </ul></div>
+  <div class="card"><h3>Features</h3><ul class="small">
+    <li><b>Static:</b> landmarks relative to the wrist, divided by palm size, optionally rotated upright; 15 finger-curl angles; fingertip distances. Keep orientation for gestures that need it (thumb up vs thumb down).</li>
+    <li><b>Dynamic:</b> static features per frame + wrist and fingertip velocities + pose features (wrist height between shoulder and nose, elbow angle).</li>
+    <li>Resample to a fixed 60 Hz time base so one model works with 30 and 120 fps cameras.</li>
+  </ul></div>
+  <div class="card"><h3>Models</h3><ul class="small">
+    <li><b>Static:</b> MLP 63 → 128 → 64 → K (&lt; 20 k parameters), on the CPU.</li>
+    <li><b>Dynamic:</b> causal TCN (dilated 1-D convolutions, about 0.8 s receptive field) or GRU(64), producing an answer every frame.</li>
+    <li><b>Few-shot templates:</b> $Q or DTW on the 2-D wrist path for "draw a circle" or letters, from 3 examples.</li>
+    <li><b>Quick add:</b> embedding + nearest neighbours adds a static gesture from 5 examples with no retraining.</li>
+  </ul></div>
+  <div class="card"><h3>Saying "I don't know"</h3><ul class="small">
+    <li>An explicit <code>none</code> class (MediaPipe Model Maker requires one too).</li>
+    <li>Confidence threshold plus a distance-to-class check in embedding space, so unknown shapes are rejected.</li>
+    <li>Thresholds are chosen on the negatives to hit ≤ 1 false activation per hour, then recall is measured on held-out sessions.</li>
+    <li>"That was wrong" and "missed it" hotkeys label the last 2 s for the next training round.</li>
+  </ul></div>
+</div>
+</section>
+
+<section id="code">
+<h2><span class="sec-num">15</span>Code skeletons</h2>
+<p>Starting points, not finished code: error handling is left out to keep the ideas visible. C++ examples target the Windows SDK and CUDA 12 / TensorRT 10.</p>
+
+<h3>15.1 Move the cursor and click (C++)</h3>
+<div class="codebox"><pre><code>// Per-monitor-DPI-aware process (manifest: PerMonitorV2). x, y in virtual-desktop pixels.
+void MoveCursorAbs(double x, double y)
+{
+    const int vx = GetSystemMetrics(SM_XVIRTUALSCREEN),  vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
+    const int vw = GetSystemMetrics(SM_CXVIRTUALSCREEN), vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    INPUT in{};
+    in.type       = INPUT_MOUSE;
+    in.mi.dx      = static_cast&lt;LONG&gt;(std::lround((x - vx) * 65535.0 / (vw - 1)));
+    in.mi.dy      = static_cast&lt;LONG&gt;(std::lround((y - vy) * 65535.0 / (vh - 1)));
+    in.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK;
+    SendInput(1, &amp;in, sizeof(INPUT));
+}
+
+void LeftButton(bool down)   // pack it with a move when both happen in the same tick
+{
+    INPUT in{};
+    in.type       = INPUT_MOUSE;
+    in.mi.dwFlags = down ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
+    SendInput(1, &amp;in, sizeof(INPUT));
+}</code></pre></div>
+
+<h3>15.2 Change the system volume (C++, Core Audio)</h3>
+<div class="codebox"><pre><code>#include &lt;mmdeviceapi.h&gt;
+#include &lt;endpointvolume.h&gt;
+#include &lt;wrl/client.h&gt;
+using Microsoft::WRL::ComPtr;
+
+// On the action-worker thread, after CoInitializeEx(nullptr, COINIT_MULTITHREADED).
+ComPtr&lt;IAudioEndpointVolume&gt; OpenMasterVolume()
+{
+    ComPtr&lt;IMMDeviceEnumerator&gt; en;
+    CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&amp;en));
+    ComPtr&lt;IMMDevice&gt; dev;
+    en-&gt;GetDefaultAudioEndpoint(eRender, eMultimedia, &amp;dev);
+    ComPtr&lt;IAudioEndpointVolume&gt; vol;
+    dev-&gt;Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                  reinterpret_cast&lt;void**&gt;(vol.ReleaseAndGetAddressOf()));
+    return vol;                       // check every HRESULT in real code
+}
+
+// Our own context GUID lets the change callback ignore changes we made ourselves.
+static const GUID kHandiyCtx =
+    { 0x6f1c2a10, 0x8b5e, 0x4c11, { 0x9a, 0x3d, 0x52, 0x7e, 0x10, 0x44, 0xc2, 0x9b } };
+
+void StepVolume(IAudioEndpointVolume* vol, float delta, float ceiling = 0.85f)
+{
+    float v = 0.f;
+    vol-&gt;GetMasterVolumeLevelScalar(&amp;v);
+    const float target = (delta &gt; 0) ? std::min(v + delta, std::max(v, ceiling)) : v + delta;
+    vol-&gt;SetMasterVolumeLevelScalar(std::clamp(target, 0.f, 1.f), &amp;kHandiyCtx);
+}</code></pre></div>
+
+<h3>15.3 One Euro filter (C++)</h3>
+<div class="codebox"><pre><code>// One Euro filter (Casiez, Roussel &amp; Vogel, CHI 2012). One instance per coordinate.
+struct LowPass {
+    double y = 0; bool init = false;
+    double operator()(double x, double a) { y = init ? a * x + (1 - a) * y : x; init = true; return y; }
+};
+
+struct OneEuro {
+    double minCutoff = 1.0, beta = 0.007, dCutoff = 1.0;    // tune live in the Studio
+    LowPass x, dx;
+    static double Alpha(double cutoff, double dt) {
+        const double tau = 1.0 / (2.0 * 3.14159265358979 * cutoff);
+        return 1.0 / (1.0 + tau / dt);
+    }
+    double operator()(double value, double dt) {              // dt in seconds, from frame timestamps
+        const double d  = x.init ? (value - x.y) / dt : 0.0;
+        const double ed = dx(d, Alpha(dCutoff, dt));
+        return x(value, Alpha(minCutoff + beta * std::abs(ed), dt));
+    }
+};</code></pre></div>
+
+<h3>15.4 Hot threads and the 240 Hz pointer pump (C++)</h3>
+<div class="codebox"><pre><code>#include &lt;avrt.h&gt;   // link avrt.lib
+
+void MakeHotThread(const wchar_t* mmcssTask)       // L"Capture" for T1, L"Games" for T3
+{
+    DWORD taskIndex = 0;
+    AvSetMmThreadCharacteristicsW(mmcssTask, &amp;taskIndex);
+
+    THREAD_POWER_THROTTLING_STATE pt{};
+    pt.Version     = THREAD_POWER_THROTTLING_CURRENT_VERSION;
+    pt.ControlMask = THREAD_POWER_THROTTLING_EXECUTION_SPEED;
+    pt.StateMask   = 0;                                      // 0 = never EcoQoS for this thread
+    SetThreadInformation(GetCurrentThread(), ThreadPowerThrottling, &amp;pt, sizeof(pt));
+}
+
+void PointerPump(std::atomic&lt;bool&gt;&amp; run, double hz)   // T3
+{
+    HANDLE t = CreateWaitableTimerExW(nullptr, nullptr,
+                   CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    LARGE_INTEGER due{};
+    due.QuadPart = -static_cast&lt;LONGLONG&gt;(1e7 / hz);    // relative, in 100 ns units
+    while (run) {
+        SetWaitableTimerEx(t, &amp;due, 0, nullptr, nullptr, nullptr, 0);
+        WaitForSingleObject(t, INFINITE);
+        PumpOnce();   // newest filtered state + prediction; SendInput only if it moved ≥ 1 px
+    }
+    CloseHandle(t);
+}</code></pre></div>
+
+<h3>15.5 The GPU hot loop (C++, CUDA + TensorRT sketch)</h3>
+<div class="codebox"><pre><code>// One-time: deserialize engines, create contexts, allocate buffers, capture one CUDA graph.
+int lo = 0, hi = 0;
+cudaDeviceGetStreamPriorityRange(&amp;lo, &amp;hi);
+cudaStream_t s;
+cudaStreamCreateWithPriority(&amp;s, cudaStreamNonBlocking, hi);   // highest priority
+
+handCtx-&gt;setTensorAddress("input", dCrops);       // [2, 3, 224, 224] FP16: two hands
+handCtx-&gt;setTensorAddress("landmarks", dRaw);
+handCtx-&gt;enqueueV3(s); cudaStreamSynchronize(s);  // warm-up outside the capture
+
+cudaGraph_t g; cudaGraphExec_t ge;
+cudaStreamBeginCapture(s, cudaStreamCaptureModeThreadLocal);
+    nv12ToRoiFp16&lt;&lt;&lt;grid, block, 0, s&gt;&gt;&gt;(dFrame, dRoi, dCrops);   // convert + warp + normalise
+    handCtx-&gt;enqueueV3(s);
+    decodeLandmarks&lt;&lt;&lt;1, 64, 0, s&gt;&gt;&gt;(dRaw, dRoi, dLm);            // back to image coordinates
+    cudaMemcpyAsync(hLm, dLm, sizeof(HandResult) * 2, cudaMemcpyDeviceToHost, s);
+cudaStreamEndCapture(s, &amp;g);
+cudaGraphInstantiate(&amp;ge, g, 0);
+
+// Every frame (thread T2):
+cudaMemcpyAsync(dFrame, pinnedFrame, frameBytes, cudaMemcpyHostToDevice, s);
+cudaMemcpyAsync(dRoi, pinnedRoi, sizeof(Roi) * 2, cudaMemcpyHostToDevice, s);  // from last landmarks
+cudaGraphLaunch(ge, s);
+cudaStreamQuery(s);              // submit now instead of letting WDDM batch the work
+cudaEventRecord(done, s);
+cudaEventSynchronize(done);      // about 1 ms later hLm holds both hands (est.)</code></pre></div>
+<div class="codebox"><pre><code>trtexec --onnx=hand_landmark.onnx --fp16 --saveEngine=hand_landmark.plan --useCudaGraph</code></pre></div>
+
+<h3>15.6 Phase-1 prototype: never read a stale frame (Python)</h3>
+<div class="codebox"><pre><code>import threading
+import time
+
+import cv2
+
+
+class LatestFrame:
+    """Grabber thread that keeps only the newest frame: never a queue."""
+
+    def __init__(self, index=0, w=640, h=480, fps=60):
+        self.cap = cv2.VideoCapture(index, cv2.CAP_MSMF)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+        self.frame, self.stamp = None, 0.0
+        self.lock = threading.Lock()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self):
+        while True:
+            ok, f = self.cap.read()
+            if ok:
+                with self.lock:
+                    self.frame, self.stamp = f, time.perf_counter()
+
+    def newest(self):
+        with self.lock:
+            return self.frame, self.stamp
+
+# Move the pointer with SendInput through ctypes. Never use pyautogui here:
+# its default PAUSE adds 0.1 s after every call.</code></pre></div>
+
+<h3>15.7 Train a static gesture model (Python, PyTorch)</h3>
+<div class="codebox"><pre><code>import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class StaticNet(nn.Module):           # 21 landmarks -&gt; K gestures (including "none")
+    def __init__(self, k):
+        super().__init__()
+        self.f = nn.Sequential(nn.Linear(63, 128), nn.ReLU(), nn.Dropout(0.2),
+                               nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, k))
+
+    def forward(self, x):
+        return self.f(x)
+
+
+def normalise(lm):                    # lm: (N, 21, 3) landmarks in image space
+    lm = lm - lm[:, :1]                                   # wrist at the origin
+    scale = lm[:, 9, :2].norm(dim=-1).clamp_min(1e-6)     # wrist -&gt; middle-finger knuckle
+    return (lm / scale[:, None, None]).reshape(len(lm), -1)
+
+
+model = StaticNet(k=len(classes)).cuda()
+opt = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=1e-4)
+for epoch in range(60):
+    for x, y in loader:               # augment: rotate ±25°, scale ±15 %, jitter, mirror
+        loss = F.cross_entropy(model(normalise(x.cuda())), y.cuda(), label_smoothing=0.05)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+torch.onnx.export(model.eval(), torch.zeros(2, 63, device="cuda"), "static.onnx",
+                  input_names=["x"], output_names=["logits"], opset_version=17)</code></pre></div>
+
+<h3>15.8 The service starts the agent in your session (C++)</h3>
+<div class="codebox"><pre><code>// HandiySvc (LocalSystem, Session 0): start the agent in the user's interactive session.
+bool LaunchAgent(DWORD sessionId)
+{
+    HANDLE user = nullptr, primary = nullptr;
+    if (!WTSQueryUserToken(sessionId, &amp;user)) return false;
+    DuplicateTokenEx(user, TOKEN_ALL_ACCESS, nullptr, SecurityImpersonation, TokenPrimary, &amp;primary);
+    DWORD uiAccess = 1;               // honoured because the binary is signed and under Program Files
+    SetTokenInformation(primary, TokenUIAccess, &amp;uiAccess, sizeof(uiAccess));
+
+    void* env = nullptr;
+    CreateEnvironmentBlock(&amp;env, primary, FALSE);
+    STARTUPINFOW si{ sizeof(si) };
+    si.lpDesktop = const_cast&lt;wchar_t*&gt;(L"winsta0\\default");
+    PROCESS_INFORMATION pi{};
+    wchar_t cmd[] = L"\"C:\\Program Files\\Handiy\\HandiyAgent.exe\" --session";
+    const BOOL ok = CreateProcessAsUserW(primary, nullptr, cmd, nullptr, nullptr, FALSE,
+                                         CREATE_UNICODE_ENVIRONMENT, env, nullptr, &amp;si, &amp;pi);
+    DestroyEnvironmentBlock(env);
+    CloseHandle(user);
+    CloseHandle(primary);
+    if (ok) { CloseHandle(pi.hThread); WatchProcess(pi.hProcess); }   // restart with back-off
+    return ok == TRUE;
+}</code></pre></div>
+
+<h3>15.9 A gesture profile (YAML)</h3>
+<div class="codebox"><pre><code>profile: default
+engage:   { gesture: open_palm, zone: desk_box, hold_ms: 200 }
+bindings:
+  - gesture: point_index             # continuous
+    action: cursor.move
+    mapping: { mode: hybrid, gain_min: 1.2, gain_max: 8.0, one_euro: { min_cutoff: 1.0, beta: 0.007 } }
+  - gesture: pinch_index             # tap = click, hold = drag
+    action: mouse.left
+    click_rewind_ms: 80
+  - gesture: raise_open_palm         # from the video
+    action: volume.up
+    step: 0.04
+    repeat_ms: 250
+    finish_on: closed_fist
+    ceiling: 0.85
+  - gesture: swipe_right
+    action: media.next
+    cooldown_ms: 600
+apps:
+  POWERPNT.EXE:
+    - { gesture: swipe_right, action: key, keys: "Right" }
+    - { gesture: swipe_left,  action: key, keys: "Left" }
+safety:
+  kill_gesture: two_hand_T
+  kill_hotkey: "Ctrl+Alt+H"
+  pause_when_locked: true
+  suppress_while_typing_ms: 300</code></pre></div>
+</section>
+
+<section id="tiers">
+<h2><span class="sec-num">16</span>Hardware tiers &amp; fallbacks</h2>
+<p>Handiy must also work on the PCs of people who are not on an Alienware: 4 cores, no GPU, 8 GB of RAM. At start-up it measures the machine and picks a tier, and it says what it chose and why, for example "Tier C: 4 logical processors, no NVIDIA GPU, 8 GB RAM".</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Tier</th><th>Chosen when</th><th>Camera</th><th>Inference</th><th>Rates</th><th>Scheduling</th></tr></thead>
+<tbody>
+<tr><td><b>S · this laptop on AC</b></td><td>RTX present, mains power</td><td>Fastest mode (≥ 60 fps when available)</td><td>TensorRT FP16 on RTX</td><td>Hands every frame, pose ≥ 30 Hz, pointer at display rate (240 Hz)</td><td>Above normal for hot threads, MMCSS</td></tr>
+<tr><td><b>A · RTX laptop on battery</b></td><td>RTX present, battery power</td><td>30 fps</td><td>OpenVINO on the Arc iGPU (or NPU)</td><td>Hands 30 Hz, pose 15 Hz, pointer 120 Hz</td><td>Normal; RTX allowed to sleep</td></tr>
+<tr><td><b>B · any DirectX 12 GPU</b></td><td>No NVIDIA GPU</td><td>30–60 fps</td><td>DirectML / Windows ML</td><td>Hands 30 Hz, pose 15 Hz</td><td>Normal</td></tr>
+<tr><td><b>C · modest PC</b></td><td>≤ 4 logical processors, or ≤ 8 GB, or no usable GPU</td><td>640×360 at 30 fps</td><td>MediaPipe on the CPU, one hand</td><td>Hands 30 Hz, pose 10 Hz, pointer 60 Hz</td><td>Normal priority; worker pool ≤ cores − 1, so the UI always keeps a core</td></tr>
+<tr><td><b>Idle (all tiers)</b></td><td>No hand for 10 s</td><td>5–10 fps, 320×240</td><td>Tiny presence detector (NPU or CPU)</td><td>Wakes the full pipeline within 150 ms</td><td>Below normal</td></tr>
+</tbody></table></div>
+<div class="callout"><ul>
+  <li><b>An explicit user setting is obeyed exactly</b>, even if it is bad for the machine. Automatic choices apply only to settings left at their default.</li>
+  <li><b>Unknown hardware is not the worst case.</b> If detection fails, Handiy uses the always-safe guards (Normal priority, one spare core) without throttling a capable PC.</li>
+  <li><b>Test the hardware you do not have</b> by injecting it: force tier C with a 4-processor profile in the test harness and check that the cursor still works and the UI stays responsive.</li>
+</ul></div>
+</section>
+
+<section id="roadmap">
+<h2><span class="sec-num">17</span>Roadmap</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Phase</th><th>Duration (est.)</th><th>Deliverable</th><th>Exit criteria</th></tr></thead>
+<tbody>
+<tr><td><b>P0 · Measure</b></td><td>2–3 days</td><td>List the camera's real modes (resolutions, frame rates, formats, IR); build the latency rig; record positive and negative clips</td><td>Baseline glass-to-cursor and blur numbers for the built-in camera</td></tr>
+<tr><td><b>P1 · Prototype</b></td><td>1–2 weeks</td><td>Python: grabber thread + MediaPipe (CPU) + One Euro + state machine + SendInput via ctypes + Core Audio; Variant A volume gesture</td><td>Gestures work; false activations per hour measured on a full day</td></tr>
+<tr><td><b>P2 · GPU core</b></td><td>2–3 weeks</td><td>C++ agent: WinRT frame reader, CUDA pre-processing, TensorRT hand + palm + pose engines, 240 Hz pointer pump</td><td>Processing p99 ≤ 3 ms; zero dropped hot-path deadlines over 1 h</td></tr>
+<tr><td><b>P3 · Service &amp; integration</b></td><td>1–2 weeks</td><td>HandiySvc, uiAccess signing, installer, overlay, tray, kill switches, lock/sleep handling</td><td>Survives logon, lock, sleep, camera unplug and a crash; controls Task Manager</td></tr>
+<tr><td><b>P4 · Studio</b></td><td>2 weeks</td><td>Record, auto-label, train, calibrate, sign, hot-swap, shadow test, rollback</td><td>A new static gesture from 5 examples in under 2 minutes</td></tr>
+<tr><td><b>P5 · Hardening</b></td><td>Ongoing</td><td>Hardware tiers, battery mode, local diagnostics, accessibility review, soak tests</td><td>≤ 1 false activation per 8 h; tier C usable</td></tr>
+<tr><td><b>P6 · Upgrades</b></td><td>Optional</td><td>120 fps global-shutter camera + IR light, IR-only mode, camera-side inference, Tlamatini bridge</td><td>Glass-to-cursor ≤ 20 ms measured</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="testing">
+<h2><span class="sec-num">18</span>Measuring &amp; testing</h2>
+<div class="grid">
+  <div class="card"><h3>Latency rig</h3><p class="small">A small microcontroller (ESP32 or Arduino) blinks an LED inside the camera view and starts a microsecond timer. In debug mode Handiy turns a corner of the overlay white when it sees the LED; a photodiode taped on the screen stops the timer. That is the true glass-to-glass time, frame by frame.</p><p class="small"><b>Quick method:</b> film your hand and the screen with a phone at 240 fps and count frames between the hand stopping and the cursor stopping (≈ 4 ms resolution).</p></div>
+  <div class="card"><h3>Internal timing</h3><p class="small">Every frame carries its capture timestamp (<code>SystemRelativeTime</code>, QPC-based). Each stage adds its own timestamp, and the agent keeps histograms of each stage and of capture-to-<code>SendInput</code>. The Studio shows median, p95 and p99 live.</p></div>
+  <div class="card"><h3>Replay harness</h3><p class="small">Recorded landmark streams (or videos) with labelled gesture intervals are replayed through the full pipeline without a camera. The results are deterministic, so the classifiers and the state machine get real regression tests. Following Angela's rule, the harness runs in a visible window with the overlay on screen.</p></div>
+  <div class="card"><h3>Pointing quality</h3><p class="small">ISO 9241-411 multi-directional tapping gives throughput in bits per second. Run it for the mouse, the touchpad and Handiy on the same day, and track it per release.</p></div>
+  <div class="card"><h3>False-activation soak</h3><p class="small">Eight hours of ordinary work with Handiy armed; every unintended action is logged with the two seconds of landmarks before it. Target: at most one.</p></div>
+  <div class="card"><h3>Robustness matrix</h3><p class="small">Window backlight, lamp, dark room with IR; 45 / 60 / 90 cm; sleeves, glasses, a second person in the frame; Teams holding the camera; lock/unlock, sleep/resume, AC/battery, external monitor; forced tier C.</p></div>
+</div>
+</section>
+
+<section id="risks">
+<h2><span class="sec-num">19</span>Risk register</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>The built-in camera is too slow or blurry for a pleasant cursor</td><td><span class="tag bad">high</span></td><td><span class="tag bad">high</span></td><td>Use it for discrete gestures; buy a 60–120 fps camera for the cursor</td></tr>
+<tr><td>False activations annoy the user</td><td><span class="tag warn">medium</span></td><td><span class="tag bad">high</span></td><td>Engage state, negatives in training, per-gesture thresholds calibrated for ≤ 1 per hour</td></tr>
+<tr><td>Arm fatigue</td><td><span class="tag bad">high</span></td><td><span class="tag warn">medium</span></td><td>Desk-height zone, relative mapping with gain, raise-hand gestures only for rare actions</td></tr>
+<tr><td>uiAccess signing is awkward during development</td><td><span class="tag warn">medium</span></td><td><span class="tag warn">medium</span></td><td>Development certificate trusted on the dev machine; real code-signing certificate for releases</td></tr>
+<tr><td>TensorRT engines tied to a GPU and TensorRT version</td><td><span class="tag warn">medium</span></td><td><span class="tag warn">medium</span></td><td>The service rebuilds engines after driver or library updates, or uses TensorRT for RTX just-in-time builds</td></tr>
+<tr><td>A driver update breaks CUDA</td><td><span class="tag info">low</span></td><td><span class="tag warn">medium</span></td><td>Automatic fall-back to tier A/B and a clear message</td></tr>
+<tr><td>Antivirus false positives</td><td><span class="tag warn">medium</span></td><td><span class="tag warn">medium</span></td><td>Code signing, no network, visible tray, documented behaviour</td></tr>
+<tr><td>Another app holds the camera</td><td><span class="tag warn">medium</span></td><td><span class="tag warn">medium</span></td><td>Shared read-only capture; Windows multi-app camera option</td></tr>
+<tr><td>Accuracy lost when converting MediaPipe models</td><td><span class="tag info">low</span></td><td><span class="tag warn">medium</span></td><td>Compare ONNX/TensorRT outputs with the original on recorded clips before shipping</td></tr>
+<tr><td>Battery drain</td><td><span class="tag warn">medium</span></td><td><span class="tag warn">medium</span></td><td>Idle tier, NPU watcher, RTX sleeps without a hand</td></tr>
+<tr><td>Licence breach through a dependency</td><td><span class="tag info">low</span></td><td><span class="tag bad">high</span></td><td>Licence check in the build; Apache-2.0 / MIT models only</td></tr>
+<tr><td>People nearby worry about the camera</td><td><span class="tag info">low</span></td><td><span class="tag warn">medium</span></td><td>Visible indicator, no storage, one-gesture pause</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="tlamatini">
+<h2><span class="sec-num">20</span>Optional: a bridge to Tlamatini</h2>
+<p>Handiy stands alone in v1. Later it can publish <b>events, never frames</b> on a local named pipe, and Tlamatini can react to them.</p>
+<div class="codebox"><pre><code>// one JSON line per event on \\.\pipe\handiy-events (ACL: SYSTEM + the signed-in user)
+{"t":"2026-11-25T13:00:01.234Z","gesture":"raise_open_palm","phase":"commit","value":0.64,"hand":"right"}</code></pre></div>
+<ul>
+  <li><b>Raise a hand to talk:</b> a gesture presses Tlamatini's chat microphone button and starts dictation.</li>
+  <li><b>Flows:</b> a swipe advances a Prompt Flow step; a custom gesture starts a saved <code>.flw</code>.</li>
+  <li><b>Voice feedback:</b> Talker can confirm "volume 64 %" when the screen is out of sight.</li>
+  <li><b>Safety rule:</b> a gesture must never approve an Ask-Execs permission prompt. Approvals stay with the keyboard and mouse.</li>
+  <li>If Handiy ever becomes a Tlamatini workflow agent, its display name is <b>Handiy</b> and its directory is <code>handiy</code>, following the agent-creation runbook.</li>
+</ul>
+</section>
+
+<section id="glossary">
+<h2><span class="sec-num">21</span>Glossary</h2>
+<div class="tablewrap"><table class="narrow">
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><b>Glass-to-cursor latency</b></td><td>Time from a real hand movement to the cursor moving on the panel.</td></tr>
+<tr><td><b>Rolling / global shutter</b></td><td>Rolling sensors expose and read rows one after another (skew, extra delay); global sensors expose every pixel at once.</td></tr>
+<tr><td><b>ROI tracking</b></td><td>Cropping the next frame around the hand found in this frame, so the costly detector rarely runs.</td></tr>
+<tr><td><b>TensorRT engine</b></td><td>A network compiled and optimised for one specific NVIDIA GPU and TensorRT version.</td></tr>
+<tr><td><b>CUDA graph</b></td><td>A recorded sequence of GPU work that is launched with one call, removing per-kernel launch overhead.</td></tr>
+<tr><td><b>WDDM batching</b></td><td>The Windows display driver model may hold GPU work briefly; a stream query pushes it out immediately.</td></tr>
+<tr><td><b>MMCSS</b></td><td>Multimedia Class Scheduler Service: gives time-critical threads (audio, capture, games) scheduling priority.</td></tr>
+<tr><td><b>EcoQoS</b></td><td>Windows' power-saving quality of service; threads under it run slower, often on efficiency cores.</td></tr>
+<tr><td><b>Session 0</b></td><td>The isolated session where services run, separate from every user's desktop.</td></tr>
+<tr><td><b>UIPI / uiAccess</b></td><td>The rule stopping normal processes from driving elevated windows, and the signed exception used by accessibility tools.</td></tr>
+<tr><td><b>Midas touch</b></td><td>When every look or movement turns into a command, because the system cannot tell intent from activity.</td></tr>
+<tr><td><b>Gorilla arm</b></td><td>The fatigue of holding an arm up to operate a screen.</td></tr>
+<tr><td><b>One Euro filter</b></td><td>An adaptive low-pass filter: heavy smoothing at rest, almost none during fast motion.</td></tr>
+<tr><td><b>Hysteresis</b></td><td>Different thresholds for entering and leaving a state, so it does not flicker.</td></tr>
+<tr><td><b>Open-set rejection</b></td><td>The ability to answer "none of my gestures" instead of forcing the closest class.</td></tr>
+<tr><td><b>FA/h</b></td><td>False activations per hour.</td></tr>
+<tr><td><b>Throughput (bits/s)</b></td><td>The ISO 9241-411 measure of pointing speed and accuracy combined.</td></tr>
+<tr><td><b>Hardware cursor</b></td><td>The cursor drawn by the display hardware as its own layer, updated at the next refresh without recomposing the desktop.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="refs">
+<h2><span class="sec-num">22</span>Sources &amp; links</h2>
+<div class="two">
+<div class="card"><h3>Products &amp; projects</h3><ul class="small">
+  <li><a href="https://www.ucl.ac.uk/engineering/computer-science/collaborate/ucl-industry-exchange-network-ucl-ixn/touchless-computing-ucl-motioninput-3">UCL MotionInput 3</a> · <a href="https://students.cs.ucl.ac.uk/software/MotionInput/v2/MotionInput3-FAQ-HelpGuide.txt">FAQ / gestures</a> · <a href="https://xip.cs.ucl.ac.uk/product/UCL-MotionInput-3-noncommercial-use">non-commercial licence</a> · <a href="https://arxiv.org/abs/2108.04357">paper</a></li>
+  <li><a href="https://apps.microsoft.com/detail/9n3ndzlnrmkz">HandX (Microsoft Store)</a></li>
+  <li><a href="https://store.steampowered.com/app/2588630/Virtual_Touch_Screen_2/">Virtual Touch Screen 2 (Steam)</a></li>
+  <li><a href="https://eclipse-dev256.itch.io/handmousepro">HandMouse Pro</a> · <a href="https://futurifind.itch.io/gestureos">GestureOS</a> · <a href="https://www.producthunt.com/products/pawvis">Pawvis</a> · <a href="https://github.com/petehsu/LyraPointer">LyraPointer</a></li>
+  <li><a href="https://github.com/google/project-gameface">Google Project Gameface</a> · <a href="https://developers.googleblog.com/en/project-gameface-makes-gaming-accessible-to-everyone/">blog</a> · <a href="https://developers.googleblog.com/en/project-gameface-launches-on-android/">Android launch</a></li>
+  <li><a href="https://docs.ultraleap.com/TouchFree/touchfree-user-manual/index.html">Ultraleap TouchFree user manual</a></li>
+  <li><a href="http://www.cameramouse.org/">Camera Mouse</a> · <a href="https://github.com/cmauri/eviacam">Enable Viacam</a> · <a href="https://www.neurotechnology.com/npointer.html">NPointer</a></li>
+  <li><a href="https://github.com/geaxgx/depthai_hand_tracker">depthai_hand_tracker</a> · <a href="https://opencv.org/wp-content/uploads/2020/11/Universal-Hand-Control.pdf">Universal Hand Control (PDF)</a></li>
+  <li><a href="https://intel.com/content/www/us/en/developer/articles/technical/implement-hand-gesture-recognition-with-xrdrive-sim.html">Intel XRDrive hand-gesture sample</a></li>
+  <li><a href="https://github.com/cvzone/cvzone">cvzone</a> · <a href="https://github.com/AndreMiras/pycaw">pycaw</a></li>
+</ul></div>
+<div class="card"><h3>Models, data &amp; algorithms</h3><ul class="small">
+  <li><a href="https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker">MediaPipe Hand Landmarker</a> · <a href="https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer">Gesture Recognizer</a> · <a href="https://ai.google.dev/edge/mediapipe/solutions/customization/gesture_recognizer">Model Maker customisation</a> · <a href="https://ai.google.dev/edge/mediapipe/framework/getting_started/gpu_support">GPU support</a> · <a href="https://github.com/google-ai-edge/mediapipe">repository</a> · <a href="https://arxiv.org/abs/2006.10214">MediaPipe Hands paper</a></li>
+  <li><a href="https://github.com/Kazuhito00/hand-gesture-recognition-using-mediapipe">hand-gesture-recognition-using-mediapipe</a> · <a href="https://github.com/kinivi/hand-gesture-recognition-mediapipe">English fork</a></li>
+  <li><a href="https://github.com/PINTO0309/PINTO_model_zoo">PINTO model zoo</a> · <a href="https://github.com/PINTO0309/hand-gesture-recognition-using-onnx">hand-gesture-recognition-using-onnx</a></li>
+  <li><a href="https://github.com/hukenovs/hagrid">HaGRID</a> · <a href="https://arxiv.org/abs/2412.01508">HaGRIDv2 paper</a> · <a href="https://github.com/ai-forever/dynamic_gestures">dynamic_gestures</a></li>
+  <li><a href="https://github.com/Tau-J/rtmlib">rtmlib</a> · <a href="https://arxiv.org/abs/2303.07399">RTMPose</a> · <a href="https://arxiv.org/abs/2407.08634">RTMW</a> · <a href="https://github.com/open-mmlab/mmpose">MMPose</a></li>
+  <li><a href="https://docs.ultralytics.com/datasets/pose/hand-keypoints">Ultralytics hand-keypoints</a> · <a href="https://docs.ultralytics.com/tasks/pose">pose task</a> · <a href="https://learnopencv.com/yolo26-pose-estimation-tutorial/">YOLO26 pose tutorial</a> · <a href="https://www.ultralytics.com/license">licensing</a></li>
+  <li><a href="https://github.com/rolpotamias/WiLoR">WiLoR</a> · <a href="https://arxiv.org/abs/2409.12259">paper</a></li>
+  <li><a href="https://arxiv.org/abs/2005.02134">IPN Hand dataset</a></li>
+  <li><a href="https://gery.casiez.net/1euro/">One Euro filter</a> · <a href="https://depts.washington.edu/acelab/proj/dollar/index.html">$-family gesture recognizers</a></li>
+</ul></div>
+<div class="card"><h3>Runtimes</h3><ul class="small">
+  <li><a href="https://developer.nvidia.com/tensorrt">NVIDIA TensorRT</a> · <a href="https://docs.nvidia.com/deeplearning/tensorrt-rtx/1.4/architecture/architecture-overview.html">TensorRT for RTX architecture</a> · <a href="https://developer.nvidia.com/blog/deploy-ai-models-faster-with-windows-ml-on-rtx-pcs">Windows ML on RTX PCs</a></li>
+  <li><a href="https://support.microsoft.com/en-us/servicing/os/windows/ai-components/2026/07/kb5121777-nvidia-tensorrt-rtx-execution-provider-update">KB5121777: TensorRT-RTX execution provider update</a></li>
+  <li><a href="https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html">ONNX Runtime TensorRT EP</a> · <a href="https://developer.nvidia.com/blog/cuda-graphs/">CUDA Graphs</a></li>
+  <li><a href="https://docs.openvino.ai/">OpenVINO documentation</a> · <a href="https://phoronix.com/news/intel-openvino-2026.0-released">OpenVINO 2026.0 release</a> · <a href="https://www.intel.com/content/www/us/en/developer/articles/community/litert-unlocks-core-ultra-npu-performance-for-aipc.html">LiteRT on the Core Ultra NPU</a></li>
+  <li><a href="https://learn.microsoft.com/windows/ai/">Windows AI documentation</a></li>
+</ul></div>
+<div class="card"><h3>Windows APIs &amp; settings</h3><ul class="small">
+  <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput">SendInput</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput">MOUSEINPUT</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows">High-DPI desktop apps</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/endpointvolume/nn-endpointvolume-iaudioendpointvolume">IAudioEndpointVolume</a> · <a href="https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager">Global media transport controls</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/win32/wmicoreprov/wmisetbrightness-method-in-class-wmimonitorbrightnessmethods">WmiSetBrightness</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/api/highlevelmonitorconfigurationapi/nf-highlevelmonitorconfigurationapi-setmonitorbrightness">SetMonitorBrightness (DDC/CI)</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/win32/services/interactive-services">Interactive services and Session 0</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-securityoverview">UIAccess and UIPI</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/win32/api/wtsapi32/nf-wtsapi32-wtsqueryusertoken">WTSQueryUserToken</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessasuserw">CreateProcessAsUserW</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/uwp/audio-video-camera/process-media-frames-with-mediaframereader">MediaFrameReader</a> · <a href="https://learn.microsoft.com/en-us/uwp/api/windows.media.capture.mediacapturesharingmode">MediaCaptureSharingMode</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/medfound/mf-low-latency">MF_LOW_LATENCY</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/win32/procthread/multimedia-class-scheduler-service">MMCSS</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadinformation">SetThreadInformation</a> · <a href="https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createwaitabletimerexw">CreateWaitableTimerExW</a></li>
+  <li><a href="https://support.microsoft.com/en-us/windows/ai/ai-features/windows-studio-effects">Windows Studio Effects</a> · <a href="https://pureinfotech.com/allow-multiple-apps-use-camera-windows-11/">Multi-app camera guide</a> · <a href="https://betanews.com/2024/12/19/at-long-last-microsoft-makes-it-possible-to-use-your-webcam-with-multiple-apps-simultaneously-in-windows-11">multi-app camera news</a></li>
+</ul></div>
+<div class="card"><h3>Latency measurement</h3><ul class="small">
+  <li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10616216/">Measuring motion-to-photon latency (Behavior Research Methods)</a></li>
+</ul></div>
+</div>
+<p class="small muted">Research snapshot of 25 November 2026. Product features, licences and prices change; check each source before relying on it.</p>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <div class="wrap">Handiy design dossier · prepared for Angela López Mendoza · 25 November 2026 · Self-contained page: no external scripts, fonts or images, works offline.</div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+
+  function readTheme() { try { return localStorage.getItem("handiy-theme"); } catch (e) { return null; } }
+  function writeTheme(t) { try { if (t) { localStorage.setItem("handiy-theme", t); } else { localStorage.removeItem("handiy-theme"); } } catch (e) {} }
+  var saved = readTheme();
+  if (saved === "dark" || saved === "light") { root.setAttribute("data-theme", saved); }
+  var themeBtn = document.getElementById("themeBtn");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      var cur = root.getAttribute("data-theme");
+      var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var next = dark ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      writeTheme(next);
+    });
+  }
+
+  var tocd = document.getElementById("tocd");
+  if (tocd && window.matchMedia("(max-width: 1000px)").matches) { tocd.removeAttribute("open"); }
+
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) { return; }
+        links.forEach(function (l) { l.classList.remove("active"); });
+        var a = byId[e.target.id];
+        if (a) { a.classList.add("active"); }
+      });
+    }, { rootMargin: "-15% 0px -75% 0px" });
+    Object.keys(byId).forEach(function (id) { var s = document.getElementById(id); if (s) { io.observe(s); } });
+  }
+
+  [].forEach.call(document.querySelectorAll(".codebox"), function (box) {
+    var pre = box.querySelector("pre");
+    if (!pre) { return; }
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "copy";
+    b.textContent = "Copy";
+    function fallback() {
+      try {
+        var r = document.createRange();
+        r.selectNodeContents(pre);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
+        return document.execCommand("copy");
+      } catch (e) { return false; }
+    }
+    function done(ok) {
+      b.textContent = ok ? "Copied" : "Press Ctrl+C";
+      setTimeout(function () { b.textContent = "Copy"; }, 1500);
+    }
+    b.addEventListener("click", function () {
+      var text = pre.innerText;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallback()); });
+          return;
+        }
+      } catch (e) {}
+      done(fallback());
+    });
+    box.appendChild(b);
+  });
+
+  var calc = document.getElementById("calc");
+  if (!calc) { return; }
+  var PRESETS = {
+    builtin: { fps: 30,  exp: 16, ro: 28, tr: 20, dec: 1,   inf: 1.5, lg: 0.4, hz: 240, pred: 0 },
+    w60:     { fps: 60,  exp: 8,  ro: 14, tr: 12, dec: 1.5, inf: 1.5, lg: 0.4, hz: 240, pred: 4 },
+    gs120:   { fps: 120, exp: 2,  ro: 3,  tr: 5,  dec: 0.2, inf: 1.2, lg: 0.4, hz: 240, pred: 8 },
+    ext60:   { fps: 30,  exp: 16, ro: 28, tr: 20, dec: 1,   inf: 1.5, lg: 0.4, hz: 60,  pred: 0 },
+    cpu:     { fps: 30,  exp: 16, ro: 28, tr: 20, dec: 2,   inf: 12,  lg: 0.8, hz: 60,  pred: 0 }
+  };
+  var KEYS = ["fps", "exp", "ro", "tr", "dec", "inf", "lg", "hz", "pred"];
+  var UNITS = { fps: " fps", exp: " ms", ro: " ms", tr: " ms", dec: " ms", inf: " ms", lg: " ms", pred: " ms" };
+  var COLORS = [
+    "var(--c-cap)",
+    "color-mix(in srgb, var(--c-cap) 62%, var(--surface))",
+    "color-mix(in srgb, var(--c-cap) 36%, var(--surface))",
+    "var(--c-svc)",
+    "var(--c-fb)",
+    "var(--c-gpu)",
+    "var(--c-logic)",
+    "var(--c-os)"
+  ];
+  function el(id) { return document.getElementById(id); }
+  function val(k) { return parseFloat(el("c-" + k).value); }
+  function fmt(x) { return x >= 10 ? x.toFixed(0) : x.toFixed(1); }
+
+  function compute() {
+    var fps = val("fps");
+    var period = 1000 / fps;
+    var expIn = el("c-exp");
+    if (parseFloat(expIn.value) > period) { expIn.value = Math.floor(period * 2) / 2; }
+    KEYS.forEach(function (k) {
+      var o = el("o-" + k);
+      if (o) { o.textContent = fmt(val(k)) + (UNITS[k] || ""); }
+    });
+    var hz = val("hz");
+    var parts = [
+      ["Waiting for an exposure", period / 2],
+      ["Exposure (centre)", val("exp") / 2],
+      ["Readout (average row)", val("ro") / 2],
+      ["ISP + USB + driver", val("tr")],
+      ["Decode / convert", val("dec")],
+      ["Inference", val("inf")],
+      ["Logic + SendInput", val("lg")],
+      ["Display (vblank + scanout)", 1000 / hz]
+    ];
+    var raw = 0;
+    parts.forEach(function (p) { raw += p[1]; });
+    var felt = Math.max(0, raw - val("pred"));
+    var cam = parts[0][1] + parts[1][1] + parts[2][1] + parts[3][1];
+    var blurPx = 1.5 * (val("exp") / 1000) * (640 / 0.84);
+    el("r-raw").textContent = "≈ " + fmt(raw) + " ms";
+    el("r-pred").textContent = "≈ " + fmt(felt) + " ms";
+    el("r-cam").textContent = Math.round(100 * cam / raw) + " %";
+    el("r-blur").textContent = "≈ " + fmt(blurPx) + " px";
+
+    var bar = el("r-bar");
+    var legend = el("r-legend");
+    bar.textContent = "";
+    legend.textContent = "";
+    parts.forEach(function (p, i) {
+      var seg = document.createElement("div");
+      seg.className = "seg";
+      seg.style.width = (100 * p[1] / raw) + "%";
+      seg.style.background = COLORS[i];
+      seg.title = p[0] + ": " + fmt(p[1]) + " ms";
+      bar.appendChild(seg);
+      var item = document.createElement("span");
+      var sw = document.createElement("i");
+      sw.style.background = COLORS[i];
+      var b = document.createElement("b");
+      b.textContent = fmt(p[1]) + " ms";
+      item.appendChild(sw);
+      item.appendChild(document.createTextNode(p[0] + " "));
+      item.appendChild(b);
+      legend.appendChild(item);
+    });
+    bar.setAttribute("aria-label", "Latency breakdown, total about " + fmt(raw) + " milliseconds");
+  }
+
+  function applyPreset(name) {
+    var p = PRESETS[name];
+    if (!p) { return; }
+    KEYS.forEach(function (k) { el("c-" + k).value = p[k]; });
+    [].forEach.call(calc.querySelectorAll("[data-preset]"), function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-preset") === name);
+    });
+    compute();
+  }
+
+  [].forEach.call(calc.querySelectorAll("[data-preset]"), function (btn) {
+    btn.addEventListener("click", function () { applyPreset(btn.getAttribute("data-preset")); });
+  });
+  KEYS.forEach(function (k) {
+    var input = el("c-" + k);
+    input.addEventListener("input", function () {
+      [].forEach.call(calc.querySelectorAll("[data-preset]"), function (btn) { btn.classList.remove("on"); });
+      compute();
+    });
+  });
+  applyPreset("builtin");
+})();
+</script>
+</body>
+</html>

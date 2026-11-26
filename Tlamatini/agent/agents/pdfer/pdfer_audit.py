@@ -37,6 +37,8 @@ check                     why it matters
 ``contrast``              sampled text colour against sampled page ground,
                           in case a theme override defeated the palette
                           validation
+``missing_glyph``         a character the font has no glyph for, printed as
+                          a blank or U+FFFD: content the reader never sees
 ``empty``                 a PDF with no extractable text at all, when the
                           document model said there was text
 ========================  ==================================================
@@ -73,7 +75,8 @@ Author: Angela López Mendoza.
 
 from __future__ import annotations
 
-__all__ = ["AuditReport", "audit_pdf", "OVERLAP_TOLERANCE"]
+__all__ = ["AuditReport", "audit_pdf", "OVERLAP_TOLERANCE",
+           "REPLACEMENT_CHARACTER"]
 
 #: Glyph boxes may legitimately touch by this many points before it counts.
 #: (An italic overhang is ~0.4pt at 10pt; kerned pairs ~0.2pt.)
@@ -84,6 +87,9 @@ OVERLAP_TOLERANCE = 1.2
 MAX_WORDS_PER_PAGE = 2600
 
 MM = 72.0 / 25.4
+
+#: What the composer prints, and PyMuPDF reports, where a font had no glyph.
+REPLACEMENT_CHARACTER = "\ufffd"
 
 
 class AuditReport:
@@ -100,6 +106,7 @@ class AuditReport:
         self.frame_intrusions = []
         self.blank_pages = []
         self.contrast_findings = []
+        self.missing_glyphs = []
         self.notes = []
         self.truncated = False
 
@@ -116,8 +123,12 @@ class AuditReport:
         return len(self.frame_intrusions)
 
     @property
+    def missing_glyph_count(self):
+        return sum(item.get("count", 1) for item in self.missing_glyphs)
+
+    @property
     def clean(self):
-        """No overlap, no bleed off the paper, no blank page, no low contrast.
+        """No overlap, no bleed, no blank page, no low contrast, no lost glyph.
 
         ``frame_intrusions`` are deliberately NOT part of this. They are ink
         that left the text frame but stayed on the sheet — worth reporting,
@@ -125,7 +136,7 @@ class AuditReport:
         pass/fail verdict is how a verdict stops meaning anything.
         """
         return not (self.overlaps or self.bleeds or self.blank_pages
-                    or self.contrast_findings)
+                    or self.contrast_findings or self.missing_glyphs)
 
     def summary(self) -> str:
         if not self.available:
@@ -153,6 +164,10 @@ class AuditReport:
         if self.contrast_findings:
             parts.append("%d low-contrast region(s)"
                          % len(self.contrast_findings))
+        if self.missing_glyphs:
+            parts.append("%d character(s) no installed font can draw, "
+                         "printed as U+FFFD or a blank"
+                         % self.missing_glyph_count)
         return "layout audit FOUND ISSUES — " + "; ".join(parts)
 
     def detail(self, limit: int = 10) -> str:
@@ -174,6 +189,10 @@ class AuditReport:
             lines.append("    CONTRAST p%d: %.2f:1 (%s on %s)"
                          % (item["page"], item["ratio"], item["fg"],
                             item["bg"]))
+        for item in self.missing_glyphs[:limit]:
+            where = ("p%d" % item["page"]) if item.get("page") else "(composer)"
+            lines.append("    MISSING  %s: %r has a character no installed "
+                         "font can draw" % (where, item["text"][:40]))
         if self.truncated:
             lines.append("    (some pages were sampled rather than swept "
                          "exhaustively — very dense page)")
@@ -189,12 +208,26 @@ class AuditReport:
             "frame_intrusions": len(self.frame_intrusions),
             "blank_pages": list(self.blank_pages),
             "contrast_findings": len(self.contrast_findings),
+            "missing_glyphs": self.missing_glyph_count,
             "clean": self.clean, "truncated": self.truncated,
             "samples": {
                 "overlaps": self.overlaps[:6],
                 "bleeds": self.bleeds[:6],
             },
         }
+
+    def note_missing_glyphs(self, characters) -> None:
+        """Record what the composer could not draw when the file shows nothing.
+
+        The composer prints U+FFFD for such a character and the page scan
+        finds that mark; this covers a host where even U+FFFD had no glyph,
+        when the composer's own list is the only evidence left.
+        """
+        if self.missing_glyphs:
+            return
+        for character in characters or ():
+            self.missing_glyphs.append({"page": 0, "text": str(character),
+                                        "count": 1, "source": "composer"})
 
     def __repr__(self):
         return "AuditReport(%s)" % self.summary()
@@ -212,6 +245,50 @@ def _intersects(a, b, tolerance):
     if x_overlap <= tolerance or y_overlap <= tolerance:
         return 0.0
     return min(x_overlap, y_overlap)
+
+
+#: Code points PyMuPDF reports for a glyph the font could not draw.
+_LOST_GLYPH_CODES = frozenset((0, 0xFFFD))
+
+
+def _missing_glyph_runs(page):
+    """``[(span text, count)]`` for every span holding a glyph nobody could draw.
+
+    Measured 2026-11-26: for a ReportLab ``.notdef`` PyMuPDF's plain text and
+    ``rawdict`` give U+0000, which ``get_text("words")`` silently drops, while
+    the glyph trace gives U+FFFD. The trace is read first; the ``rawdict``
+    walk is the fallback for a PyMuPDF without ``get_texttrace``. Never raises.
+    """
+    def shown(code):
+        if code in _LOST_GLYPH_CODES:
+            return REPLACEMENT_CHARACTER
+        return chr(code) if 0 < code <= 0x10FFFF else "?"
+
+    found = []
+    try:
+        for span in page.get_texttrace():
+            codes = [c[0] for c in span.get("chars") or ()]
+            count = sum(1 for code in codes if code in _LOST_GLYPH_CODES)
+            if count:
+                text = "".join(shown(code) for code in codes)
+                found.append((text.strip()[:80], count))
+        return found
+    except Exception:
+        found = []
+    try:
+        lost = ("\x00", REPLACEMENT_CHARACTER)
+        for block in page.get_text("rawdict").get("blocks", ()):
+            for line in block.get("lines", ()):
+                for span in line.get("spans", ()):
+                    chars = [c.get("c", "") for c in span.get("chars") or ()]
+                    count = sum(1 for c in chars if c in lost)
+                    if count:
+                        text = "".join(REPLACEMENT_CHARACTER if c in lost else c
+                                       for c in chars)
+                        found.append((text.strip()[:80], count))
+    except Exception:
+        pass
+    return found
 
 
 def audit_pdf(path, margin_mm=18.0, expect_text=True, page_background="",
@@ -248,6 +325,16 @@ def audit_pdf(path, margin_mm=18.0, expect_text=True, page_background="",
                 images = []
             report.words += len(words)
             report.images += len(images)
+
+            # ── missing glyphs: content the reader never sees ──────────────
+            # A face without a glyph prints .notdef, usually a blank that
+            # still has a box, so the overlap and bleed checks pass it, and
+            # the word list drops it (PyMuPDF extracts it as U+0000). The
+            # glyph trace reports it as U+FFFD, the same mark the composer
+            # prints where no installed face had a glyph: one scan, both.
+            for text, count in _missing_glyph_runs(page):
+                report.missing_glyphs.append(
+                    {"page": number, "text": text, "count": count})
 
             if not words and not images:
                 report.blank_pages.append(number)

@@ -1438,6 +1438,9 @@ def _render_atelier(text: str, config: dict, images: list, output_path: str,
         audit = pdfer_audit.audit_pdf(
             output_path, margin_mm=design.page["margin_mm"],
             page_background=design.palette.background.hex)
+        # The composer knows exactly which characters no font could draw;
+        # the file only shows their replacement mark. Both are evidence.
+        audit.note_missing_glyphs(report.get("missing_glyphs") or [])
         result["audit"] = audit
         log("🔍 " + audit.summary())
         if not audit.clean:

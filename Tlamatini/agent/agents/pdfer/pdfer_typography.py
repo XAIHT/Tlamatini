@@ -57,6 +57,10 @@ CONTRACTS (do NOT weaken)
   `resolve()`, which is guaranteed to return something ReportLab can set.
   Handing Platypus an unknown font name is a hard KeyError at render time —
   the exact class of late failure this agent must never have.
+* **EVERY CHARACTER IS DRAWN OR REPORTED.** A character the chosen face
+  lacks comes from a fallback face; one no installed face can draw prints
+  as U+FFFD and fails the layout audit. It never silently becomes a blank
+  (the HandGI guide lost its arrows that way on 2026-11-25).
 
 Author: Angela López Mendoza.
 """
@@ -65,6 +69,7 @@ from __future__ import annotations
 
 import os
 import sys
+import unicodedata
 
 __all__ = [
     "FontBook",
@@ -74,6 +79,19 @@ __all__ = [
     "BASE14_SERIF",
     "BASE14_SANS",
     "BASE14_MONO",
+    "FALLBACK_FACES",
+    "MONO_FALLBACK_FACES",
+    "REPLACEMENT_CHARACTER",
+    "GlyphLedger",
+    "glyph_ledger",
+    "reset_glyph_ledger",
+    "can_draw",
+    "fallback_for",
+    "text_runs",
+    "needs_glyph_fallback",
+    "apply_glyph_fallback",
+    "fallback_flowable_class",
+    "draw_text",
 ]
 
 # The PDF base-14 — always present, never registered, the absolute floor.
@@ -632,11 +650,377 @@ class FontBook:
         """
         try:
             from reportlab.pdfbase import pdfmetrics
-            return pdfmetrics.stringWidth(text or "", font_name, size)
+            # Measured run by run: a character the face lacks is drawn by
+            # a fallback face (GLYPH FALLBACK below), so it is measured
+            # in that face too.
+            return sum(pdfmetrics.stringWidth(run, face, size)
+                       for run, face in text_runs(text or "", font_name,
+                                                  record=False))
         except Exception:
             # A pessimistic estimate is the safe direction: it over-reserves
             # width, which can only ever prevent an overlap, never cause one.
             return len(text or "") * size * 0.62
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  GLYPH FALLBACK — every character is drawn by a face that has it
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Measured 2026-11-25 on the HandGI guide: "Capture → decision" was set in
+# Corbel, and Corbel has no U+2192. ReportLab drew Corbel's empty .notdef
+# glyph, a 4.6pt blank, and raised nothing. The layout audit measures glyph
+# BOXES, and a blank still has a box, so it reported "every text run legible"
+# over a page whose arrows had vanished. A typeface choice silently deleted
+# content.
+#
+# The cure is what every text engine does: per character, when the chosen
+# face cannot draw it, take it from the first broad-coverage face that can,
+# and write down what was substituted. A character NO installed face can draw
+# is printed as U+FFFD, the visible replacement mark, and recorded as MISSING;
+# the audit turns that into a failed layout instead of a clean one.
+#
+# CONTRACTS (do NOT weaken)
+# * Text the face fully covers comes back as ONE run, untouched: the common
+#   case costs a dictionary lookup per character and nothing else.
+# * Fallback faces are registered LAZILY, the first time a character needs
+#   one, so a document without such characters parses no extra font file.
+# * Never raises. Anything unexpected leaves the text in its original face.
+
+#: Broad-coverage faces tried, in order, for a character the document's own
+#: face lacks: (label, regular file, bold file). File names are matched
+#: case-insensitively against the index `FontBook.boot()` builds, so Windows,
+#: macOS and Linux names coexist; files a host does not have are skipped.
+FALLBACK_FACES = (
+    ("SegoeUI", "segoeui.ttf", "segoeuib.ttf"),
+    ("SegoeUISymbol", "seguisym.ttf", ""),
+    ("Arial", "arial.ttf", "arialbd.ttf"),
+    ("Calibri", "calibri.ttf", "calibrib.ttf"),
+    ("LucidaSansUnicode", "l_10646.ttf", ""),
+    ("SegoeUIHistoric", "seguihis.ttf", ""),
+    ("Ebrima", "ebrima.ttf", "ebrimabd.ttf"),
+    ("Gadugi", "gadugi.ttf", "gadugib.ttf"),
+    ("NirmalaUI", "nirmala.ttc", ""),
+    ("MalgunGothic", "malgun.ttf", "malgunbd.ttf"),
+    ("MicrosoftYaHei", "msyh.ttc", "msyhbd.ttc"),
+    ("YuGothic", "yugothr.ttc", "yugothb.ttc"),
+    ("SegoeUIEmoji", "seguiemj.ttf", ""),
+    ("DejaVuSans", "dejavusans.ttf", "dejavusans-bold.ttf"),
+    ("NotoSans", "notosans-regular.ttf", "notosans-bold.ttf"),
+    ("NotoSansSymbols", "notosanssymbols-regular.ttf", ""),
+    ("NotoSansSymbols2", "notosanssymbols2-regular.ttf", ""),
+    ("FreeSans", "freesans.ttf", "freesansbold.ttf"),
+    ("ArialUnicodeMS", "arialuni.ttf", ""),
+    ("ArialUnicode", "arial unicode.ttf", ""),
+)
+
+#: Tried first for code, so a listing keeps its monospaced rhythm wherever a
+#: monospaced face can supply the glyph.
+MONO_FALLBACK_FACES = (
+    ("CascadiaMono", "cascadiamono.ttf", ""),
+    ("Consolas", "consola.ttf", "consolab.ttf"),
+    ("CourierNew", "cour.ttf", "courbd.ttf"),
+    ("DejaVuSansMono", "dejavusansmono.ttf", "dejavusansmono-bold.ttf"),
+)
+
+#: Laid out by Platypus, never drawn as glyphs.
+_LAYOUT_CHARACTERS = frozenset(" \t\n\r\f\v\xa0")
+
+#: What a reader sees where no installed face can draw a character.
+REPLACEMENT_CHARACTER = "\ufffd"
+
+_CHARMAPS: dict = {}
+_FALLBACK_FACE_NAMES: dict = {}
+_FALLBACK_CHOICES: dict = {}
+_MONO_FACES: dict = {}
+_FLOWABLE_CLASSES: dict = {}
+
+
+class GlyphLedger:
+    """What the glyph fallback did during one render: reported, never hidden."""
+
+    def __init__(self):
+        #: character -> fallback face that drew it
+        self.substituted = {}
+        #: character -> face that could not draw it, when nothing else could
+        self.missing = {}
+        #: invisible format characters (zero-width space, joiners, direction
+        #: marks) left out because the face had no glyph for them
+        self.dropped = 0
+
+    @staticmethod
+    def _shown(characters, limit):
+        shown = ", ".join("%s (U+%04X)" % (c, ord(c)) for c in characters[:limit])
+        if len(characters) > limit:
+            shown += " and %d more" % (len(characters) - limit)
+        return shown
+
+    def describe(self, limit: int = 12) -> str:
+        """``'→ (U+2192) from SegoeUI'`` per fallback face, for the log."""
+        by_face = {}
+        for character, face in sorted(self.substituted.items()):
+            by_face.setdefault(face, []).append(character)
+        return "; ".join(
+            "%s from %s" % (self._shown(chars, limit),
+                            face.replace("TlmFallback-", ""))
+            for face, chars in by_face.items())
+
+    def describe_missing(self, limit: int = 12) -> str:
+        return self._shown(sorted(self.missing), limit)
+
+
+_LEDGER = GlyphLedger()
+
+
+def glyph_ledger() -> GlyphLedger:
+    """The ledger of the render in progress."""
+    return _LEDGER
+
+
+def reset_glyph_ledger() -> GlyphLedger:
+    """Start a fresh ledger; called at the start of every render."""
+    global _LEDGER
+    _LEDGER = GlyphLedger()
+    return _LEDGER
+
+
+def _charmap(font_name):
+    """Unicode -> glyph map of a registered TrueType face; None for base-14."""
+    if font_name in _CHARMAPS:
+        return _CHARMAPS[font_name]
+    mapping = None
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        face = getattr(pdfmetrics.getFont(font_name), "face", None)
+        candidate = getattr(face, "charToGlyph", None)
+        if isinstance(candidate, dict) and candidate:
+            mapping = candidate
+    except Exception:
+        mapping = None
+    _CHARMAPS[font_name] = mapping
+    return mapping
+
+
+def _base14_can_draw(character) -> bool:
+    """A base-14 face draws what WinAnsiEncoding (cp1252) can encode."""
+    try:
+        character.encode("cp1252")
+        return True
+    except UnicodeError:
+        return False
+
+
+def can_draw(font_name, character) -> bool:
+    """Does *font_name* have a real glyph for *character*?"""
+    if character in _LAYOUT_CHARACTERS:
+        return True
+    mapping = _charmap(font_name)
+    if mapping is None:
+        return _base14_can_draw(character)
+    return bool(mapping.get(ord(character)))
+
+
+def _is_mono(font_name) -> bool:
+    if font_name in _MONO_FACES:
+        return _MONO_FACES[font_name]
+    mono = font_name in _BASE14_FAMILIES[BASE14_MONO]
+    if not mono:
+        for faces in FontBook._registered.values():
+            if faces.get("class") == "mono" and font_name in (
+                    faces.get("regular"), faces.get("bold"),
+                    faces.get("italic"), faces.get("bolditalic")):
+                mono = True
+                break
+    _MONO_FACES[font_name] = mono
+    return mono
+
+
+def _fallback_face(label, filename, bold):
+    """Register one fallback file on first use; '' when the host lacks it."""
+    key = (label, bool(bold))
+    if key in _FALLBACK_FACE_NAMES:
+        return _FALLBACK_FACE_NAMES[key]
+    name = ""
+    try:
+        FontBook.boot()
+        path = FontBook._index.get(str(filename).lower()) if filename else None
+        if path:
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            candidate = "TlmFallback-%s%s" % (label, "-Bold" if bold else "")
+            if path.lower().endswith(".ttc"):
+                font = TTFont(candidate, path, subfontIndex=0)
+            else:
+                font = TTFont(candidate, path)
+            pdfmetrics.registerFont(font)
+            name = candidate
+    except Exception as exc:
+        FontBook._log.append("fallback face %s unusable (%s)"
+                             % (filename, type(exc).__name__))
+        name = ""
+    _FALLBACK_FACE_NAMES[key] = name
+    return name
+
+
+def fallback_for(character, font_name) -> str:
+    """The registered face that should draw *character* instead of *font_name*.
+
+    Bold text prefers a bold fallback and code a monospaced one. Returns ''
+    when no installed face has a glyph for the character.
+    """
+    bold = "bold" in str(font_name or "").lower()
+    mono = _is_mono(font_name)
+    key = (character, bold, mono)
+    if key in _FALLBACK_CHOICES:
+        return _FALLBACK_CHOICES[key]
+    chain = (MONO_FALLBACK_FACES + FALLBACK_FACES) if mono else FALLBACK_FACES
+    choice = ""
+    for label, regular, bold_file in chain:
+        attempts = (((True, bold_file), (False, regular)) if bold
+                    else ((False, regular),))
+        for want_bold, filename in attempts:
+            if not filename:
+                continue
+            face = _fallback_face(label, filename, want_bold)
+            if face and face != font_name and can_draw(face, character):
+                choice = face
+                break
+        if choice:
+            break
+    _FALLBACK_CHOICES[key] = choice
+    return choice
+
+
+def text_runs(text, font_name, record: bool = True) -> list:
+    """Split *text* into ``[(run, face)]``; every character gets a face that draws it.
+
+    *record* False measures without touching the ledger, for width probes.
+    """
+    text = "" if text is None else str(text)
+    mapping = _charmap(font_name)
+    if mapping is not None:
+        if all(c in _LAYOUT_CHARACTERS or mapping.get(ord(c)) for c in text):
+            return [(text, font_name)]
+    elif all(c in _LAYOUT_CHARACTERS or _base14_can_draw(c) for c in text):
+        return [(text, font_name)]
+
+    ledger = _LEDGER
+    runs = []
+    buffer = []
+    buffer_face = font_name
+    for character in text:
+        face, drawn = font_name, character
+        if not can_draw(font_name, character):
+            if unicodedata.category(character) == "Cf":
+                # Zero-width spaces, joiners and direction marks: invisible
+                # by definition, and drawing them as .notdef adds a blank.
+                if record:
+                    ledger.dropped += 1
+                continue
+            face = fallback_for(character, font_name)
+            if face:
+                if record:
+                    ledger.substituted.setdefault(character, face)
+            else:
+                if record:
+                    ledger.missing.setdefault(character, font_name)
+                # Show the reader that something is missing, instead of a
+                # blank they cannot tell from a space.
+                if can_draw(font_name, REPLACEMENT_CHARACTER):
+                    face, drawn = font_name, REPLACEMENT_CHARACTER
+                else:
+                    stand_in = fallback_for(REPLACEMENT_CHARACTER, font_name)
+                    face, drawn = ((stand_in, REPLACEMENT_CHARACTER) if stand_in
+                                   else (font_name, character))
+        if buffer and face != buffer_face:
+            runs.append(("".join(buffer), buffer_face))
+            buffer = []
+        buffer_face = face
+        buffer.append(drawn)
+    if buffer:
+        runs.append(("".join(buffer), buffer_face))
+    return runs or [("", font_name)]
+
+
+def needs_glyph_fallback(text, font_name) -> bool:
+    """True when some character of *text* would not come from *font_name*."""
+    text = "" if text is None else str(text)
+    runs = text_runs(text, font_name, record=False)
+    return not (len(runs) == 1 and runs[0] == (text, font_name))
+
+
+def apply_glyph_fallback(frags):
+    """Split Platypus fragments so each character sits in a face that has it."""
+    if not frags:
+        return frags
+    out = []
+    changed = False
+    for frag in frags:
+        text = getattr(frag, "text", None)
+        font = getattr(frag, "fontName", None)
+        if (not isinstance(text, str) or not text or not font
+                or getattr(frag, "cbDefn", None) is not None
+                or not hasattr(frag, "clone")):
+            out.append(frag)
+            continue
+        runs = text_runs(text, font)
+        if len(runs) == 1 and runs[0] == (text, font):
+            out.append(frag)
+            continue
+        changed = True
+        for run, face in runs:
+            if run:
+                out.append(frag.clone(text=run, fontName=face))
+    return out if changed else frags
+
+
+def fallback_flowable_class(kind: str = "Paragraph"):
+    """``Paragraph`` or ``XPreformatted`` whose fragments use the glyph fallback.
+
+    Only text parsed by THIS flowable is processed: when Platypus splits a
+    paragraph across pages it hands the already-processed fragments on.
+    """
+    cls = _FLOWABLE_CLASSES.get(kind)
+    if cls is not None:
+        return cls
+    from reportlab.platypus import Paragraph, XPreformatted
+    base = XPreformatted if kind == "XPreformatted" else Paragraph
+
+    class GlyphSafe(base):
+        def _setup(self, text, style, bulletText, frags, cleaner):
+            parsed_here = frags is None
+            super()._setup(text, style, bulletText, frags, cleaner)
+            if parsed_here:
+                try:
+                    self.frags = apply_glyph_fallback(self.frags)
+                except Exception:
+                    pass
+
+    GlyphSafe.__name__ = GlyphSafe.__qualname__ = "GlyphSafe" + base.__name__
+    _FLOWABLE_CLASSES[kind] = GlyphSafe
+    return GlyphSafe
+
+
+def draw_text(canvas, x, y, text, font_name, size, anchor="start") -> float:
+    """``canvas.drawString`` with the glyph fallback; returns the width drawn.
+
+    *anchor* ``start``, ``middle`` or ``end`` stands in for drawString,
+    drawCentredString and drawRightString.
+    """
+    from reportlab.pdfbase import pdfmetrics
+    runs = text_runs(text, font_name)
+    widths = [pdfmetrics.stringWidth(run, face, size) for run, face in runs]
+    total = sum(widths)
+    if anchor == "end":
+        x -= total
+    elif anchor == "middle":
+        x -= total / 2.0
+    for (run, face), width in zip(runs, widths):
+        if run:
+            canvas.setFont(face, size)
+            canvas.drawString(x, y, run)
+        x += width
+    canvas.setFont(font_name, size)
+    return total
 
 
 class TypeScale:
