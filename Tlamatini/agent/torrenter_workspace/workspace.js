@@ -299,7 +299,20 @@ async function openWorkspace() {
   await refresh(); message('Connected.');
 }
 openWorkspace().catch(e=>message(e.message,true));
-setInterval(()=>refresh().catch(e=>{
-  refreshError = true;
-  message(e instanceof TypeError ? 'Connection interrupted. Retrying…' : e.message,true);
-}),2000);
+// One refresh at a time, 2 seconds apart while the page is visible. After a failure the
+// wait doubles up to 30 seconds, so a busy or restarting engine is not asked again and
+// again; a hidden page asks nothing until it is shown (Angela, 26 November 2026).
+let refreshDelay = 2000;
+async function poll() {
+  if (!document.hidden) {
+    try { await refresh(); refreshDelay = 2000; }
+    catch (e) {
+      refreshError = true;
+      message(e instanceof TypeError ? 'Connection interrupted. Retrying…' : e.message,true);
+      refreshDelay = Math.min(refreshDelay * 2, 30000);
+    }
+  }
+  setTimeout(poll, refreshDelay);
+}
+setTimeout(poll, 2000);
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) refresh().catch(()=>{}); });
